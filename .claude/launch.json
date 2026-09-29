@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "maistorko-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "web", "run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "maistorko-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "web", "run", "start"],
+      "port": 3000
+    }
+  ]
+}

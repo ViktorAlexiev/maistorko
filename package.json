@@ -1,0 +1,21 @@
+{
+  "name": "maistorko",
+  "private": true,
+  "description": "Майсторко: каталог на майстори по свободни дни (Next.js + Supabase)",
+  "scripts": {
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:status": "supabase status",
+    "db:types": "supabase gen types typescript --local > web/src/lib/database.types.ts",
+    "setup": "npm --prefix web install",
+    "seed": "npm --prefix web run seed",
+    "test:rls": "npm --prefix web run test:rls",
+    "dev": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "lint": "npm --prefix web run lint"
+  },
+  "devDependencies": {
+    "supabase": "^2.118.0"
+  }
+}

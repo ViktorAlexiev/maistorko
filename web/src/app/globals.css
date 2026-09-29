@@ -1,0 +1,579 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Майсторко: the folding rule.
+   Enamel rule-yellow owns whole bands; ink black carries type and graduations;
+   red is reserved for decimeter numerals and "today"; free days are inked green.
+   ========================================================================== */
+
+:root {
+  --paper: #f3f2ed;
+  --surface: #fffdf8;
+  --surface-2: #e9e7e0;
+  --ink: #16140f;
+  --ink-2: #47433a;
+  --ink-3: #686356;
+  --line: #d8d5cb;
+  --line-strong: #b4afa1;
+  --rule: #f2c200;
+  --rule-deep: #dcae00;
+  --rule-soft: #fbeaa6;
+  --red: #c8221a;
+  --free: #2f6b4f;
+  --free-soft: #d9eadf;
+  --brass: #a8843a;
+  --danger: #b42318;
+  --danger-soft: #fbe4e1;
+  --graphite: #1d1b17;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-hinge: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --shadow-sm: 0 1px 2px rgb(22 20 15 / 0.08), 0 1px 1px rgb(22 20 15 / 0.04);
+  --shadow-md: 0 6px 16px -6px rgb(22 20 15 / 0.18), 0 2px 4px rgb(22 20 15 / 0.06);
+  --shadow-lg: 0 24px 48px -16px rgb(22 20 15 / 0.28), 0 4px 10px rgb(22 20 15 / 0.08);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-rule: var(--rule);
+  --color-rule-deep: var(--rule-deep);
+  --color-rule-soft: var(--rule-soft);
+  --color-red: var(--red);
+  --color-free: var(--free);
+  --color-free-soft: var(--free-soft);
+  --color-brass: var(--brass);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-graphite: var(--graphite);
+
+  --font-sans: var(--font-sofia), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-condensed), var(--font-sofia), ui-sans-serif, sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  --ease-out: var(--ease-out);
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  font-feature-settings: "kern", "liga";
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+::selection {
+  background: var(--rule);
+  color: var(--ink);
+}
+
+input,
+textarea {
+  caret-color: var(--red);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.on-dark :focus-visible {
+  outline-color: var(--rule);
+}
+
+a {
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+/* text-wrap-style (not the text-wrap shorthand) so `truncate` / nowrap still win */
+h1,
+h2,
+h3 {
+  text-wrap-style: balance;
+}
+
+p {
+  text-wrap-style: pretty;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* Grid items may shrink below their content (wide rule strips scroll inside
+   their own overflow-x-auto wrapper instead of widening the page) */
+:where(.grid) > * {
+  min-width: 0;
+}
+
+/* Inputs never zoom the page on iOS */
+input,
+select,
+textarea {
+  font-size: max(16px, 1rem);
+}
+
+/* --------------------------------------------------------------------------
+   Type
+   -------------------------------------------------------------------------- */
+@layer components {
+.display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 0.92;
+}
+
+.numerals {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+}
+
+/* --------------------------------------------------------------------------
+   Rule graduations: millimetre + half-centimetre + centimetre ticks on an edge
+   -------------------------------------------------------------------------- */
+@layer components {
+.graduations {
+  background-image:
+    repeating-linear-gradient(to right, var(--ink) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(to right, var(--ink) 0 1.5px, transparent 1.5px 40px),
+    repeating-linear-gradient(to right, var(--ink) 0 1px, transparent 1px 20px);
+  background-size:
+    100% 5px,
+    100% 13px,
+    100% 8px;
+  background-position:
+    0 100%,
+    0 100%,
+    0 100%;
+  background-repeat: repeat-x;
+}
+
+.graduations-top {
+  background-position:
+    0 0,
+    0 0,
+    0 0;
+}
+
+/* Partial availability: hatched ink */
+.hatch {
+  background-image: repeating-linear-gradient(-45deg, var(--free) 0 2px, transparent 2px 5px);
+}
+
+}
+
+/* --------------------------------------------------------------------------
+   The unfolding rule (signature motion)
+   -------------------------------------------------------------------------- */
+.fold-stage {
+  perspective: 1400px;
+}
+
+.fold-segment {
+  transform-origin: left center;
+  backface-visibility: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fold-stage[data-unfold="true"] .fold-segment:first-child {
+    animation: rule-slide 520ms var(--ease-out) both;
+  }
+  .fold-stage[data-unfold="true"] .fold-segment:not(:first-child) {
+    animation: rule-unfold 640ms var(--ease-hinge) both;
+    animation-delay: calc(180ms + (var(--i, 1) - 1) * 140ms);
+  }
+}
+
+@keyframes rule-slide {
+  from {
+    transform: translateX(-16px);
+    opacity: 0.7;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes rule-unfold {
+  0% {
+    transform: rotateY(-72deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+
+/* Date marker sliding along the search rule */
+.rule-marker {
+  transition:
+    left 480ms var(--ease-out),
+    opacity 200ms linear;
+}
+
+@layer components {
+/* --------------------------------------------------------------------------
+   Components
+   -------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 1.125rem;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+  transition:
+    background-color 160ms var(--ease-out),
+    color 160ms var(--ease-out),
+    border-color 160ms var(--ease-out),
+    transform 120ms var(--ease-out),
+    box-shadow 160ms var(--ease-out);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--ink);
+  color: #fff;
+}
+@media (hover: hover) {
+  .btn-primary:hover:not(:disabled) {
+    background: #34302a;
+  }
+}
+
+.btn-rule {
+  background: var(--rule);
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 rgb(22 20 15 / 0.18);
+}
+@media (hover: hover) {
+  .btn-rule:hover:not(:disabled) {
+    background: var(--rule-deep);
+  }
+}
+
+.btn-outline {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+}
+@media (hover: hover) {
+  .btn-outline:hover:not(:disabled) {
+    border-color: var(--ink);
+  }
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+}
+@media (hover: hover) {
+  .btn-ghost:hover:not(:disabled) {
+    background: rgb(22 20 15 / 0.06);
+  }
+}
+
+.btn-danger {
+  background: var(--surface);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+}
+@media (hover: hover) {
+  .btn-danger:hover:not(:disabled) {
+    background: var(--danger-soft);
+  }
+}
+
+.btn-sm {
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+}
+
+.btn-lg {
+  min-height: 3.25rem;
+  padding: 0 1.5rem;
+  font-size: 1.05rem;
+}
+
+.field {
+  width: 100%;
+  min-height: 2.875rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  transition:
+    border-color 140ms var(--ease-out),
+    box-shadow 140ms var(--ease-out);
+}
+.field::placeholder {
+  color: var(--ink-3);
+  opacity: 1;
+}
+.field:hover {
+  border-color: var(--ink-3);
+}
+.field:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgb(242 194 0 / 0.6);
+}
+.field[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.field[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px rgb(180 35 24 / 0.2);
+}
+.field:disabled {
+  background: var(--surface-2);
+  color: var(--ink-3);
+}
+
+select.field {
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2316140f' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+}
+
+textarea.field {
+  min-height: 7rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+input[type="date"].field,
+input[type="time"].field {
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 0.375rem;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--ink-3);
+  margin-top: 0.375rem;
+}
+
+.error-text {
+  font-size: 0.85rem;
+  color: var(--danger);
+  margin-top: 0.375rem;
+  font-weight: 600;
+}
+
+.check {
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition:
+    background-color 120ms,
+    border-color 120ms;
+}
+.check::after {
+  content: "";
+  width: 0.7rem;
+  height: 0.7rem;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  background: var(--ink);
+  transform: scale(0);
+  transition: transform 140ms var(--ease-out);
+}
+.check:checked {
+  background: var(--rule);
+  border-color: var(--ink);
+}
+.check:checked::after {
+  transform: scale(1);
+}
+.check[type="radio"] {
+  border-radius: 999px;
+}
+.check[type="radio"]::after {
+  clip-path: circle(50%);
+  width: 0.55rem;
+  height: 0.55rem;
+}
+
+/* Toggle chip used by filters and the schedule editor */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 140ms var(--ease-out),
+    border-color 140ms var(--ease-out),
+    color 140ms var(--ease-out);
+}
+@media (hover: hover) {
+  .chip:hover {
+    border-color: var(--ink);
+  }
+}
+.chip[aria-pressed="true"],
+.chip:has(input:checked) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+.chip:has(input:focus-visible) {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 0%, #f1efe9 50%, var(--surface-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: var(--radius-md);
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.link {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  transition: text-decoration-color 140ms;
+}
+@media (hover: hover) {
+  .link:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+/* Bottom sheet / dialog */
+dialog.sheet {
+  margin: auto auto 0;
+  width: 100%;
+  max-width: 34rem;
+  max-height: 88dvh;
+  border: 0;
+  padding: 0;
+  border-radius: 14px 14px 0 0;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+  overscroll-behavior: contain;
+}
+@media (min-width: 640px) {
+  dialog.sheet {
+    margin: auto;
+    border-radius: 14px;
+  }
+}
+dialog.sheet::backdrop {
+  background: rgb(22 20 15 / 0.45);
+}
+@media (prefers-reduced-motion: no-preference) {
+  dialog.sheet[open] {
+    animation: sheet-in 320ms var(--ease-out);
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+.safe-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

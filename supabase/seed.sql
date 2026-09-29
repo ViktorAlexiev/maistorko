@@ -1,0 +1,1 @@
+-- Reference data lives in migrations; demo users are created by scripts/seed.ts
