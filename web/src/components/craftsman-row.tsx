@@ -44,7 +44,7 @@ export function CraftsmanRow({
 
   return (
     <article className="group relative rounded-[10px] border border-line bg-surface transition-[border-color,box-shadow] duration-200 hover:border-ink/40 hover:shadow-[var(--shadow-md)]">
-      <div className={`grid gap-x-5 gap-y-4 p-4 sm:p-5 ${compact ? "" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]"}`}>
+      <div className={`grid gap-x-5 gap-y-4 p-4 sm:p-5 ${compact ? "" : "xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]"}`}>
         <div className="flex min-w-0 gap-4">
           <Avatar name={c.display_name} url={c.avatar_url} size={compact ? 52 : 64} square />
           <div className="min-w-0 flex-1">

@@ -65,7 +65,7 @@ export default async function HomePage() {
               </Link>
             </div>
             <RuleLegend className="mt-2" />
-            <div className="mt-4 grid gap-3">
+            <div className="stagger stagger-slow mt-4 grid gap-3">
               {(soon as CraftsmanCardData[] | null)?.slice(0, 3).map((c) => (
                 <CraftsmanRow key={c.id} c={c} compact />
               ))}
@@ -87,7 +87,7 @@ export default async function HomePage() {
               Всички категории <ArrowRight className="size-4" aria-hidden />
             </Link>
           </div>
-          <ul className="mt-8 grid border-t border-ink sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="stagger mt-8 grid border-t border-ink sm:grid-cols-2 lg:grid-cols-3">
             {tree.filter((cat) => (counts[cat.slug] ?? 0) > 0).map((cat) => (
               <li key={cat.id} className="border-b border-line sm:odd:border-r lg:border-r lg:[&:nth-child(3n)]:border-r-0">
                 <Link
@@ -122,7 +122,7 @@ export default async function HomePage() {
         </h2>
         <div className="relative mt-12">
           <div aria-hidden className="graduations absolute inset-x-0 top-0 hidden h-4 rounded-sm bg-rule md:block" />
-          <ol className="grid gap-8 md:grid-cols-3 md:gap-10 md:pt-10">
+          <ol className="stagger grid gap-8 md:grid-cols-3 md:gap-10 md:pt-10">
             {[
               {
                 icon: Tags,
@@ -174,7 +174,7 @@ export default async function HomePage() {
               </Link>
             </div>
           </div>
-          <ul className="grid gap-0 border-t-[1.5px] border-ink">
+          <ul className="stagger grid gap-0 border-t-[1.5px] border-ink">
             {[
               ["Календарът е с две докосвания", "Седмичен график плюс „Зает съм тази седмица“ с един бутон."],
               ["Твоите цени, твоите правила", "Цена на час, на услуга или „по оглед“. Виждаш и обичайните цени в категорията."],

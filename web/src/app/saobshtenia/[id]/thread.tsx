@@ -236,7 +236,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
             const day = sofiaDay(m.created_at);
             const showDay = i === 0 || day !== sofiaDay(messages[i - 1].created_at);
             return (
-              <li key={m.tempId ?? m.id} className="grid">
+              <li key={m.tempId ?? m.id} className="msg grid">
                 {showDay && (
                   <p className="my-3 text-center text-xs font-bold uppercase tracking-wide text-ink-3">
                     {day === today ? "Днес" : relativeDay(day, today) === "утре" ? formatDate(day) : formatDate(day, true)}

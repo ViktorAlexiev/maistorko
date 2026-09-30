@@ -212,33 +212,26 @@ textarea {
   backface-visibility: hidden;
 }
 
+/* Every segment starts folded edge-on at its hinge and opens in turn:
+   first week from the left end, then the next week from the brass hinge. */
 @media (prefers-reduced-motion: no-preference) {
-  .fold-stage[data-unfold="true"] .fold-segment:first-child {
-    animation: rule-slide 520ms var(--ease-out) both;
-  }
-  .fold-stage[data-unfold="true"] .fold-segment:not(:first-child) {
-    animation: rule-unfold 640ms var(--ease-hinge) both;
-    animation-delay: calc(180ms + (var(--i, 1) - 1) * 140ms);
-  }
-}
-
-@keyframes rule-slide {
-  from {
-    transform: translateX(-16px);
-    opacity: 0.7;
-  }
-  to {
-    transform: none;
-    opacity: 1;
+  .fold-stage[data-unfold="true"] .fold-segment {
+    animation: rule-unfold 620ms var(--ease-hinge) both;
+    animation-delay: calc(120ms + var(--i, 0) * 420ms);
   }
 }
 
 @keyframes rule-unfold {
   0% {
-    transform: rotateY(-72deg);
+    transform: rotateY(-90deg);
+    filter: brightness(0.72);
+  }
+  60% {
+    filter: brightness(0.95);
   }
   100% {
     transform: rotateY(0deg);
+    filter: none;
   }
 }
 
@@ -566,6 +559,257 @@ dialog.sheet::backdrop {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
+}
+
+/* --------------------------------------------------------------------------
+   Dropdowns. Where the browser supports customizable <select> (Chrome/Edge),
+   the list unfolds from the field like a rule segment: ink frame, yellow
+   highlight, ink tick for the chosen option. Elsewhere the native list stays.
+   -------------------------------------------------------------------------- */
+@supports (appearance: base-select) {
+  select.field,
+  select.field::picker(select) {
+    appearance: base-select;
+  }
+
+  select.field {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-image: none;
+    padding-right: 0.75rem;
+    cursor: pointer;
+  }
+  select.field::picker-icon {
+    content: "";
+    width: 12px;
+    height: 8px;
+    margin-left: auto;
+    background: currentColor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      no-repeat center;
+    transition: rotate 240ms var(--ease-hinge);
+  }
+  select.field:open::picker-icon {
+    rotate: 180deg;
+  }
+  select.field:open {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px rgb(242 194 0 / 0.6);
+  }
+
+  select.field::picker(select) {
+    margin-block: 6px;
+    padding: 6px;
+    max-height: min(22rem, 60dvh);
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-lg);
+    /* the yellow rule edge along the top */
+    border-top: 4px solid var(--rule);
+    transform-origin: top center;
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 180ms var(--ease-out),
+      transform 280ms var(--ease-hinge),
+      overlay 280ms allow-discrete,
+      display 280ms allow-discrete;
+  }
+  select.field:not(:open)::picker(select) {
+    opacity: 0;
+    transform: perspective(600px) rotateX(-14deg) scaleY(0.94);
+  }
+  @starting-style {
+    select.field:open::picker(select) {
+      opacity: 0;
+      transform: perspective(600px) rotateX(-14deg) scaleY(0.94);
+    }
+  }
+
+  select.field option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ink);
+    cursor: pointer;
+    transition:
+      background-color 120ms var(--ease-out),
+      padding-left 160ms var(--ease-out);
+  }
+  select.field option:hover,
+  select.field option:focus-visible {
+    outline: none;
+    background: var(--rule-soft);
+    padding-left: 0.875rem;
+  }
+  select.field option:checked {
+    background: var(--rule);
+    font-weight: 700;
+  }
+  select.field option::checkmark {
+    content: "";
+    order: 1;
+    margin-left: auto;
+    width: 0.8rem;
+    height: 0.8rem;
+    background: var(--ink);
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  }
+  select.field optgroup {
+    padding-top: 0.375rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  select.field optgroup + optgroup,
+  select.field optgroup + option {
+    margin-top: 0.375rem;
+    border-top: 1px solid var(--line);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Motion. Short, purposeful, and off for people who ask for less motion.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  /* Lists rise into place one after another, like rule marks being read */
+  .stagger > * {
+    animation: rise 460ms var(--ease-out) both;
+  }
+  .stagger > :nth-child(2) { animation-delay: 40ms; }
+  .stagger > :nth-child(3) { animation-delay: 80ms; }
+  .stagger > :nth-child(4) { animation-delay: 120ms; }
+  .stagger > :nth-child(5) { animation-delay: 160ms; }
+  .stagger > :nth-child(6) { animation-delay: 200ms; }
+  .stagger > :nth-child(7) { animation-delay: 240ms; }
+  .stagger > :nth-child(8) { animation-delay: 280ms; }
+  .stagger > :nth-child(n + 9) { animation-delay: 320ms; }
+
+  /* Slower, more deliberate variant for the few cards beside the home hero */
+  .stagger-slow > * {
+    animation-duration: 800ms;
+  }
+  .stagger-slow > :nth-child(1) { animation-delay: 250ms; }
+  .stagger-slow > :nth-child(2) { animation-delay: 550ms; }
+  .stagger-slow > :nth-child(3) { animation-delay: 850ms; }
+  .stagger-slow > :nth-child(n + 4) { animation-delay: 1150ms; }
+
+  /* A panel hinging open from its top edge (day hours, booking cards) */
+  .unfold-down {
+    transform-origin: top center;
+    animation: unfold-down 380ms var(--ease-hinge) both;
+  }
+
+  /* The chat window rises from the corner */
+  .dock-in {
+    transform-origin: bottom right;
+    animation: dock-in 340ms var(--ease-out) both;
+  }
+
+  /* The newest chat message slides in from its own side */
+  .msg:last-child > .flex.justify-end > div {
+    animation: bubble-in-right 280ms var(--ease-out) both;
+  }
+  .msg:last-child > .flex.justify-start > div {
+    animation: bubble-in-left 280ms var(--ease-out) both;
+  }
+
+  /* Chips press in, and pop when they turn on */
+  .chip {
+    transition:
+      background-color 140ms var(--ease-out),
+      border-color 140ms var(--ease-out),
+      color 140ms var(--ease-out),
+      transform 120ms var(--ease-out);
+  }
+  .chip:active {
+    transform: scale(0.95);
+  }
+  .chip[aria-pressed="true"] {
+    animation: chip-pop 300ms var(--ease-hinge);
+  }
+
+  /* Yellow buttons: a light glint travels across on hover */
+  .btn-rule {
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-rule::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.55) 50%, transparent 70%);
+    translate: -120% 0;
+    pointer-events: none;
+  }
+  @media (hover: hover) {
+    .btn-rule:hover:not(:disabled)::after {
+      translate: 120% 0;
+      transition: translate 700ms var(--ease-out);
+    }
+  }
+
+  /* Primary actions lift slightly under the pointer */
+  @media (hover: hover) {
+    .btn-primary:hover:not(:disabled),
+    .btn-rule:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+  }
+  .btn-primary:active:not(:disabled),
+  .btn-rule:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: none;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes unfold-down {
+  from {
+    opacity: 0;
+    transform: perspective(900px) rotateX(-12deg) scaleY(0.96);
+  }
+}
+@keyframes dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+}
+@keyframes bubble-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(14px) scale(0.97);
+  }
+}
+@keyframes bubble-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-14px) scale(0.97);
+  }
+}
+@keyframes chip-pop {
+  40% {
+    transform: scale(1.06);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

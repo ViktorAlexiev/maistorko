@@ -109,6 +109,7 @@ export function ProfileBooking({ craftsman, days, stale, workOptions, initialDat
         <div ref={panel} className="scroll-mt-28" aria-live="polite">
           {selected && (
             <DayPanel
+              key={selected}
               date={selected}
               info={sel}
               firstName={firstName}
@@ -185,7 +186,7 @@ function DayPanel({
   const busy = !info || info.status === "busy";
 
   return (
-    <div className="mt-4 rounded-[10px] border-[1.5px] border-ink bg-surface p-4 sm:p-5">
+    <div className="unfold-down mt-4 rounded-[10px] border-[1.5px] border-ink bg-surface p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-xl font-extrabold first-letter:uppercase">{formatDate(date, true)}</h3>

@@ -135,7 +135,7 @@ export async function Catalog({
         ) : (
           <>
             <RuleLegend className="mt-4" />
-            <ol className="mt-3 grid gap-3">
+            <ol className="stagger mt-3 grid gap-3">
               {result.rows.map((c) => (
                 <li key={c.id}>
                   <CraftsmanRow c={c} dateQuery={c.matched_date ?? undefined} />

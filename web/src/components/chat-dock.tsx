@@ -87,7 +87,7 @@ export function ChatDock(props: Props) {
       role="dialog"
       aria-modal="false"
       aria-label={`Чат с ${craftsman.name}`}
-      className={`fixed z-50 flex flex-col overflow-hidden border-line-strong bg-paper shadow-[var(--shadow-lg)] sm:bottom-0 sm:right-6 sm:w-[25rem] sm:rounded-t-[12px] sm:border sm:border-b-0 ${
+      className={`dock-in fixed z-50 flex flex-col overflow-hidden border-line-strong bg-paper shadow-[var(--shadow-lg)] sm:bottom-0 sm:right-6 sm:w-[25rem] sm:rounded-t-[12px] sm:border sm:border-b-0 ${
         minimized ? "max-sm:inset-x-0 max-sm:bottom-0" : "max-sm:inset-0 sm:h-[min(38rem,calc(100dvh-5rem))]"
       }`}
     >

@@ -20,7 +20,7 @@ export async function UpcomingBookings({ title = "Уговорки", limit = 8 }
           записва тук и в календара.
         </p>
       ) : (
-        <ul className="mt-3 grid border-t-[1.5px] border-ink">
+        <ul className="stagger mt-3 grid border-t-[1.5px] border-ink">
           {rows.map((b) => {
             const confirmed = b.status === "confirmed";
             const waitingForMe = b.status === "proposed" && !b.proposed_by_me;
