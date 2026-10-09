@@ -30,6 +30,7 @@ export function SiteFooter() {
             ["/registratsia?rolya=maistor", "Стани майстор"],
             ["/tabla/kalendar", "Моят календар"],
             ["/tabla/tseni", "Моите цени"],
+            ["/firmi", "За фирми"],
           ]}
         />
         <FooterCol
