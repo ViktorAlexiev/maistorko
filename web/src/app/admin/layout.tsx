@@ -12,8 +12,10 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         <DashboardNav
           items={[
             { href: "/admin", label: "Потребители" },
+            { href: "/admin/dokladi", label: "Доклади" },
             { href: "/admin/zapitvaniya", label: "Запитвания" },
             { href: "/admin/kategorii", label: "Категории" },
+            { href: "/admin/dnevnik", label: "Дневник" },
           ]}
           publicHref={null}
         />

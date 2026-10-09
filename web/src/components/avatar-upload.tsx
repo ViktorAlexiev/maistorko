@@ -6,7 +6,7 @@ import { Camera } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/avatar";
-import { checkImage, shrinkImage } from "@/components/image-upload";
+import { checkImage, imageExt, shrinkImage } from "@/components/image-upload";
 
 export function AvatarUpload({ userId, name, url }: { userId: string; name: string; url: string | null }) {
   const input = useRef<HTMLInputElement>(null);
@@ -18,9 +18,14 @@ export function AvatarUpload({ userId, name, url }: { userId: string; name: stri
     if (problem) return void toast.error(problem);
     start(async () => {
       const supabase = createClient();
-      const blob = await shrinkImage(file, 512);
+      let blob: Blob;
+      try {
+        blob = await shrinkImage(file, 512);
+      } catch (e) {
+        return void toast.error(e instanceof Error ? e.message : "Снимката не може да се обработи.");
+      }
       if (blob.size > 2 * 1024 * 1024) return void toast.error("Снимката е твърде голяма (макс. 2 MB).");
-      const ext = blob.type === "image/webp" ? "webp" : file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const ext = imageExt(blob);
       const path = `${userId}/avatar-${Date.now()}.${ext}`;
       const up = await supabase.storage.from("avatars").upload(path, blob, { contentType: blob.type, upsert: false });
       if (up.error) return void toast.error("Снимката не беше качена. Опитайте с друга.");

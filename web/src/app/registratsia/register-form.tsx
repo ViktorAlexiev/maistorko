@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { signUp, type FormState } from "@/app/actions/auth";
 import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
+import { Turnstile } from "@/components/turnstile";
 
 type City = { slug: string; name: string; region: string; is_major: boolean };
 
@@ -152,6 +153,7 @@ export function RegisterForm({ role: initialRole, cities, next }: { role: "clien
         <FieldError id="terms-err" message={state.errors?.terms} />
       </div>
 
+      <Turnstile />
       <FormMessage state={state} />
       <SubmitButton className="btn btn-primary btn-lg w-full" pendingText="Създаваме профила…">
         {role === "craftsman" ? "Създай профил на майстор" : "Създай профил"}

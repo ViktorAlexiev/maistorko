@@ -9,7 +9,18 @@ export function checkImage(file: File, maxMb: number): string | null {
   return null;
 }
 
-/** Downscale to maxSide and re-encode as WEBP (falls back to the original file). */
+const toBlob = (canvas: HTMLCanvasElement, type: string, quality: number) =>
+  new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+
+/** File extension that matches what the blob really is. */
+export const imageExt = (blob: Blob) => (blob.type === "image/webp" ? "webp" : blob.type === "image/png" ? "png" : "jpg");
+
+/**
+ * Downscale to maxSide and re-encode as WEBP (JPEG where the browser cannot encode WEBP).
+ * The picture is always redrawn on a canvas, never uploaded as it was taken: that drops the metadata,
+ * including the GPS position a phone camera writes into the photo of a client's home.
+ * Throws for a JPEG that cannot be re-encoded, instead of uploading its metadata.
+ */
 export async function shrinkImage(file: File, maxSide: number, quality = 0.85): Promise<Blob> {
   try {
     const bitmap = await createImageBitmap(file);
@@ -20,9 +31,12 @@ export async function shrinkImage(file: File, maxSide: number, quality = 0.85): 
     canvas.width = w;
     canvas.height = h;
     canvas.getContext("2d")!.drawImage(bitmap, 0, 0, w, h);
-    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/webp", quality));
-    return blob && blob.size < file.size ? blob : file;
+    let blob = await toBlob(canvas, "image/webp", quality);
+    if (!blob || blob.type !== "image/webp") blob = await toBlob(canvas, "image/jpeg", quality);
+    if (!blob) throw new Error("encode");
+    return blob;
   } catch {
+    if (file.type === "image/jpeg") throw new Error("Снимката не може да се обработи. Опитайте с друга.");
     return file;
   }
 }

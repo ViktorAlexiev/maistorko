@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { signIn, type FormState } from "@/app/actions/auth";
 import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
+import { Turnstile } from "@/components/turnstile";
 
 export function LoginForm({ next }: { next: string }) {
   const [state, action] = useActionState<FormState, FormData>(signIn, {});
@@ -49,6 +50,7 @@ export function LoginForm({ next }: { next: string }) {
         />
         <FieldError id="password-err" message={state.errors?.password} />
       </div>
+      <Turnstile />
       <FormMessage state={state} />
       <SubmitButton className="btn btn-primary btn-lg w-full" pendingText="Влизаме…">
         Вход

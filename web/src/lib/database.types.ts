@@ -23,7 +23,26 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "availability_exceptions": {
+            "admin_log": {
+                  Row: {
+                    "action": string,"admin_id": string | null,"created_at": string,"details": NonNullable<Json>,"id": number,"target_id": string | null,"target_type": string | null
+                  }
+                  Insert: {
+                    "action": string,"admin_id"?: string | null,"created_at"?: string,"details"?: NonNullable<Json>,"id"?: never,"target_id"?: string | null,"target_type"?: string | null
+                  }
+                  Update: {
+                    "action"?: string,"admin_id"?: string | null,"created_at"?: string,"details"?: NonNullable<Json>,"id"?: never,"target_id"?: string | null,"target_type"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "admin_log_admin_id_fkey"
+      columns: ["admin_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"availability_exceptions": {
                   Row: {
                     "craftsman_id": string,"created_at": string,"end_date": string,"end_time": string | null,"id": string,"kind": Database["public"]['Enums']["exception_kind"],"note": string | null,"start_date": string,"start_time": string | null
                   }
@@ -525,6 +544,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"reports": {
+                  Row: {
+                    "created_at": string,"details": string | null,"handled_at": string | null,"handled_by": string | null,"id": string,"reason": string,"reporter_id": string | null,"status": string,"target_id": string,"target_type": string,"target_user": string | null
+                  }
+                  Insert: {
+                    "created_at"?: string,"details"?: string | null,"handled_at"?: string | null,"handled_by"?: string | null,"id"?: string,"reason": string,"reporter_id"?: string | null,"status"?: string,"target_id": string,"target_type": string,"target_user"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"details"?: string | null,"handled_at"?: string | null,"handled_by"?: string | null,"id"?: string,"reason"?: string,"reporter_id"?: string | null,"status"?: string,"target_id"?: string,"target_type"?: string,"target_user"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "reports_handled_by_fkey"
+      columns: ["handled_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "reports_reporter_id_fkey"
+      columns: ["reporter_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "reports_target_user_fkey"
+      columns: ["target_user"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"review_invites": {
                   Row: {
                     "craftsman_id": string,"created_at": string,"expires_at": string,"job_id": string | null,"token": string,"used_at": string | null,"used_by": string | null
@@ -780,6 +830,9 @@ isOneToOne: false
 "job_report":
 { Args: { "p_from": string,"p_to": string }; Returns: Json
                            },
+"log_admin_action":
+{ Args: { "p_action": string,"p_details"?: Json,"p_target_id"?: string,"p_target_type"?: string }; Returns: undefined
+                           },
 "mark_conversation_read":
 { Args: { "p_conversation": string }; Returns: undefined
                            },
@@ -837,6 +890,9 @@ isOneToOne: false
                            },
 "refresh_craftsman_search":
 { Args: { "p_id": string }; Returns: undefined
+                           },
+"report_content":
+{ Args: { "p_details"?: string,"p_reason": string,"p_target": string,"p_type": string }; Returns: undefined
                            },
 "respond_booking":
 { Args: { "p_action": string,"p_booking": string }; Returns: string

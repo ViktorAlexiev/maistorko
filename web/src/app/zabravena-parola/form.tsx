@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { requestPasswordReset, type FormState } from "@/app/actions/auth";
 import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
+import { Turnstile } from "@/components/turnstile";
 
 export function ForgotPasswordForm() {
   const [state, action] = useActionState<FormState, FormData>(requestPasswordReset, {});
@@ -37,6 +38,7 @@ export function ForgotPasswordForm() {
             />
             <FieldError id="email-err" message={state.errors?.email} />
           </div>
+          <Turnstile />
           <FormMessage state={state} />
           <SubmitButton className="btn btn-primary btn-lg w-full" pendingText="Изпращаме…">
             Изпрати линк

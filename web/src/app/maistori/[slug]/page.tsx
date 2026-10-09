@@ -24,6 +24,7 @@ import { Rating, Stars, VerifiedBadge } from "@/components/bits";
 import { ProfileBooking, type DayInfo } from "@/components/profile-booking";
 import { OpenChatButton, type WorkOption } from "@/components/chat-dock";
 import { PhoneReveal } from "@/components/phone-reveal";
+import { ReportButton } from "@/components/report-button";
 import { SaveButton } from "@/components/save-button";
 import { Gallery } from "@/components/gallery";
 import { ReviewForm } from "@/components/review-form";
@@ -419,6 +420,17 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
                   <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
                   {c.contact_hours}
                 </p>
+              )}
+              {!isSelf && (
+                <div>
+                  <ReportButton
+                    type="profile"
+                    targetId={c.id}
+                    signedIn={Boolean(viewer)}
+                    loginHref={`/vhod?next=${encodeURIComponent(`/maistori/${c.slug}`)}`}
+                    label="Докладвай профила"
+                  />
+                </div>
               )}
             </section>
             <dl className="grid gap-4 text-[0.95rem]">

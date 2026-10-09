@@ -12,9 +12,20 @@ async function adminClient() {
   return supabase;
 }
 
+/** Every admin action leaves a line in the audit log (Дневник). */
+async function log(
+  supabase: Awaited<ReturnType<typeof adminClient>>,
+  action: string,
+  target: { type: string; id: string },
+  details: Record<string, unknown> = {},
+) {
+  await supabase.rpc("log_admin_action", { p_action: action, p_target_type: target.type, p_target_id: target.id, p_details: details as never });
+}
+
 export async function setBanned(userId: string, banned: boolean) {
   const supabase = await adminClient();
   const { error } = await supabase.from("profiles").update({ is_banned: banned }).eq("id", userId);
+  if (!error) await log(supabase, banned ? "ban" : "unban", { type: "user", id: userId });
   revalidatePath("/admin");
   revalidatePath("/maistori", "layout");
   return { ok: !error, message: error ? "Неуспешно." : banned ? "Потребителят е блокиран." : "Блокирането е премахнато." };
@@ -23,6 +34,7 @@ export async function setBanned(userId: string, banned: boolean) {
 export async function setVerified(userId: string, verified: boolean) {
   const supabase = await adminClient();
   const { error } = await supabase.from("craftsman_profiles").update({ is_verified: verified }).eq("id", userId);
+  if (!error) await log(supabase, verified ? "verify" : "unverify", { type: "craftsman", id: userId });
   revalidatePath("/admin");
   revalidatePath("/maistori", "layout");
   return { ok: !error, message: error ? "Неуспешно." : verified ? "Маркиран като проверен." : "Значката е премахната." };
@@ -31,6 +43,7 @@ export async function setVerified(userId: string, verified: boolean) {
 export async function setHidden(userId: string, hidden: boolean) {
   const supabase = await adminClient();
   const { error } = await supabase.from("craftsman_profiles").update({ is_hidden: hidden }).eq("id", userId);
+  if (!error) await log(supabase, hidden ? "hide" : "unhide", { type: "craftsman", id: userId });
   revalidatePath("/admin");
   revalidatePath("/maistori", "layout");
   return { ok: !error, message: error ? "Неуспешно." : hidden ? "Профилът е скрит." : "Профилът е видим." };
@@ -97,6 +110,7 @@ export async function setPlan(userId: string, plan: "free" | "pro" | "company", 
   const supabase = await adminClient();
   const until = months ? new Date(Date.now() + months * 30 * 86400_000).toISOString() : null;
   const { error } = await supabase.rpc("admin_set_plan", { p_craftsman: userId, p_plan: plan, p_valid_until: until ?? undefined });
+  if (!error) await log(supabase, "set_plan", { type: "craftsman", id: userId }, { plan, months });
   revalidatePath("/admin");
   return { ok: !error, message: error ? "Неуспешно." : plan === "free" ? "Планът е върнат на безплатен." : `Включен е план ${plan === "pro" ? "Pro" : "Фирма"}${months ? ` за ${months} мес.` : ""}.` };
 }
@@ -106,6 +120,20 @@ export async function setContactStatus(id: string, status: "new" | "talking" | "
   const patch: { status: typeof status; admin_note?: string | null } = { status };
   if (note !== undefined) patch.admin_note = note.trim() || null;
   const { error } = await supabase.from("contact_requests").update(patch).eq("id", id);
+  if (!error) await log(supabase, "contact_status", { type: "contact_request", id }, { status });
   revalidatePath("/admin/zapitvaniya");
   return { ok: !error, message: error ? "Неуспешно." : "Записано." };
+}
+
+export async function resolveReports(targetUser: string, status: "done" | "dismissed") {
+  const supabase = await adminClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const { error } = await supabase
+    .from("reports")
+    .update({ status, handled_by: claims?.claims?.sub ?? null, handled_at: new Date().toISOString() })
+    .eq("target_user", targetUser)
+    .eq("status", "new");
+  if (!error) await log(supabase, status === "done" ? "reports_done" : "reports_dismissed", { type: "user", id: targetUser });
+  revalidatePath("/admin/dokladi");
+  return { ok: !error, message: error ? "Неуспешно." : status === "done" ? "Докладите са приключени." : "Докладите са отхвърлени." };
 }

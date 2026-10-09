@@ -8,6 +8,7 @@ import { Avatar } from "@/components/avatar";
 import { formatDate, formatTime, relativeDay, servicePrice, todayISO, type PriceKind, type PriceUnit } from "@/lib/format";
 import { slotLabel } from "@/lib/slots";
 import { BookingCard, BookingSheet, bookingWhen, KIND_LABEL, type Booking } from "./booking";
+import { ReportButton } from "@/components/report-button";
 
 export type ChatMessage = {
   id: number;
@@ -204,6 +205,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
             <span className="sm:hidden">Обади се</span>
           </a>
         )}
+        <ReportButton type="conversation" targetId={conversationId} signedIn loginHref="/vhod" label="" className="btn btn-ghost btn-sm text-ink-3" />
         <span
           className={`size-2 shrink-0 rounded-full ${live ? "bg-free" : "bg-line-strong"}`}
           title={live ? "Съобщенията пристигат веднага" : "Свързваме се…"}

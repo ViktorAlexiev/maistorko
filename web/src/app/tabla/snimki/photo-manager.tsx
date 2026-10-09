@@ -5,7 +5,7 @@ import { useRef, useState, useTransition } from "react";
 import { ImagePlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { checkImage, shrinkImage } from "@/components/image-upload";
+import { checkImage, imageExt, shrinkImage } from "@/components/image-upload";
 import { EmptyState } from "@/components/bits";
 import { LimitNote } from "@/components/limit-note";
 
@@ -35,13 +35,20 @@ export function PhotoManager({ userId, initial, limit }: { userId: string; initi
         setUploading((n) => n - 1);
         continue;
       }
-      const blob = await shrinkImage(file, 1800, 0.82);
+      let blob: Blob;
+      try {
+        blob = await shrinkImage(file, 1800, 0.82);
+      } catch (e) {
+        toast.error(`${file.name}: ${e instanceof Error ? e.message : "не може да се обработи."}`);
+        setUploading((n) => n - 1);
+        continue;
+      }
       if (blob.size > 5 * 1024 * 1024) {
         toast.error(`${file.name}: над 5 MB.`);
         setUploading((n) => n - 1);
         continue;
       }
-      const ext = blob.type === "image/webp" ? "webp" : file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const ext = imageExt(blob);
       const path = `${userId}/${crypto.randomUUID()}.${ext}`;
       const up = await supabase.storage.from("work-photos").upload(path, blob, { contentType: blob.type });
       if (up.error) {

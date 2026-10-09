@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { verifyTurnstile } from "@/lib/turnstile";
 import {
   fieldErrors,
   forgotSchema,
@@ -26,6 +27,9 @@ export async function signIn(_: FormState, formData: FormData): Promise<FormStat
   const raw = { email: String(formData.get("email") ?? ""), password: String(formData.get("password") ?? "") };
   const parsed = loginSchema.safeParse(raw);
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values: { email: raw.email } };
+
+  const bot = await verifyTurnstile(formData);
+  if (bot) return { message: bot, values: { email: raw.email } };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
@@ -54,6 +58,9 @@ export async function signUp(_: FormState, formData: FormData): Promise<FormStat
   const values = { role: raw.role, fullName: raw.fullName, city: raw.city, email: raw.email };
   const parsed = registerSchema.safeParse(raw);
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
+
+  const bot = await verifyTurnstile(formData);
+  if (bot) return { message: bot, values };
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
@@ -91,6 +98,9 @@ export async function requestPasswordReset(_: FormState, formData: FormData): Pr
   const raw = { email: String(formData.get("email") ?? "") };
   const parsed = forgotSchema.safeParse(raw);
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values: raw };
+
+  const bot = await verifyTurnstile(formData);
+  if (bot) return { message: bot, values: raw };
 
   const supabase = await createClient();
   await supabase.auth.resetPasswordForEmail(parsed.data.email, {

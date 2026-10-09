@@ -502,6 +502,89 @@ async function main() {
     await admin.auth.admin.deleteUser(boss.id);
   }
 
+  console.log("\nДоклади и защита от спам");
+  {
+    const boss = await user("client", "boss4");
+    await admin.from("profiles").update({ role: "admin" }).eq("id", boss.id);
+
+    const { error: rep1 } = await alice.c.rpc("report_content", { p_type: "profile", p_target: craft.id, p_reason: "spam", p_details: "тест" });
+    ok("клиент докладва профил", !rep1, rep1);
+    await alice.c.rpc("report_content", { p_type: "profile", p_target: craft.id, p_reason: "spam" });
+    const { data: rows } = await admin.from("reports").select("id").eq("reporter_id", alice.id).eq("target_user", craft.id);
+    ok("същият доклад не се дублира", rows?.length === 1, rows?.length);
+    const { error: self } = await craft.c.rpc("report_content", { p_type: "profile", p_target: craft.id, p_reason: "spam" });
+    ok("не може да докладваш себе си", Boolean(self));
+    const { error: badReason } = await alice.c.rpc("report_content", { p_type: "profile", p_target: other.id, p_reason: "хаха" });
+    ok("невалидна причина се отказва", Boolean(badReason));
+    const { error: anonRep } = await anon.rpc("report_content", { p_type: "profile", p_target: craft.id, p_reason: "spam" });
+    ok("анонимен не докладва", Boolean(anonRep));
+    const { error: otherConv } = await bob.c.rpc("report_content", { p_type: "conversation", p_target: convId, p_reason: "spam" });
+    ok("не се докладва чужд разговор", Boolean(otherConv));
+    const { data: asBoss } = await boss.c.from("reports").select("id").eq("target_user", craft.id);
+    ok("админ вижда докладите", (asBoss?.length ?? 0) >= 1);
+    const { data: asAlice } = await alice.c.from("reports").select("id");
+    ok("обикновен потребител не чете доклади", !asAlice || asAlice.length === 0);
+
+    const logId = `test-${Date.now()}`;
+    const { error: logErr } = await boss.c.rpc("log_admin_action", { p_action: "test", p_target_type: "user", p_target_id: logId });
+    const { error: logDenied } = await alice.c.rpc("log_admin_action", { p_action: "test", p_target_id: logId });
+    const { data: logRows } = await boss.c.from("admin_log").select("id").eq("target_id", logId);
+    ok("админ записва в дневника, останалите не могат", !logErr && Boolean(logDenied) && (logRows?.length ?? 0) === 1);
+    await admin.from("admin_log").delete().eq("target_id", logId);
+    const { data: aliceLog } = await alice.c.from("admin_log").select("id");
+    ok("дневникът не се чете от обикновени потребители", !aliceLog || aliceLog.length === 0);
+
+    // rate limit: 20 messages a minute
+    const spammer = await user("client", "spammer");
+    const { data: spConv, error: spErr } = await spammer.c.rpc("start_conversation", { p_craftsman: craft.id, p_body: "Здравейте, имам въпрос" });
+    ok("нов клиент започва разговор", !spErr && Boolean(spConv), spErr);
+    let firstBlock = 0;
+    for (let n = 2; n <= 25; n++) {
+      const { error } = await spammer.c.from("messages").insert({ conversation_id: spConv, sender_id: spammer.id, body: `съобщение номер ${n}` });
+      if (error && !firstBlock) firstBlock = n;
+    }
+    ok("над 20 съобщения в минута се отказват", firstBlock === 21, firstBlock);
+
+    // three links in one message
+    const tidy = await user("client", "tidy");
+    const { data: tConv } = await tidy.c.rpc("start_conversation", { p_craftsman: craft.id, p_body: "Здравейте" });
+    const { error: links } = await tidy.c.from("messages").insert({ conversation_id: tConv, sender_id: tidy.id, body: "http://a.bg http://b.bg http://c.bg" });
+    ok("съобщение с 3 линка се отказва", /линкове/.test(links?.message ?? ""), links?.message);
+    const { error: oneLink } = await tidy.c.from("messages").insert({ conversation_id: tConv, sender_id: tidy.id, body: "Снимка на проблема: https://example.com/x" });
+    ok("един линк е позволен", !oneLink, oneLink);
+
+    // the same text to many craftsmen in an hour
+    const dupe = await user("client", "dupe");
+    const extra: string[] = [];
+    for (let n = 0; n < 9; n++) {
+      const { data } = await admin.auth.admin.createUser({
+        email: `dupe-craft-${n}-${Date.now()}@maistorko.test`,
+        password: PASS,
+        email_confirm: true,
+        user_metadata: { full_name: `Майстор ${n}`, role: "craftsman", city: "sofia" },
+      });
+      extra.push(data.user!.id);
+      await admin.from("conversations").insert({ client_id: dupe.id, craftsman_id: data.user!.id });
+    }
+    const { data: dConvs } = await admin.from("conversations").select("id").eq("client_id", dupe.id);
+    const text = "Здравейте, трябва ми ремонт на баня, пишете ми цена";
+    let sent = 0;
+    let blockedMsg = "";
+    for (const c of dConvs ?? []) {
+      const { error } = await dupe.c.from("messages").insert({ conversation_id: c.id, sender_id: dupe.id, body: text });
+      if (error) {
+        blockedMsg = error.message;
+        break;
+      }
+      sent++;
+    }
+    ok("същият текст до много майстори се спира (след 8)", sent === 8 && /едно и също/.test(blockedMsg), { sent, blockedMsg });
+    const { data: autoFlag } = await boss.c.from("reports").select("details").eq("target_user", dupe.id).is("reporter_id", null);
+    ok("спирането оставя автоматичен доклад за админите", (autoFlag?.length ?? 0) === 1, autoFlag);
+
+    for (const id of [...extra, spammer.id, tidy.id, dupe.id, boss.id]) await admin.auth.admin.deleteUser(id);
+  }
+
   console.log("\nМодерация");
   {
     await admin.from("craftsman_profiles").update({ is_hidden: true }).eq("id", other.id);

@@ -178,6 +178,10 @@ Prefix full-text search on a weighted `tsvector` (name > categories/keywords > s
 - Admin checks go through `is_admin()` (a `profiles.role` lookup) in policies and RPCs.
 - Storage: `avatars` (2 MB) and `work-photos` (5 MB) accept JPG/PNG/WEBP only and are publicly readable. Users can write only to `<bucket>/<their user id>/…`.
 - The service role key is used only by `web/scripts/*`.
+- Security headers (`web/next.config.ts`): Content-Security-Policy (no foreign scripts, no framing, no plugins, forms only to the site itself; `script-src` keeps `'unsafe-inline'` because Next.js writes inline bootstrap scripts), `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and HSTS when `NEXT_PUBLIC_SITE_URL` is https.
+- Uploaded photos are always redrawn on a canvas before upload, which drops EXIF/GPS data; a JPEG that cannot be re-encoded is refused.
+- Abuse controls (database triggers): 20 messages a minute, 3+ links in a message refused, the same text to 8+ conversations in an hour refused and flagged for admins, 30 new conversations and 3 reviews a day. "Докладвай" on profiles and chats feeds `/admin/dokladi`; every admin action is written to the audit log `/admin/dnevnik`.
+- Optional Cloudflare Turnstile on sign-up, sign-in and password reset (see `web/.env.example`). For production also turn on e-mail confirmation (`enable_confirmations` in the hosted project's Auth settings).
 
 ### Realtime
 The `messages` and `conversations` tables are in the `supabase_realtime` publication, and RLS filters every event per subscriber. The thread subscribes to its conversation. The header badge and conversation list refresh unread counts live (`unread_total()`, `my_conversations()`).
