@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isBot } from "@/lib/bots";
 import { rankSeed } from "@/lib/rank-seed";
+import { limitCompanyRuns } from "@/lib/diversity";
 import { PAGE_SIZE, toRpcArgs, type SearchState } from "@/lib/search-params";
 import type { CraftsmanCardData } from "@/components/craftsman-row";
 
@@ -32,6 +33,15 @@ export async function runSearch(s: SearchState): Promise<SearchResult> {
       loosened = true;
     }
   }
+  // "Препоръчани": at most two craftsmen of one company in a row, so a company cannot fill the page
+  if (s.sort === "recommended" && rows.length > 2) {
+    const { data: members } = await supabase
+      .from("organization_members")
+      .select("user_id, organization_id")
+      .in("user_id", rows.map((r) => r.id));
+    if (members?.length) rows = limitCompanyRuns(rows, new Map(members.map((m) => [m.user_id, m.organization_id])));
+  }
+
   // Count the appearances (people only), after the response is sent
   if (rows.length && !(await isBot())) {
     const ids = rows.map((r) => r.id);

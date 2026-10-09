@@ -178,6 +178,9 @@ A company is an `organization` with members: `owner`, `manager` (dispatcher) and
 - Managers can see and edit the calendar and the jobs of the company's craftsmen (`can_manage_craftsman()`); they cannot read their chats, edit their profile text, services or photos.
 - A craftsman in a company with an active plan gets the company plan (all Pro features); pausing the plan in the admin returns them to the free plan. Leaving or being removed keeps the profile, reviews and photos.
 - Public page `/firmi/<slug>` (verified badge after an admin checks the ЕИК) lists the company's craftsmen; their profiles say "Работи във фирма …".
+- "Пиши на фирмата" (company page, and on each employee's profile): a conversation with the company. Its owner and managers answer from a shared inbox (it appears in their "Съобщения"); a manager can hand it to one of the company's craftsmen, who then takes part in it and can book visits from it. A personal chat with a craftsman stays private: managers cannot read it.
+- Managers see "Календар на екипа" (`/tabla/firma/kalendar`) and open any craftsman's calendar and jobs (`/tabla/firma/<id>/kalendar`, `/porachki`).
+- In the "Препоръчани" list no more than two craftsmen of one company appear in a row.
 - Demo: `stoyanov@maistorko.test` owns "Стоянов Ремонти ЕООД", `hristo-ivanov@…` is a manager, `ivan-dimitrov@…` and `dimitar-kolev@…` are craftsmen.
 
 ### Fair ranking ("Препоръчани", the default sort)
