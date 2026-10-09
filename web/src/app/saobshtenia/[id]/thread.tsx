@@ -48,13 +48,16 @@ type Props = {
   conversationId: string;
   me: string;
   iAmClient: boolean;
-  partner: { id: string; name: string; avatar: string | null; slug: string | null; phone: string | null };
+  partner: { id: string | null; name: string; avatar: string | null; slug: string | null; phone: string | null; href?: string };
   requestedDate: string | null;
   categoryName: string | null;
   initial: ChatMessage[];
   initialBookings: Booking[];
   initialShares?: Share[];
-  craftsmanId: string;
+  /** the craftsman a booking would be for (the other party, or the one a company conversation is assigned to) */
+  craftsmanId: string | null;
+  /** conversation with a company: who handles it */
+  org?: { name: string; slug: string; canAssign: boolean; team: { id: string; name: string }[]; assignedTo: string | null; assignedName: string | null };
   banned: boolean;
   /** Inside the chat window on a profile: the window draws its own header. */
   embedded?: boolean;
@@ -67,7 +70,7 @@ type Props = {
 let tempSeq = 0;
 const sofiaDay = (ts: string) => new Date(ts).toLocaleDateString("en-CA", { timeZone: "Europe/Sofia" });
 
-export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, banned, embedded, draft, purgedAt }: Props) {
+export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, org, banned, embedded, draft, purgedAt }: Props) {
   const supabase = createClient();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   const [text, setText] = useState(draft ?? "");
@@ -84,6 +87,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [sending, setSending] = useState(false);
   const [busyPath, setBusyPath] = useState<string | null>(null);
+  const canBook = Boolean(craftsmanId) && (iAmClient || craftsmanId === me);
   const scroller = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const atBottom = useRef(true);
@@ -280,6 +284,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
     if (iAmClient || m.pending || m.failed || m.id < 0) return undefined;
     const busy = busyPath === path;
     if (m.sender_id === me) return { label: "Покажи в профила", disabled: busy, onClick: () => addToProfile(path) };
+    if (org) return undefined; // asking for consent is for personal conversations
     const share = shares.find((s) => s.message_id === m.id && s.path === path);
     if (!share) return { label: "Поискай съгласие", disabled: busy, onClick: () => askShare(m.id, path) };
     if (share.status === "pending") return { label: "Чака клиента", disabled: true };
@@ -310,8 +315,8 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
         <Avatar name={partner.name} url={partner.avatar} size={40} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-extrabold">
-            {partner.slug ? (
-              <Link href={`/maistori/${partner.slug}`} className="hover:underline">
+            {partner.href || partner.slug ? (
+              <Link href={partner.href ?? `/maistori/${partner.slug}`} className="hover:underline">
                 {partner.name}
               </Link>
             ) : (
@@ -343,6 +348,9 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
           aria-label={live ? "Връзката е активна" : "Свързване"}
         />
       </header>
+      )}
+      {org && !iAmClient && (
+        <AssignBar conversationId={conversationId} org={org} me={me} />
       )}
       {upcoming && (
         <p className="flex items-center gap-2 border-b border-free/30 bg-free-soft px-4 py-2 text-sm font-semibold text-free">
@@ -509,6 +517,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
           <AttachmentStrip items={attachments} onRemove={removeAttachment} busy={sending} />
           <div className="mx-auto flex max-w-2xl items-end gap-2">
             <AttachButton onPick={pickFiles} disabled={sending || attachments.length >= MAX_ATTACHMENTS} />
+            {canBook && (
             <button
               type="button"
               className="btn btn-outline size-11 shrink-0 p-0 sm:w-auto sm:px-3"
@@ -519,6 +528,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
               <CalendarPlus className="size-5" aria-hidden />
               <span className="hidden sm:inline">Уговорка</span>
             </button>
+            )}
             <label htmlFor="msg" className="sr-only">
               Съобщение
             </label>
@@ -552,7 +562,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
           </p>
         </form>
       )}
-      {!banned && (
+      {!banned && canBook && craftsmanId && (
         <BookingSheet
           open={sheet}
           onClose={() => setSheet(false)}
@@ -565,5 +575,50 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
         />
       )}
     </section>
+  );
+}
+
+/** Company conversations: the manager picks who takes over; the assigned craftsman sees that it was handed to him. */
+function AssignBar({
+  conversationId,
+  org,
+  me,
+}: {
+  conversationId: string;
+  org: NonNullable<Props["org"]>;
+  me: string;
+}) {
+  const supabase = createClient();
+  const [value, setValue] = useState(org.assignedTo ?? "");
+  const [pending, setPending] = useState(false);
+
+  async function assign() {
+    setPending(true);
+    const { error } = await supabase.rpc("assign_org_conversation", { p_conversation: conversationId, p_craftsman: (value || null) as unknown as string });
+    setPending(false);
+    if (error) toast.error(error.message);
+    else toast.success(value ? "Разговорът е възложен." : "Разговорът е върнат към фирмата.");
+  }
+
+  if (!org.canAssign) {
+    return org.assignedTo === me ? (
+      <p className="border-b border-line bg-rule-soft px-4 py-2 text-sm font-semibold">Фирмата „{org.name}“ ти възложи този разговор.</p>
+    ) : null;
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-line bg-rule-soft px-4 py-2 text-sm">
+      <span className="font-semibold">Разговор с клиент до {org.name}. Възложен на:</span>
+      <select className="field min-h-9 w-auto py-1 text-sm" value={value} onChange={(e) => setValue(e.target.value)} aria-label="Майстор">
+        <option value="">Никого (при фирмата)</option>
+        {org.team.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.name}
+          </option>
+        ))}
+      </select>
+      <button type="button" className="btn btn-primary btn-sm" disabled={pending || value === (org.assignedTo ?? "")} onClick={assign}>
+        Запази
+      </button>
+    </div>
   );
 }

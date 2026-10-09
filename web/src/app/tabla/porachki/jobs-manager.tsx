@@ -51,6 +51,7 @@ export function JobsManager({
   today,
   proDetails,
   proClients,
+  canRequestReview = true,
 }: {
   userId: string;
   initialJobs: Job[];
@@ -58,6 +59,8 @@ export function JobsManager({
   today: string;
   proDetails: boolean;
   proClients: boolean;
+  /** review links are created by the craftsman himself, not by a manager */
+  canRequestReview?: boolean;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -321,7 +324,7 @@ export function JobsManager({
           </>
         ) : (
           <>
-            {j.status === "done" && (
+            {j.status === "done" && canRequestReview && (
               <button type="button" className="btn btn-outline btn-sm" disabled={pending} onClick={() => requestReview(j)}>
                 <Star className="size-4" aria-hidden /> Поискай отзив
               </button>

@@ -51,6 +51,8 @@ type Day = { day: string; status: "free" | "partial" | "busy"; free_hours: numbe
 
 type Props = {
   userId: string;
+  /** a manager editing the calendar of a craftsman in his company */
+  managing?: boolean;
   initialRules: Rule[];
   initialExceptions: Exception[];
   initialDays: Day[];
@@ -60,7 +62,7 @@ type Props = {
 
 const CODE = { free: "F", partial: "P", busy: "B" } as const;
 
-export function CalendarEditor({ userId, initialRules, initialExceptions, initialDays, shortNotice, lastConfirmedAt }: Props) {
+export function CalendarEditor({ userId, managing = false, initialRules, initialExceptions, initialDays, shortNotice, lastConfirmedAt }: Props) {
   const supabase = createClient();
   const router = useRouter();
   const [today] = useState(todayISO);
@@ -191,7 +193,7 @@ export function CalendarEditor({ userId, initialRules, initialExceptions, initia
         </p>
       </div>
 
-      <ConfirmCalendarBanner daysAgo={daysAgo} compact />
+      <ConfirmCalendarBanner daysAgo={daysAgo} compact craftsmanId={managing ? userId : undefined} />
 
       {/* Quick actions */}
       <section aria-labelledby="quick-heading" className="grid gap-4">
@@ -227,6 +229,7 @@ export function CalendarEditor({ userId, initialRules, initialExceptions, initia
           </button>
         </div>
 
+        {!managing && (
         <label className="flex cursor-pointer items-center gap-4 rounded-[10px] border border-line bg-surface p-4">
           <span className="grid size-10 shrink-0 place-items-center rounded-[8px] bg-rule">
             <Zap className="size-5" aria-hidden />
@@ -247,6 +250,7 @@ export function CalendarEditor({ userId, initialRules, initialExceptions, initia
             <span className="absolute left-1 top-1 size-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
           </span>
         </label>
+        )}
 
         {ranges.length > 0 && (
           <ul className="grid gap-2" aria-label="Заети периоди">

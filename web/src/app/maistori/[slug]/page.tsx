@@ -25,6 +25,7 @@ import { ProfileBooking, type DayInfo } from "@/components/profile-booking";
 import { OpenChatButton, type WorkOption } from "@/components/chat-dock";
 import { PhoneReveal } from "@/components/phone-reveal";
 import { ReportButton } from "@/components/report-button";
+import { OrgChatButton } from "@/components/org-chat-button";
 import { SaveButton } from "@/components/save-button";
 import { Gallery } from "@/components/gallery";
 import { ReviewForm } from "@/components/review-form";
@@ -96,10 +97,10 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
       ? supabase.from("conversations").select("id").eq("client_id", viewer.id).eq("craftsman_id", c.id).maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.rpc("craftsman_contact_info", { p_craftsman: c.id }).maybeSingle(),
-    supabase.from("organization_members").select("org:organizations(name, slug, is_verified, is_hidden)").eq("user_id", c.id).maybeSingle(),
+    supabase.from("organization_members").select("org:organizations(id, name, slug, is_verified, is_hidden)").eq("user_id", c.id).maybeSingle(),
   ]);
   const orgRaw = worksAt?.org;
-  const company = (Array.isArray(orgRaw) ? orgRaw[0] : orgRaw) as { name: string; slug: string; is_verified: boolean; is_hidden: boolean } | null | undefined;
+  const company = (Array.isArray(orgRaw) ? orgRaw[0] : orgRaw) as { id: string; name: string; slug: string; is_verified: boolean; is_hidden: boolean } | null | undefined;
 
   const firstName = c.display_name.split(" ")[0];
   const confirmedDaysAgo = daysSince(c.last_confirmed_at);
@@ -417,6 +418,16 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
               <OpenChatButton className="btn btn-primary w-full">
                 <MessageCircle className="size-4" aria-hidden /> {conv ? "Продължи чата" : `Пиши на ${firstName}`}
               </OpenChatButton>
+              {company && !company.is_hidden && !isSelf && (
+                <OrgChatButton
+                  orgId={company.id}
+                  orgName={company.name}
+                  signedIn={Boolean(viewer)}
+                  loginHref={`/vhod?next=${encodeURIComponent(`/maistori/${c.slug}`)}`}
+                  className="btn btn-outline w-full"
+                  label={`Пиши на ${company.name}`}
+                />
+              )}
               {!isSelf && (
                 <PhoneReveal
                   craftsmanId={c.id}

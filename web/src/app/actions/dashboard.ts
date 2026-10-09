@@ -20,9 +20,9 @@ async function me() {
   return { supabase, id };
 }
 
-export async function confirmCalendar(): Promise<{ ok: boolean; message: string }> {
+export async function confirmCalendar(craftsmanId?: string): Promise<{ ok: boolean; message: string }> {
   const { supabase } = await me();
-  const { error } = await supabase.rpc("confirm_calendar");
+  const { error } = await supabase.rpc("confirm_calendar", craftsmanId ? { p_craftsman: craftsmanId } : {});
   revalidatePath("/tabla", "layout");
   return error
     ? { ok: false, message: "Не успяхме да потвърдим графика. Опитайте отново." }

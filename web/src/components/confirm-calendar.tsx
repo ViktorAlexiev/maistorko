@@ -6,7 +6,16 @@ import { CalendarCheck } from "lucide-react";
 import { toast } from "sonner";
 import { confirmCalendar } from "@/app/actions/dashboard";
 
-export function ConfirmCalendarBanner({ daysAgo, compact = false }: { daysAgo: number; compact?: boolean }) {
+export function ConfirmCalendarBanner({
+  daysAgo,
+  compact = false,
+  craftsmanId,
+}: {
+  daysAgo: number;
+  compact?: boolean;
+  /** a manager confirming the calendar of a craftsman in his company */
+  craftsmanId?: string;
+}) {
   const [pending, start] = useTransition();
   const urgent = daysAgo >= 14;
   return (
@@ -41,7 +50,7 @@ export function ConfirmCalendarBanner({ daysAgo, compact = false }: { daysAgo: n
           disabled={pending}
           onClick={() =>
             start(async () => {
-              const res = await confirmCalendar();
+              const res = await confirmCalendar(craftsmanId);
               if (res.ok) toast.success(res.message);
               else toast.error(res.message);
             })

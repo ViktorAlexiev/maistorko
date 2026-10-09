@@ -65,6 +65,11 @@ export function TeamList({ team, meId, myRole }: { team: TeamMember[]; meId: str
               )}
             </p>
           </div>
+          {manager && m.slug && m.user_id !== meId && (
+            <Link href={`/tabla/firma/${m.user_id}/kalendar`} className="btn btn-outline btn-sm">
+              Календар и поръчки
+            </Link>
+          )}
           {manager && m.user_id !== meId && m.role !== "owner" && (
             <div className="flex flex-wrap gap-1">
               {myRole === "owner" && (

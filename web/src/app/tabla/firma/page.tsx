@@ -62,6 +62,13 @@ export default async function CompanyPage() {
             Публична страница <ExternalLink className="size-3.5" aria-hidden />
           </Link>
         </p>
+        {manager && (
+          <p className="mt-3">
+            <Link href="/tabla/firma/kalendar" className="btn btn-outline">
+              Календар на екипа
+            </Link>
+          </p>
+        )}
         {org.plan_status === "paused" && (
           <p role="status" className="mt-3 rounded-[8px] bg-danger-soft px-4 py-3 font-semibold text-danger">
             Планът на фирмата е спрян. Майсторите са на безплатен план, докато не бъде включен. Свържете се с нас.

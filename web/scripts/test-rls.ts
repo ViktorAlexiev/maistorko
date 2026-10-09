@@ -808,6 +808,16 @@ async function main() {
     const { error: svcBlock } = await mgrU.c.from("services").insert({ craftsman_id: empU.id, name: "Не бива", price_kind: "quote" });
     ok("профилът на майстора (услуги) остава негов", Boolean(svcBlock));
 
+    // confirming the calendar of an employee
+    await admin.from("craftsman_profiles").update({ last_confirmed_at: new Date(Date.now() - 20 * 86400_000).toISOString() }).eq("id", empU.id);
+    const { error: confirmOk } = await mgrU.c.rpc("confirm_calendar", { p_craftsman: empU.id });
+    const { data: confirmed } = await admin.from("craftsman_profiles").select("last_confirmed_at").eq("id", empU.id).single();
+    ok("мениджър потвърждава календара на майстор", !confirmOk && Date.now() - new Date(confirmed!.last_confirmed_at).getTime() < 60_000, confirmOk);
+    const { error: confirmForeign } = await owner2.c.rpc("confirm_calendar", { p_craftsman: empU.id });
+    ok("друга фирма не потвърждава чужд календар", Boolean(confirmForeign));
+    const { error: confirmAlice } = await alice.c.rpc("confirm_calendar", { p_craftsman: empU.id });
+    ok("и обикновен потребител не може", Boolean(confirmAlice));
+
     // company plan: Pro features for the employee while the plan is active
     const { data: planOn } = await admin.rpc("craftsman_plan", { p_craftsman: empU.id });
     const { data: featOn } = await admin.rpc("has_feature", { p_craftsman: empU.id, p_feature: "job_details" });
@@ -859,6 +869,102 @@ async function main() {
     ok("служител напуска сам", !leave, leave);
 
     for (const id of [boss.id, ownerU.id, mgrU.id, empU.id, emp2U.id, owner2.id]) await admin.auth.admin.deleteUser(id);
+    await admin.from("organizations").delete().eq("id", org.id);
+  }
+
+  console.log("\nЧат с фирма");
+  {
+    const boss = await user("client", "boss6");
+    await admin.from("profiles").update({ role: "admin" }).eq("id", boss.id);
+    const ownerU = await user("client", "owner3");
+    const mgrU = await user("client", "manager3");
+    const empU = await user("client", "employee3");
+    const clientU = await user("client", "client3");
+    const { data: created } = await boss.c.rpc("admin_create_org", { p_name: "Чат Тест ООД" });
+    const org = created as { id: string; owner_token: string };
+    await ownerU.c.rpc("claim_org_invite", { p_token: org.owner_token });
+    const { data: tm } = await ownerU.c.rpc("create_org_invite", { p_full_name: "Диспечер", p_role: "manager" });
+    await mgrU.c.rpc("claim_org_invite", { p_token: tm });
+    const { data: te } = await ownerU.c.rpc("create_org_invite", { p_full_name: "Майстор", p_role: "craftsman" });
+    await empU.c.rpc("claim_org_invite", { p_token: te });
+
+    const { data: conv, error: startErr } = await clientU.c.rpc("start_org_conversation", { p_org: org.id, p_body: "Здравейте, имам нужда от ремонт на баня" });
+    ok("клиент пише на фирмата", !startErr && Boolean(conv), startErr);
+    const { data: again } = await clientU.c.rpc("start_org_conversation", { p_org: org.id, p_body: "И още нещо" });
+    ok("втори път стига до същия разговор", again === conv);
+    const { error: ownErr } = await mgrU.c.rpc("start_org_conversation", { p_org: org.id, p_body: "аз" });
+    ok("служител не пише на собствената си фирма", Boolean(ownErr));
+    await admin.from("organizations").update({ is_hidden: true }).eq("id", org.id);
+    const { error: hiddenErr } = await bob.c.rpc("start_org_conversation", { p_org: org.id, p_body: "Здравейте" });
+    ok("на скрита фирма не се пише", Boolean(hiddenErr));
+    await admin.from("organizations").update({ is_hidden: false }).eq("id", org.id);
+
+    const canRead = async (c: typeof alice.c) => ((await c.from("conversations").select("id").eq("id", conv)).data?.length ?? 0) === 1;
+    const msgCount = async (c: typeof alice.c) => (await c.from("messages").select("id").eq("conversation_id", conv)).data?.length ?? 0;
+    ok("мениджърът чете разговора с фирмата", (await canRead(mgrU.c)) && (await msgCount(mgrU.c)) >= 2);
+    ok("и собственикът", await canRead(ownerU.c));
+    ok("майстор, на когото не е възложен, не го чете", !(await canRead(empU.c)) && (await msgCount(empU.c)) === 0);
+    ok("външен човек не го чете", !(await canRead(bob.c)) && (await msgCount(bob.c)) === 0);
+    ok("клиентът си чете разговора", await canRead(clientU.c));
+
+    const { data: mine } = await mgrU.c.rpc("my_conversations");
+    const mgrRow = (mine ?? []).find((r: { id: string }) => r.id === conv);
+    ok("в списъка на мениджъра е разговор с клиента от името на фирмата", mgrRow?.org_name === "Чат Тест ООД" && mgrRow?.partner_name === "Тест client3", mgrRow);
+    const { data: theirs } = await clientU.c.rpc("my_conversations");
+    ok("в списъка на клиента партньорът е фирмата", (theirs ?? []).find((r: { id: string }) => r.id === conv)?.partner_name === "Чат Тест ООД");
+
+    const { error: mgrSend } = await mgrU.c.from("messages").insert({ conversation_id: conv, sender_id: mgrU.id, body: "Здравейте, ще Ви намерим майстор" });
+    ok("мениджърът отговаря", !mgrSend, mgrSend);
+    const { data: clientNotif } = await clientU.c.from("notifications").select("title").eq("conversation_id", conv).eq("kind", "message");
+    ok("клиентът получава известие от името на фирмата", (clientNotif ?? []).some((n) => /Чат Тест ООД/.test(n.title)), clientNotif);
+    const { data: staffNotif } = await mgrU.c.from("notifications").select("title").eq("conversation_id", conv);
+    ok("мениджърът е известен за съобщението на клиента", (staffNotif?.length ?? 0) >= 1, staffNotif);
+    const { error: empSend } = await empU.c.from("messages").insert({ conversation_id: conv, sender_id: empU.id, body: "аз пиша" });
+    ok("невъзложен майстор не може да пише в него", Boolean(empSend));
+    const { error: outsiderSend } = await bob.c.from("messages").insert({ conversation_id: conv, sender_id: bob.id, body: "аз пиша" });
+    ok("външен не може да пише", Boolean(outsiderSend));
+
+    // handing the conversation over
+    const { error: bookBefore } = await mgrU.c.rpc("propose_booking", { p_conversation: conv, p_date: addIso(new Date().toISOString().slice(0, 10), 10), p_kind: "inspection" });
+    ok("преди възлагане не се уговаря час", /възложете/.test(bookBefore?.message ?? ""), bookBefore?.message);
+    const { error: clientAssign } = await clientU.c.rpc("assign_org_conversation", { p_conversation: conv, p_craftsman: empU.id });
+    ok("клиентът не възлага", Boolean(clientAssign));
+    const { error: wrongPerson } = await mgrU.c.rpc("assign_org_conversation", { p_conversation: conv, p_craftsman: bob.id });
+    ok("не може да се възложи на човек извън фирмата", Boolean(wrongPerson));
+    const { error: assignOk } = await mgrU.c.rpc("assign_org_conversation", { p_conversation: conv, p_craftsman: empU.id });
+    ok("мениджърът възлага разговора на майстор", !assignOk, assignOk);
+    ok("възложеният майстор вече го чете", (await canRead(empU.c)) && (await msgCount(empU.c)) >= 3);
+    const { data: empList } = await empU.c.rpc("my_conversations");
+    ok("и го вижда в списъка си", (empList ?? []).some((r: { id: string }) => r.id === conv));
+    const { error: empReply } = await empU.c.from("messages").insert({ conversation_id: conv, sender_id: empU.id, body: "Здравейте, аз съм майсторът" });
+    ok("възложеният майстор отговаря", !empReply, empReply);
+    const { data: bookId, error: bookErr } = await empU.c.rpc("propose_booking", { p_conversation: conv, p_date: addIso(new Date().toISOString().slice(0, 10), 10), p_kind: "inspection" });
+    ok("възложеният майстор уговаря оглед", !bookErr && Boolean(bookId), bookErr);
+    const { data: bk } = await admin.from("bookings").select("craftsman_id, status").eq("id", bookId).single();
+    ok("уговорката е на майстора, не на фирмата", bk?.craftsman_id === empU.id && bk?.status === "confirmed", bk);
+
+    // photos in a company conversation: staff and the client only
+    const PNG = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
+    const { error: staffUp } = await mgrU.c.storage.from("chat-photos").upload(`${conv}/staff-${Date.now()}.png`, PNG, { contentType: "image/png" });
+    ok("мениджърът качва снимка в разговора с фирмата", !staffUp, staffUp);
+    const { error: outUp } = await bob.c.storage.from("chat-photos").upload(`${conv}/out-${Date.now()}.png`, PNG, { contentType: "image/png" });
+    ok("външен не качва", Boolean(outUp));
+
+    // taking it back
+    await mgrU.c.rpc("assign_org_conversation", { p_conversation: conv, p_craftsman: null });
+    ok("след връщане майсторът губи достъп", !(await canRead(empU.c)));
+    ok("мениджърът го чете и след това", await canRead(mgrU.c));
+
+    // personal chats stay private to managers
+    const { data: pconv } = await clientU.c.rpc("start_conversation", { p_craftsman: empU.id, p_body: "Лично съобщение до майстора" });
+    const { data: mgrSees } = await mgrU.c.from("conversations").select("id").eq("id", pconv);
+    ok("личният чат на майстора не се чете от мениджъра", !mgrSees || mgrSees.length === 0);
+    const { data: mgrMsgs } = await mgrU.c.from("messages").select("id").eq("conversation_id", pconv);
+    ok("и съобщенията му не се четат", !mgrMsgs || mgrMsgs.length === 0);
+
+    const { data: files } = await admin.storage.from("chat-photos").list(conv as string);
+    if (files?.length) await admin.storage.from("chat-photos").remove(files.map((f) => `${conv}/${f.name}`));
+    for (const id of [boss.id, ownerU.id, mgrU.id, empU.id, clientU.id]) await admin.auth.admin.deleteUser(id);
     await admin.from("organizations").delete().eq("id", org.id);
   }
 

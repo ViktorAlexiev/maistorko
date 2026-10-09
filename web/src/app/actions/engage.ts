@@ -47,6 +47,23 @@ export async function startConversation(_: FormState, formData: FormData): Promi
   redirect(`/saobshtenia/${data}`);
 }
 
+export async function startOrgConversation(_: FormState, formData: FormData): Promise<FormState> {
+  const orgId = String(formData.get("orgId") ?? "");
+  const raw = { body: String(formData.get("body") ?? "") };
+  const values = { body: raw.body };
+  const parsed = messageSchema.safeParse(raw);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
+  if (!/^[0-9a-f-]{36}$/.test(orgId)) return { message: "Фирмата не е намерена.", values };
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  if (!claims?.claims?.sub) redirect("/vhod");
+  const { data, error } = await supabase.rpc("start_org_conversation", { p_org: orgId, p_body: parsed.data.body });
+  if (error || !data) return { message: error?.message ?? "Съобщението не беше изпратено. Опитайте отново.", values };
+  revalidatePath("/saobshtenia");
+  redirect(`/saobshtenia/${data}`);
+}
+
 export async function submitReview(_: FormState, formData: FormData): Promise<FormState> {
   const craftsmanId = String(formData.get("craftsmanId") ?? "");
   const slug = String(formData.get("slug") ?? "");

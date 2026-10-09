@@ -8,6 +8,9 @@ import { rankSeed } from "@/lib/rank-seed";
 import { CraftsmanRow, type CraftsmanCardData } from "@/components/craftsman-row";
 import { VerifiedBadge } from "@/components/bits";
 import { RuleLegend } from "@/components/rule-strip";
+import { OrgChatButton } from "@/components/org-chat-button";
+import { getViewer } from "@/lib/auth";
+import { getMyOrg } from "@/lib/org";
 
 const getOrg = cache(async (slug: string) => {
   const supabase = await createClient();
@@ -36,6 +39,9 @@ export default async function CompanyPublicPage({ params }: PageProps<"/firmi/[s
   if (!org || org.is_hidden) notFound();
 
   const supabase = await createClient();
+  const viewer = await getViewer();
+  const myOrg = viewer ? await getMyOrg() : null;
+  const isMember = myOrg?.id === org.id;
   // only listed craftsmen are visible through RLS
   const { data: members } = await supabase.from("organization_members").select("user_id").eq("organization_id", org.id);
   const ids = (members ?? []).map((m) => m.user_id);
@@ -72,6 +78,17 @@ export default async function CompanyPublicPage({ params }: PageProps<"/firmi/[s
           {org.is_verified && <VerifiedBadge withLabel />}
         </p>
         {org.description && <p className="mt-4 max-w-[68ch] whitespace-pre-line text-lg leading-relaxed">{org.description}</p>}
+        {!isMember && (
+          <div className="mt-5">
+            <OrgChatButton
+              orgId={org.id}
+              orgName={org.name}
+              signedIn={Boolean(viewer)}
+              loginHref={`/vhod?next=${encodeURIComponent(`/firmi/${org.slug}`)}`}
+              className="btn btn-primary btn-lg"
+            />
+          </div>
+        )}
       </header>
 
       <section aria-labelledby="team" className="mt-8">

@@ -189,16 +189,22 @@ isOneToOne: false
                   ]
                 },"conversations": {
                   Row: {
-                    "category_id": number | null,"client_id": string,"client_last_read_at": string,"craftsman_id": string,"craftsman_last_read_at": string,"craftsman_replied_at": string | null,"created_at": string,"id": string,"last_message_at": string,"last_message_preview": string,"last_sender_id": string | null,"messages_purged_at": string | null,"requested_date": string | null
+                    "assigned_to": string | null,"category_id": number | null,"client_id": string,"client_last_read_at": string,"craftsman_id": string | null,"craftsman_last_read_at": string,"craftsman_replied_at": string | null,"created_at": string,"id": string,"last_message_at": string,"last_message_preview": string,"last_sender_id": string | null,"messages_purged_at": string | null,"org_id": string | null,"requested_date": string | null
                   }
                   Insert: {
-                    "category_id"?: number | null,"client_id": string,"client_last_read_at"?: string,"craftsman_id": string,"craftsman_last_read_at"?: string,"craftsman_replied_at"?: string | null,"created_at"?: string,"id"?: string,"last_message_at"?: string,"last_message_preview"?: string,"last_sender_id"?: string | null,"messages_purged_at"?: string | null,"requested_date"?: string | null
+                    "assigned_to"?: string | null,"category_id"?: number | null,"client_id": string,"client_last_read_at"?: string,"craftsman_id"?: string | null,"craftsman_last_read_at"?: string,"craftsman_replied_at"?: string | null,"created_at"?: string,"id"?: string,"last_message_at"?: string,"last_message_preview"?: string,"last_sender_id"?: string | null,"messages_purged_at"?: string | null,"org_id"?: string | null,"requested_date"?: string | null
                   }
                   Update: {
-                    "category_id"?: number | null,"client_id"?: string,"client_last_read_at"?: string,"craftsman_id"?: string,"craftsman_last_read_at"?: string,"craftsman_replied_at"?: string | null,"created_at"?: string,"id"?: string,"last_message_at"?: string,"last_message_preview"?: string,"last_sender_id"?: string | null,"messages_purged_at"?: string | null,"requested_date"?: string | null
+                    "assigned_to"?: string | null,"category_id"?: number | null,"client_id"?: string,"client_last_read_at"?: string,"craftsman_id"?: string | null,"craftsman_last_read_at"?: string,"craftsman_replied_at"?: string | null,"created_at"?: string,"id"?: string,"last_message_at"?: string,"last_message_preview"?: string,"last_sender_id"?: string | null,"messages_purged_at"?: string | null,"org_id"?: string | null,"requested_date"?: string | null
                   }
                   Relationships: [
                     {
+      foreignKeyName: "conversations_assigned_to_fkey"
+      columns: ["assigned_to"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "conversations_category_id_fkey"
       columns: ["category_id"]
 isOneToOne: false
@@ -215,6 +221,12 @@ isOneToOne: false
       columns: ["craftsman_id"]
 isOneToOne: false
       referencedRelation: "craftsman_profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "conversations_org_id_fkey"
+      columns: ["org_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
       referencedColumns: ["id"]
     }
                   ]
@@ -858,6 +870,9 @@ isOneToOne: false
 "admin_update_org":
 { Args: { "p_clear_until"?: boolean,"p_hidden"?: boolean,"p_org": string,"p_plan_status"?: string,"p_plan_until"?: string,"p_verified"?: boolean }; Returns: undefined
                            },
+"assign_org_conversation":
+{ Args: { "p_conversation": string,"p_craftsman": string }; Returns: undefined
+                           },
 "availability_days":
 { Args: { "p_craftsman": string,"p_days": number,"p_from": string }; Returns: {
               "day": string,"free_hours": number,"ranges": Json,"status": string
@@ -910,7 +925,7 @@ isOneToOne: false
 { Args: { "p_days"?: number }; Returns: number
                            },
 "confirm_calendar":
-{ Args: Record<PropertyKey, never>; Returns: string
+{ Args: { "p_craftsman"?: string }; Returns: string
                            },
 "conversation_partner_phone":
 { Args: { "p_conversation": string }; Returns: string
@@ -964,6 +979,9 @@ isOneToOne: false
 "is_banned":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"is_conv_party":
+{ Args: { "p_conversation": string }; Returns: boolean
+                           },
 "is_conversation_member":
 { Args: { "p_conversation": string }; Returns: boolean
                            },
@@ -998,7 +1016,7 @@ isOneToOne: false
                            },
 "my_conversations":
 { Args: Record<PropertyKey, never>; Returns: {
-              "category_name": string,"i_am": string,"id": string,"last_from_me": boolean,"last_message_at": string,"last_message_preview": string,"partner_avatar": string,"partner_id": string,"partner_name": string,"partner_slug": string,"requested_date": string,"unread_count": number
+              "assigned_name": string,"assigned_to": string,"category_name": string,"i_am": string,"id": string,"last_from_me": boolean,"last_message_at": string,"last_message_preview": string,"org_id": string,"org_name": string,"org_slug": string,"partner_avatar": string,"partner_id": string,"partner_name": string,"partner_slug": string,"requested_date": string,"unread_count": number
             }[]
                            },
 "my_plan":
@@ -1106,6 +1124,9 @@ isOneToOne: false
                            },
 "start_conversation":
 { Args: { "p_body": string,"p_category"?: number,"p_craftsman": string,"p_date"?: string,"p_service"?: string,"p_slot"?: string }; Returns: string
+                           },
+"start_org_conversation":
+{ Args: { "p_body": string,"p_category"?: number,"p_date"?: string,"p_org": string }; Returns: string
                            },
 "submit_contact_request":
 { Args: { "p_contact": string,"p_kind": string,"p_message"?: string,"p_name": string,"p_payload"?: Json,"p_trap"?: string }; Returns: string

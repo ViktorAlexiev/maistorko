@@ -14,6 +14,8 @@ export type ConversationSummary = {
   last_message_preview: string;
   last_from_me: boolean;
   unread_count: number;
+  org_name?: string | null;
+  assigned_name?: string | null;
 };
 
 export function ConversationItem({ c, active = false }: { c: ConversationSummary; active?: boolean }) {
@@ -38,6 +40,12 @@ export function ConversationItem({ c, active = false }: { c: ConversationSummary
           {c.last_from_me && <span className="text-ink-3">Вие: </span>}
           {c.last_message_preview}
         </p>
+        {c.org_name && (
+          <p className="mt-0.5 truncate text-xs font-bold text-ink-2">
+            {c.i_am === "client" ? "Фирма" : `До ${c.org_name}`}
+            {c.assigned_name ? ` · ${c.assigned_name}` : c.i_am === "client" ? "" : " · не е възложен"}
+          </p>
+        )}
         {(c.requested_date || c.category_name) && (
           <p className="mt-1 flex items-center gap-1 truncate text-xs font-semibold text-ink-3">
             {c.requested_date && (
