@@ -234,6 +234,23 @@ async function main() {
     ok("не може да посочи услуга на друг майстор", Boolean(foreignSvc));
   }
 
+  console.log("\nЛичен линк (броячи)");
+  {
+    const slug = (await admin.from("craftsman_profiles").select("slug").eq("id", craft.id).single()).data!.slug;
+    await anon.rpc("record_link_visit", { p_slug: slug, p_source: "qr" });
+    await anon.rpc("record_link_visit", { p_slug: slug, p_source: "qr" });
+    await anon.rpc("record_link_visit", { p_slug: slug, p_source: "evil" });
+    const { data: mine } = await craft.c.from("link_visits").select("source, visits").eq("craftsman_id", craft.id);
+    ok("посещенията се броят (2 през QR, невалиден източник се игнорира)", mine?.length === 1 && mine[0].source === "qr" && mine[0].visits === 2, mine);
+    const { data: others } = await other.c.from("link_visits").select("visits").eq("craftsman_id", craft.id);
+    ok("друг майстор не вижда чужди посещения", !others || others.length === 0);
+    const { data: anonRows, error: anonErr } = await anon.from("link_visits").select("visits");
+    ok("анонимен не чете таблицата с посещения", Boolean(anonErr) || !anonRows || anonRows.length === 0);
+    const { error: writeErr } = await craft.c.from("link_visits").update({ visits: 999 }).eq("craftsman_id", craft.id);
+    const { data: still } = await admin.from("link_visits").select("visits").eq("craftsman_id", craft.id);
+    ok("майсторът не може сам да променя броячите", Boolean(writeErr) || still?.[0]?.visits === 2, still);
+  }
+
   console.log("\nМодерация");
   {
     await admin.from("craftsman_profiles").update({ is_hidden: true }).eq("id", other.id);

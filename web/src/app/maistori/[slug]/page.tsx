@@ -152,7 +152,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:pb-10">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
       <nav aria-label="Път" className="mb-5 text-sm text-ink-3">
         <Link href="/maistori" className="link">
           Майстори
@@ -461,6 +461,11 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
       </div>
     </div>
   );
+}
+
+/** JSON for a ld+json script. `<` is escaped so profile text like "</script>" can't break out of the tag. */
+function safeJsonLd(data: unknown) {
+  return JSON.stringify(data).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
 
 function TermRow({ label, children }: { label: string; children: React.ReactNode }) {

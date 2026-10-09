@@ -242,6 +242,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"link_visits": {
+                  Row: {
+                    "craftsman_id": string,"day": string,"source": string,"visits": number
+                  }
+                  Insert: {
+                    "craftsman_id": string,"day"?: string,"source": string,"visits"?: number
+                  }
+                  Update: {
+                    "craftsman_id"?: string,"day"?: string,"source"?: string,"visits"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "link_visits_craftsman_id_fkey"
+      columns: ["craftsman_id"]
+isOneToOne: false
+      referencedRelation: "craftsman_profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"messages": {
                   Row: {
                     "body": string,"conversation_id": string,"created_at": string,"id": number,"meta": NonNullable<Json>,"sender_id": string
@@ -507,6 +526,9 @@ isOneToOne: false
                            },
 "propose_booking":
 { Args: { "p_conversation": string,"p_date": string,"p_end"?: string,"p_kind"?: string,"p_note"?: string,"p_start"?: string }; Returns: string
+                           },
+"record_link_visit":
+{ Args: { "p_slug": string,"p_source": string }; Returns: undefined
                            },
 "refresh_craftsman_price":
 { Args: { "p_id": string }; Returns: undefined

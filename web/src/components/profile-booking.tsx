@@ -64,6 +64,8 @@ export function ProfileBooking({ craftsman, days, stale, workOptions, initialDat
   const strip = days.slice(0, 14).map((d) => CODE[d.status]).join("");
   const sel = selected ? byDay.get(selected) : undefined;
   const nextFree = days.find((d) => d.day > (selected ?? today) && d.status !== "busy")?.day;
+  const stripBusy = days.length >= 14 && days.slice(0, 14).every((d) => d.status === "busy");
+  const firstFree = days.find((d) => d.status !== "busy")?.day;
 
   // Picking a day only shows its hours; writing is a separate, deliberate step.
   function pick(iso: string, reveal = false) {
@@ -105,6 +107,22 @@ export function ProfileBooking({ craftsman, days, stale, workOptions, initialDat
             className="min-w-[34rem]"
           />
         </div>
+
+        {stripBusy && (
+          <p className="mt-3 rounded-[8px] border border-line-strong bg-surface px-3 py-2.5 font-semibold">
+            {firstName} е зает през следващите 2 седмици.{" "}
+            {firstFree ? (
+              <>
+                Първи свободен ден:{" "}
+                <button type="button" className="link font-extrabold text-free" onClick={() => pick(firstFree, true)}>
+                  {formatDate(firstFree, true)}
+                </button>
+              </>
+            ) : (
+              <span className="font-normal text-ink-2">Питайте в чата кога може да поеме работа.</span>
+            )}
+          </p>
+        )}
 
         <div ref={panel} className="scroll-mt-28" aria-live="polite">
           {selected && (

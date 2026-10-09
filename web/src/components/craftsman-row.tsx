@@ -3,7 +3,7 @@ import { MapPin, Zap } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { Rating, VerifiedBadge } from "@/components/bits";
 import { RuleStrip } from "@/components/rule-strip";
-import { headlinePrice, relativeDay, type PriceUnit } from "@/lib/format";
+import { formatDate, headlinePrice, relativeDay, type PriceUnit } from "@/lib/format";
 
 export type CraftsmanCardData = {
   id: string;
@@ -87,8 +87,9 @@ export function CraftsmanRow({
               <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                 {free ? (
                   <span className="font-bold text-free">
-                    Свободен {relativeDay(free)}
-                    {c.matched_date ? " (търсената дата)" : ""}
+                    {!c.strip.includes("F") && !c.strip.includes("P") && !c.matched_date
+                      ? `Зает 2 седмици. Свободен от ${formatDate(free)}`
+                      : `Свободен ${relativeDay(free)}${c.matched_date ? " (търсената дата)" : ""}`}
                   </span>
                 ) : (
                   <span className="font-semibold text-ink-3">Няма свободни дни скоро</span>
