@@ -5,6 +5,7 @@ import { getCategoryTree, getCities } from "@/lib/data";
 import { AvatarUpload } from "@/components/avatar-upload";
 import { getMyPlan } from "@/lib/plan";
 import { ClientProfileForm, CraftsmanProfileForm } from "./profile-forms";
+import { NotificationPrefs, type Prefs } from "./notification-prefs";
 
 export const metadata: Metadata = { title: "Профил", robots: { index: false } };
 
@@ -14,6 +15,13 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
   const supabase = await createClient();
   const [cities, tree] = await Promise.all([getCities(), getCategoryTree()]);
   const cityOf = (id: number | null) => cities.find((c) => c.id === id)?.slug ?? "";
+
+  const { data: prefsRow } = await supabase
+    .from("notification_prefs")
+    .select("email_messages, email_bookings, email_reviews, email_calendar")
+    .eq("user_id", viewer.id)
+    .maybeSingle();
+  const prefs: Prefs = prefsRow ?? { email_messages: true, email_bookings: true, email_reviews: true, email_calendar: true };
 
   const header = (
     <div className="grid gap-6">
@@ -47,6 +55,7 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
             phone: viewer.profile.phone ?? "",
           }}
         />
+        <NotificationPrefs userId={viewer.id} initial={prefs} isCraftsman={false} />
       </div>
     );
   }
@@ -85,6 +94,7 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
           phoneVisibility: (cp?.phone_visibility ?? "login") as "public" | "login" | "chat" | "hidden",
         }}
       />
+      <NotificationPrefs userId={viewer.id} initial={prefs} isCraftsman />
     </div>
   );
 }

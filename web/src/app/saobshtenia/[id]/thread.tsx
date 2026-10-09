@@ -43,6 +43,8 @@ type Props = {
   banned: boolean;
   /** Inside the chat window on a profile: the window draws its own header. */
   embedded?: boolean;
+  /** When the old message texts were deleted after 60 idle days (null = never) */
+  purgedAt?: string | null;
   /** Text to put in the composer, e.g. a question about the day picked on the profile. */
   draft?: string;
 };
@@ -50,7 +52,7 @@ type Props = {
 let tempSeq = 0;
 const sofiaDay = (ts: string) => new Date(ts).toLocaleDateString("en-CA", { timeZone: "Europe/Sofia" });
 
-export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, craftsmanId, banned, embedded, draft }: Props) {
+export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, craftsmanId, banned, embedded, draft, purgedAt }: Props) {
   const supabase = createClient();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   const [text, setText] = useState(draft ?? "");
@@ -230,6 +232,11 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
         aria-live="polite"
         aria-relevant="additions"
       >
+        {purgedAt && (
+          <p className="mx-auto mb-3 max-w-2xl rounded-[8px] bg-surface-2 px-3 py-2 text-center text-sm text-ink-2">
+            Старите съобщения са изтрити автоматично след 60 дни без разговор. Уговорките и отзивите остават.
+          </p>
+        )}
         <ol className="mx-auto grid max-w-2xl gap-1.5">
           {messages.map((m, i) => {
             const mine = m.sender_id === me;

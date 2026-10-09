@@ -12,7 +12,7 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
 
   const { data: conv } = await supabase
     .from("conversations")
-    .select("id, client_id, craftsman_id, requested_date, category:categories(name)")
+    .select("id, client_id, craftsman_id, requested_date, messages_purged_at, category:categories(name)")
     .eq("id", id)
     .maybeSingle();
   if (!conv) notFound();
@@ -50,6 +50,7 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
         phone: phone ?? null,
       }}
       requestedDate={conv.requested_date}
+      purgedAt={conv.messages_purged_at}
       categoryName={category?.name ?? null}
       initial={((messages ?? []) as ChatMessage[]).reverse()}
       initialBookings={(bookings ?? []) as Booking[]}

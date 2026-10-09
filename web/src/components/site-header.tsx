@@ -4,6 +4,7 @@ import { getViewer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/logo";
 import { UnreadBadge } from "@/components/unread-badge";
+import { NotificationBell, type NotificationItem } from "@/components/notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { MobileMenu } from "@/components/mobile-menu";
 
@@ -16,10 +17,23 @@ const NAV = [
 export async function SiteHeader() {
   const viewer = await getViewer();
   let unread = 0;
+  let bell: NotificationItem[] = [];
+  let bellUnread = 0;
   if (viewer) {
     const supabase = await createClient();
-    const { data } = await supabase.rpc("unread_total");
+    const [{ data }, { data: items }, { count }] = await Promise.all([
+      supabase.rpc("unread_total"),
+      supabase
+        .from("notifications")
+        .select("id, kind, title, body, link, created_at, read_at")
+        .neq("kind", "message")
+        .order("created_at", { ascending: false })
+        .limit(15),
+      supabase.from("notifications").select("id", { count: "exact", head: true }).neq("kind", "message").is("read_at", null),
+    ]);
     unread = data ?? 0;
+    bell = (items ?? []) as NotificationItem[];
+    bellUnread = count ?? 0;
   }
   const displayName = viewer?.profile.full_name || viewer?.email || "";
 
@@ -38,6 +52,7 @@ export async function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           {viewer ? (
             <>
+              <NotificationBell userId={viewer.id} initial={bell} initialUnread={bellUnread} />
               <Link
                 href="/saobshtenia"
                 className="btn btn-ghost btn-sm relative"

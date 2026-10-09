@@ -376,6 +376,84 @@ async function main() {
     await admin.auth.admin.deleteUser(boss.id);
   }
 
+  console.log("\nИзвестия, отзив по линк и чистене");
+  {
+    // several messages in one conversation stay one notification and one pending e-mail
+    await craft.c.rpc("mark_conversation_read", { p_conversation: convId });
+    await alice.c.from("messages").insert({ conversation_id: convId, sender_id: alice.id, body: "Първо ново" });
+    await alice.c.from("messages").insert({ conversation_id: convId, sender_id: alice.id, body: "Второ ново" });
+    const { data: nm } = await craft.c.from("notifications").select("id, count, read_at, body").eq("conversation_id", convId).eq("kind", "message").is("read_at", null);
+    ok("две съобщения стават едно известие", nm?.length === 1 && nm[0].count === 2 && nm[0].body === "Второ ново", nm);
+    const { data: box } = await admin.from("email_outbox").select("sent_at, send_after, body").eq("notification_id", nm![0].id);
+    ok("и едно чакащо писмо, с изчакване около 10 минути", box?.length === 1 && !box[0].sent_at && new Date(box[0].send_after).getTime() > Date.now() + 5 * 60_000 && /Второ ново/.test(box[0].body), box);
+
+    const { data: peek } = await alice.c.from("notifications").select("id").eq("user_id", craft.id);
+    ok("не се четат чужди известия", !peek || peek.length === 0);
+    const { error: outboxErr, data: outboxRows } = await alice.c.from("email_outbox").select("id");
+    ok("опашката с писма не се чете през API", Boolean(outboxErr) || !outboxRows || outboxRows.length === 0);
+
+    // reading the conversation marks the notification read, so the worker will skip the e-mail
+    await craft.c.rpc("mark_conversation_read", { p_conversation: convId });
+    const { data: after } = await craft.c.from("notifications").select("read_at").eq("id", nm![0].id).single();
+    ok("прочетен разговор → прочетено известие", Boolean(after?.read_at));
+
+    // prefs: switched off → a new notification queues no e-mail
+    const { error: prefErr } = await craft.c.from("notification_prefs").update({ email_messages: false }).eq("user_id", craft.id);
+    ok("потребителят променя своите настройки за писма", !prefErr, prefErr);
+    await alice.c.from("messages").insert({ conversation_id: convId, sender_id: alice.id, body: "Без писмо" });
+    const { data: nn } = await craft.c.from("notifications").select("id").eq("conversation_id", convId).eq("kind", "message").is("read_at", null);
+    const { data: noBox } = await admin.from("email_outbox").select("id").eq("notification_id", nn![0].id);
+    ok("с изключени писма няма чакащо писмо", nn?.length === 1 && (noBox?.length ?? 0) === 0);
+    const { data: prefs } = await admin.from("notification_prefs").select("unsub_token").eq("user_id", craft.id).single();
+    await craft.c.from("notification_prefs").update({ email_messages: true }).eq("user_id", craft.id);
+    const { data: unsub } = await anon.rpc("unsubscribe_emails", { p_token: prefs!.unsub_token });
+    const { data: prefsAfter } = await admin.from("notification_prefs").select("email_messages, email_reviews").eq("user_id", craft.id).single();
+    ok("линкът „спри писмата“ работи без вход", unsub === true && prefsAfter?.email_messages === false && prefsAfter?.email_reviews === false);
+
+    const { data: bk } = await alice.c.from("notifications").select("id").eq("kind", "booking");
+    ok("уговорка носи известие на другата страна", (bk?.length ?? 0) >= 1);
+    const { data: marked } = await alice.c.rpc("mark_notifications_read");
+    ok("mark_notifications_read отбелязва само моите", typeof marked === "number" && marked >= 1);
+
+    // review by link
+    const { data: jobRow } = await craft.c.from("jobs").insert({ craftsman_id: craft.id, title: "За отзив", start_date: "2030-01-10", end_date: "2030-01-10", status: "done" }).select("id").single();
+    const { data: token, error: tokErr } = await craft.c.rpc("create_review_invite", { p_job: jobRow!.id });
+    ok("майсторът прави линк за отзив към поръчка", !tokErr && Boolean(token), tokErr);
+    const { data: again } = await craft.c.rpc("create_review_invite", { p_job: jobRow!.id });
+    ok("същата поръчка получава същия отворен линк", again === token);
+    const { error: foreignJob } = await other.c.rpc("create_review_invite", { p_job: jobRow!.id });
+    ok("чужд майстор не може да прави линк за моя поръчка", Boolean(foreignJob));
+    const { data: info } = await anon.rpc("review_invite_info", { p_token: token });
+    ok("анонимен вижда само името и състоянието на линка", info?.[0]?.state === "open" && !JSON.stringify(info).includes(craft.id), info);
+    const { error: selfRev } = await craft.c.rpc("submit_review_by_token", { p_token: token, p_rating: 5, p_body: "аз" });
+    ok("майсторът не може да се оцени сам", Boolean(selfRev));
+    const { error: anonRev } = await anon.rpc("submit_review_by_token", { p_token: token, p_rating: 5 });
+    ok("отзив по линк изисква вход", Boolean(anonRev));
+    const { data: revSlug, error: revErr } = await bob.c.rpc("submit_review_by_token", { p_token: token, p_rating: 5, p_body: "Много добра работа" });
+    ok("клиент без чат оставя отзив по линк", !revErr && Boolean(revSlug), revErr);
+    const { data: rv } = await admin.from("reviews").select("rating, body").eq("craftsman_id", craft.id).eq("client_id", bob.id).single();
+    ok("отзивът е записан", rv?.rating === 5 && rv?.body === "Много добра работа", rv);
+    const { error: reuse } = await bob.c.rpc("submit_review_by_token", { p_token: token, p_rating: 1 });
+    ok("линкът е за еднократна употреба", /използван/.test(reuse?.message ?? ""), reuse?.message);
+    const { data: revNotif } = await craft.c.from("notifications").select("title").eq("kind", "review");
+    ok("майсторът получава известие за отзива", (revNotif?.length ?? 0) >= 1);
+
+    // retention: 60 idle days wipe the texts; bookings, the conversation and the right to review stay
+    const { count: msgsBefore } = await admin.from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", convId);
+    await admin.from("conversations").update({ last_message_at: new Date(Date.now() - 61 * 86400_000).toISOString() }).eq("id", convId);
+    const { data: purged } = await admin.rpc("cleanup_old_chats", { p_days: 60 });
+    const { count: msgsAfter } = await admin.from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", convId);
+    ok("след 60 дни без разговор текстовете се изтриват", (msgsBefore ?? 0) > 0 && msgsAfter === 0 && (purged ?? 0) >= 1, { msgsBefore, msgsAfter, purged });
+    const { data: kept } = await admin.from("conversations").select("messages_purged_at").eq("id", convId).single();
+    ok("разговорът остава, с отбелязано чистене", Boolean(kept?.messages_purged_at));
+    const { count: bookingsKept } = await admin.from("bookings").select("id", { count: "exact", head: true }).eq("conversation_id", convId);
+    ok("уговорките остават", (bookingsKept ?? 0) > 0);
+    const { data: canStill } = await alice.c.rpc("can_review", { p_craftsman: craft.id });
+    ok("правото на отзив остава след чистенето", canStill === true);
+    const { data: freshPurge } = await admin.rpc("cleanup_old_chats", { p_days: 60 });
+    ok("второ пускане не пипа вече изчистените", (freshPurge ?? 0) === 0);
+  }
+
   console.log("\nМодерация");
   {
     await admin.from("craftsman_profiles").update({ is_hidden: true }).eq("id", other.id);

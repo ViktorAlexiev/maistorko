@@ -10,13 +10,16 @@
     "seed": "tsx scripts/seed.ts",
     "test:rls": "tsx scripts/test-rls.ts",
     "typecheck": "tsc --noEmit",
-    "types": "cd .. && npx supabase gen types typescript --local > web/src/lib/database.types.ts"
+    "types": "cd .. && npx supabase gen types typescript --local > web/src/lib/database.types.ts",
+    "worker": "tsx scripts/worker.ts",
+    "worker:once": "tsx scripts/worker.ts --once"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "lucide-react": "^1.48.0",
     "next": "16.3.6",
+    "nodemailer": "^10.0.16",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -27,6 +30,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.2",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",

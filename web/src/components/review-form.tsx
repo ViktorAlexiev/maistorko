@@ -9,13 +9,16 @@ import { FieldError, FormMessage, SubmitButton } from "@/components/submit-butto
 const LABELS = ["", "Лошо", "Слабо", "Добре", "Много добре", "Отлично"];
 
 export function ReviewForm({
-  craftsmanId,
+  craftsmanId = "",
   slug,
   existing,
+  token,
 }: {
-  craftsmanId: string;
+  craftsmanId?: string;
   slug: string;
   existing?: { rating: number; body: string } | null;
+  /** review invite link: the client rates a job done outside the chat */
+  token?: string;
 }) {
   const [state, action] = useActionState<FormState, FormData>(submitReview, {});
   const [rating, setRating] = useState(existing?.rating ?? 0);
@@ -26,6 +29,7 @@ export function ReviewForm({
     <form action={action} className="grid gap-4 rounded-[10px] border border-line bg-surface p-4 sm:p-5">
       <input type="hidden" name="craftsmanId" value={craftsmanId} />
       <input type="hidden" name="slug" value={slug} />
+      {token && <input type="hidden" name="token" value={token} />}
       <input type="hidden" name="rating" value={rating || ""} />
       <fieldset>
         <legend className="label">{existing ? "Вашата оценка" : "Оценете работата"}</legend>

@@ -18,7 +18,9 @@
     "start": "npm --prefix web run start",
     "demo:up": "node scripts/demo.mjs up",
     "demo:url": "node scripts/demo.mjs url",
-    "demo:down": "node scripts/demo.mjs down"
+    "demo:down": "node scripts/demo.mjs down",
+    "worker": "npm --prefix web run worker",
+    "worker:once": "npm --prefix web run worker:once"
   },
   "devDependencies": {
     "supabase": "^2.118.0"

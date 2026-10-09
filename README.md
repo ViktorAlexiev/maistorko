@@ -118,6 +118,25 @@ npm run demo:down    # stop nginx + tunnel
 - A `build:demo` build expects nginx in front of it. For plain local development use `npm run dev` or a normal `npm run build`.
 - The demo accounts and their password are in this README, which is public on GitHub. Anyone who gets the tunnel URL can log in as them, including the admin.
 
+## 5. Notifications, e-mails and cleanup (worker)
+
+Events (new message, booking, review, weekly calendar reminder) create a notification: the bell in the header (messages keep their own badge). Each one also queues an e-mail with a delay (10 minutes for messages, so several messages become one mail, and nothing is sent if the person read it in the app). Users switch kinds off under Профил, and every mail has a "stop" link (`/otpiska/<token>`).
+
+Mails are only queued by the database. A worker sends them and runs the maintenance jobs:
+
+```bash
+npm run worker        # loops every minute; Mailpit shows the mails at http://127.0.0.1:54324
+npm run worker:once   # one pass
+```
+
+- Sends due mails through `SMTP_URL` (see `web/.env.example`); skips mails whose notification was already read.
+- Nightly (after 03:00 Sofia): `cleanup_old_chats(60)` deletes message texts of conversations idle for 60 days. Who talked to whom, bookings and the right to review stay.
+- Sundays (after 17:00): reminds craftsmen whose calendar was not confirmed for a week.
+
+The worker uses the service role key, so it is a server-side process of its own, never part of the web app. In production run it as a separate process or scheduled job.
+
+Review links: a craftsman creates one per finished job (Поръчки → "Поискай отзив") and sends it to the client, who signs in and rates at `/otzyv/<token>`. A link works once and expires after 90 days.
+
 ## How it works
 
 ### Data model (`supabase/migrations`)
