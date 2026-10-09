@@ -305,6 +305,25 @@ isOneToOne: false
       referencedColumns: ["key"]
     }
                   ]
+                },"daily_stats": {
+                  Row: {
+                    "craftsman_id": string,"day": string,"impressions": number,"phone_reveals": number,"views": number
+                  }
+                  Insert: {
+                    "craftsman_id": string,"day"?: string,"impressions"?: number,"phone_reveals"?: number,"views"?: number
+                  }
+                  Update: {
+                    "craftsman_id"?: string,"day"?: string,"impressions"?: number,"phone_reveals"?: number,"views"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "daily_stats_craftsman_id_fkey"
+      columns: ["craftsman_id"]
+isOneToOne: false
+      referencedRelation: "craftsman_profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"email_outbox": {
                   Row: {
                     "attempts": number,"body": string,"created_at": string,"error": string | null,"id": number,"link": string | null,"notification_id": number | null,"send_after": string,"sent_at": string | null,"subject": string,"to_email": string,"unsub_token": string | null,"user_id": string
@@ -681,6 +700,9 @@ isOneToOne: false
 "build_search_query":
 { Args: { "p_any"?: boolean,"p_q": string }; Returns: unknown
                            },
+"bump_stat":
+{ Args: { "p_by"?: number,"p_column": string,"p_craftsman": string }; Returns: undefined
+                           },
 "calendar_freshness":
 { Args: { "p_confirmed": string }; Returns: string
                            },
@@ -777,6 +799,9 @@ isOneToOne: false
 "my_plan":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"my_stats":
+{ Args: { "p_weeks"?: number }; Returns: Json
+                           },
 "next_free_date":
 { Args: { "p_craftsman": string,"p_from": string,"p_horizon"?: number,"p_slot"?: string }; Returns: string
                            },
@@ -798,8 +823,14 @@ isOneToOne: false
 "queue_email":
 { Args: { "p_notification": number }; Returns: undefined
                            },
+"record_impressions":
+{ Args: { "p_ids": (string)[] }; Returns: undefined
+                           },
 "record_link_visit":
 { Args: { "p_slug": string,"p_source": string }; Returns: undefined
+                           },
+"record_profile_view":
+{ Args: { "p_slug": string }; Returns: undefined
                            },
 "refresh_craftsman_price":
 { Args: { "p_id": string }; Returns: undefined
@@ -809,6 +840,9 @@ isOneToOne: false
                            },
 "respond_booking":
 { Args: { "p_action": string,"p_booking": string }; Returns: string
+                           },
+"reveal_phone":
+{ Args: { "p_craftsman": string }; Returns: string
                            },
 "review_invite_info":
 { Args: { "p_token": string }; Returns: {

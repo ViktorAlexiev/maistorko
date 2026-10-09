@@ -454,6 +454,54 @@ async function main() {
     ok("второ пускане не пипа вече изчистените", (freshPurge ?? 0) === 0);
   }
 
+  console.log("\nСтатистика");
+  {
+    const slug = (await admin.from("craftsman_profiles").select("slug").eq("id", craft.id).single()).data!.slug;
+    const stats = async (c: typeof craft.c) => (await c.rpc("my_stats", { p_weeks: 4 })).data as {
+      detail: boolean;
+      totals: { views: number; impressions: number; phone_reveals: number; inquiries: number };
+      weeks: unknown[];
+      response: { inquiries: number; replied: number };
+    };
+    const before = await stats(craft.c);
+    await anon.rpc("record_profile_view", { p_slug: slug });
+    await bob.c.rpc("record_profile_view", { p_slug: slug });
+    await craft.c.rpc("record_profile_view", { p_slug: slug }); // the owner's own view is not counted
+    await anon.rpc("record_impressions", { p_ids: [craft.id, craft.id] });
+    await anon.rpc("record_profile_view", { p_slug: "no-such-slug" });
+    const after = await stats(craft.c);
+    ok("прегледите се броят, без собствените", after.totals.views === before.totals.views + 2, { before: before.totals.views, after: after.totals.views });
+    ok("показванията в списък се броят веднъж на заявка", after.totals.impressions === before.totals.impressions + 1, after.totals);
+    ok("безплатният план няма седмична разбивка", after.detail === false && after.weeks.length === 0);
+
+    await admin.from("craftsman_profiles").update({ phone_visibility: "public" }).eq("id", craft.id);
+    const { data: ph } = await anon.rpc("reveal_phone", { p_craftsman: craft.id });
+    await craft.c.rpc("reveal_phone", { p_craftsman: craft.id }); // own reveal is not counted
+    const afterPhone = await stats(craft.c);
+    ok("разкриването на телефон се брои", Boolean(ph) && afterPhone.totals.phone_reveals === after.totals.phone_reveals + 1, afterPhone.totals);
+    await admin.from("craftsman_profiles").update({ phone_visibility: "hidden" }).eq("id", craft.id);
+    const { data: hiddenPh } = await anon.rpc("reveal_phone", { p_craftsman: craft.id });
+    const afterHidden = await stats(craft.c);
+    ok("скрит телефон не се разкрива и не се брои", hiddenPh === null && afterHidden.totals.phone_reveals === afterPhone.totals.phone_reveals);
+
+    const { data: foreignStats } = await other.c.from("daily_stats").select("views").eq("craftsman_id", craft.id);
+    ok("друг майстор не вижда чужди броячи", !foreignStats || foreignStats.length === 0);
+    const { error: writeStat } = await craft.c.from("daily_stats").update({ views: 999 }).eq("craftsman_id", craft.id);
+    const { data: still } = await admin.from("daily_stats").select("views").eq("craftsman_id", craft.id);
+    ok("майсторът не може да си пише броячите", Boolean(writeStat) || (still ?? []).every((r) => r.views < 999));
+    const { error: anonStats } = await anon.rpc("my_stats");
+    ok("анонимен няма статистика", Boolean(anonStats));
+    ok("отговорите се смятат от разговорите", after.response.inquiries >= 1 && after.response.replied >= 1, after.response);
+
+    const boss = await user("client", "boss3");
+    await admin.from("profiles").update({ role: "admin" }).eq("id", boss.id);
+    await boss.c.rpc("admin_set_plan", { p_craftsman: craft.id, p_plan: "pro" });
+    const pro = await stats(craft.c);
+    ok("с Pro има седмична разбивка", pro.detail === true && pro.weeks.length === 4, pro.weeks.length);
+    await boss.c.rpc("admin_set_plan", { p_craftsman: craft.id, p_plan: "free" });
+    await admin.auth.admin.deleteUser(boss.id);
+  }
+
   console.log("\nМодерация");
   {
     await admin.from("craftsman_profiles").update({ is_hidden: true }).eq("id", other.id);

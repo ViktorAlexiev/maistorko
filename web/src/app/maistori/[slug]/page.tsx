@@ -3,8 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { Check, Clock, Info, Languages, MapPin, MessageCircle, Zap } from "lucide-react";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth";
+import { isBot } from "@/lib/bots";
 import { photoUrl } from "@/lib/data";
 import {
   daysSince,
@@ -76,6 +78,11 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
   const supabase = await createClient();
   const viewer = await getViewer();
   const isSelf = viewer?.id === c.id;
+  if (!isSelf && !(await isBot())) {
+    after(async () => {
+      await supabase.rpc("record_profile_view", { p_slug: slug });
+    });
+  }
 
   const [{ data: days }, { data: reviews }, { data: canReview }, { data: saved }, { data: conv }, { data: contact }] = await Promise.all([
     supabase.rpc("availability_days", { p_craftsman: c.id, p_from: todayISO(), p_days: 62 }),

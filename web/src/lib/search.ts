@@ -1,5 +1,7 @@
 import "server-only";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isBot } from "@/lib/bots";
 import { toRpcArgs, type SearchState } from "@/lib/search-params";
 import type { CraftsmanCardData } from "@/components/craftsman-row";
 
@@ -27,6 +29,13 @@ export async function runSearch(s: SearchState): Promise<SearchResult> {
       total = Number((retry.data[0] as { total_count?: number }).total_count ?? 0);
       loosened = true;
     }
+  }
+  // Count the appearances (people only), after the response is sent
+  if (rows.length && !(await isBot())) {
+    const ids = rows.map((r) => r.id);
+    after(async () => {
+      await supabase.rpc("record_impressions", { p_ids: ids });
+    });
   }
   return { rows, total, loosened };
 }

@@ -49,7 +49,7 @@ export function PhoneReveal({ craftsmanId, firstName, hasPhone, visibility, sign
 
   async function reveal() {
     setState("loading");
-    const { data } = await createClient().rpc("craftsman_phone", { p_craftsman: craftsmanId });
+    const { data } = await createClient().rpc("reveal_phone", { p_craftsman: craftsmanId });
     if (data) setPhone(data);
     else setState("denied");
   }
