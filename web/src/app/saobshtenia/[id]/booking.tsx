@@ -10,6 +10,7 @@ import { SLOT_DEFS, type Range } from "@/lib/slots";
 export type Booking = {
   id: string;
   booking_date: string;
+  end_date: string | null;
   start_time: string | null;
   end_time: string | null;
   kind: "inspection" | "work";
@@ -22,7 +23,8 @@ export type Booking = {
 
 export const KIND_LABEL = { inspection: "Оглед", work: "Работа" } as const;
 
-export function bookingWhen(b: Pick<Booking, "booking_date" | "start_time" | "end_time">) {
+export function bookingWhen(b: Pick<Booking, "booking_date" | "end_date" | "start_time" | "end_time">) {
+  if (b.end_date) return `${formatDate(b.booking_date, true)} – ${formatDate(b.end_date, true)}, цели дни`;
   const t = b.start_time ? `${b.start_time.slice(0, 5)}–${b.end_time!.slice(0, 5)}` : "цял ден";
   return `${formatDate(b.booking_date, true)}, ${t}`;
 }
@@ -162,6 +164,7 @@ export function BookingSheet({
   const [from, setFrom] = useState("09:00");
   const [to, setTo] = useState("11:00");
   const [note, setNote] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [free, setFree] = useState<Range[] | null>(null);
   const [pending, start] = useTransition();
 
@@ -186,7 +189,10 @@ export function BookingSheet({
   const p = PRESETS.find((x) => x.key === preset)!;
   const startTime = preset === "custom" ? from : p.from;
   const endTime = preset === "custom" ? to : p.to;
-  const invalid = Boolean(startTime && endTime && endTime <= startTime);
+  // Several days only for work, as whole days
+  const multiDay = kind === "work" && preset === "day" && endDate !== "";
+  const invalidEnd = multiDay && endDate <= date;
+  const invalid = Boolean(startTime && endTime && endTime <= startTime) || invalidEnd;
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -199,10 +205,12 @@ export function BookingSheet({
         p_end: endTime ?? undefined,
         p_kind: kind,
         p_note: note.trim() || undefined,
+        p_end_date: multiDay ? endDate : undefined,
       });
       if (error) return void toast.error(error.message);
       toast.success(iAmCraftsman ? "Запазено в календара ти." : `Изпратено. ${partnerName.split(" ")[0]} трябва да потвърди.`);
       setNote("");
+      setEndDate("");
       onCreated();
       onClose();
     });
@@ -306,8 +314,30 @@ export function BookingSheet({
               </div>
             </div>
           )}
-          {invalid && <p className="error-text">Краят трябва да е след началото.</p>}
+          {Boolean(startTime && endTime && endTime <= startTime) && <p className="error-text">Краят трябва да е след началото.</p>}
         </fieldset>
+
+        {kind === "work" && preset === "day" && (
+          <div>
+            <label htmlFor="bk-end" className="label">
+              До ден <span className="font-normal text-ink-3">(ако работата е за няколко дни)</span>
+            </label>
+            <input
+              id="bk-end"
+              type="date"
+              className="field"
+              min={date}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              aria-invalid={invalidEnd}
+            />
+            {invalidEnd ? (
+              <p className="error-text">Крайният ден трябва да е след първия.</p>
+            ) : (
+              <p className="hint">Всички тези дни стават заети в календара. Оставете празно за един ден.</p>
+            )}
+          </div>
+        )}
 
         <div>
           <label htmlFor="bk-note" className="label">

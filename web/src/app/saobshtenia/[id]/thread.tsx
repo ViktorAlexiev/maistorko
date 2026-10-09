@@ -77,7 +77,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
     const seq = ++bookingSeq.current;
     const { data } = await supabase
       .from("bookings")
-      .select("id, booking_date, start_time, end_time, kind, status, note, proposed_by, craftsman_id, client_id")
+      .select("id, booking_date, end_date, start_time, end_time, kind, status, note, proposed_by, craftsman_id, client_id")
       .eq("conversation_id", conversationId)
       .order("created_at");
     if (data && seq === bookingSeq.current) setBookings(data as Booking[]);

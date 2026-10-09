@@ -38,7 +38,11 @@ export async function UpcomingBookings({ title = "Уговорки", limit = 8 }
                   <span className="min-w-0 flex-1">
                     <span className="block font-bold">
                       {cap(relativeDay(b.booking_date))}
-                      {b.start_time ? `, ${b.start_time.slice(0, 5)}–${b.end_time!.slice(0, 5)}` : ", цял ден"}
+                      {b.end_date
+                        ? ` – ${formatDate(b.end_date)}, цели дни`
+                        : b.start_time
+                          ? `, ${b.start_time.slice(0, 5)}–${b.end_time!.slice(0, 5)}`
+                          : ", цял ден"}
                       <span className="font-semibold text-ink-2"> · {b.kind === "inspection" ? "оглед" : "работа"}</span>
                     </span>
                     <span className="block truncate text-sm text-ink-3">

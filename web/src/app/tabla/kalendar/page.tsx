@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireCraftsman } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/format";
@@ -34,6 +35,13 @@ export default async function CalendarPage() {
       lastConfirmedAt={cp?.last_confirmed_at ?? new Date().toISOString()}
     />
       <UpcomingBookings title="Уговорени посещения" limit={20} />
+      <p className="rounded-[10px] border border-line bg-surface p-4 text-ink-2">
+        Дойде работа по телефон или от познат? Запиши я в{" "}
+        <Link href="/tabla/porachki" className="link font-bold">
+          Поръчки
+        </Link>
+        : часовете ѝ веднага стават заети тук и за клиентите.
+      </p>
     </div>
   );
 }

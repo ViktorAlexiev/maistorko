@@ -63,13 +63,13 @@ isOneToOne: false
                   ]
                 },"bookings": {
                   Row: {
-                    "booking_date": string,"client_id": string,"conversation_id": string,"craftsman_id": string,"created_at": string,"end_time": string | null,"id": string,"kind": string,"note": string | null,"proposed_by": string,"responded_by": string | null,"start_time": string | null,"status": string,"updated_at": string,"booking_label": string | null,"booking_overlaps": boolean | null
+                    "booking_date": string,"client_id": string,"conversation_id": string,"craftsman_id": string,"created_at": string,"end_date": string | null,"end_time": string | null,"id": string,"kind": string,"note": string | null,"proposed_by": string,"responded_by": string | null,"start_time": string | null,"status": string,"updated_at": string,"booking_label": string | null,"booking_overlaps": boolean | null
                   }
                   Insert: {
-                    "booking_date": string,"client_id": string,"conversation_id": string,"craftsman_id": string,"created_at"?: string,"end_time"?: string | null,"id"?: string,"kind": string,"note"?: string | null,"proposed_by": string,"responded_by"?: string | null,"start_time"?: string | null,"status"?: string,"updated_at"?: string
+                    "booking_date": string,"client_id": string,"conversation_id": string,"craftsman_id": string,"created_at"?: string,"end_date"?: string | null,"end_time"?: string | null,"id"?: string,"kind": string,"note"?: string | null,"proposed_by": string,"responded_by"?: string | null,"start_time"?: string | null,"status"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "booking_date"?: string,"client_id"?: string,"conversation_id"?: string,"craftsman_id"?: string,"created_at"?: string,"end_time"?: string | null,"id"?: string,"kind"?: string,"note"?: string | null,"proposed_by"?: string,"responded_by"?: string | null,"start_time"?: string | null,"status"?: string,"updated_at"?: string
+                    "booking_date"?: string,"client_id"?: string,"conversation_id"?: string,"craftsman_id"?: string,"created_at"?: string,"end_date"?: string | null,"end_time"?: string | null,"id"?: string,"kind"?: string,"note"?: string | null,"proposed_by"?: string,"responded_by"?: string | null,"start_time"?: string | null,"status"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -211,6 +211,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"craftsman_clients": {
+                  Row: {
+                    "address": string | null,"craftsman_id": string,"created_at": string,"id": string,"name": string,"note": string | null,"phone": string | null
+                  }
+                  Insert: {
+                    "address"?: string | null,"craftsman_id": string,"created_at"?: string,"id"?: string,"name": string,"note"?: string | null,"phone"?: string | null
+                  }
+                  Update: {
+                    "address"?: string | null,"craftsman_id"?: string,"created_at"?: string,"id"?: string,"name"?: string,"note"?: string | null,"phone"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "craftsman_clients_craftsman_id_fkey"
+      columns: ["craftsman_id"]
+isOneToOne: false
+      referencedRelation: "craftsman_profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"craftsman_profiles": {
                   Row: {
                     "avatar_url": string | null,"bio": string,"business_name": string | null,"callout_fee": number | null,"city_id": number | null,"contact_hours": string | null,"created_at": string,"display_name": string,"hourly_rate": number | null,"id": string,"inspection_fee": number | null,"inspection_policy": string | null,"is_hidden": boolean,"is_verified": boolean,"languages": (string)[],"last_confirmed_at": string,"materials_included": boolean,"other_services": string | null,"phone_visibility": string,"price_from": number | null,"price_from_unit": Database["public"]['Enums']["price_unit"] | null,"quote_on_inspection": boolean,"rating_avg": number,"rating_count": number,"search_text": string,"search_vector": unknown,"short_notice": boolean,"slug": string,"terms_note": string | null,"travel_fee": number | null,"updated_at": string,"years_experience": number | null
@@ -284,6 +303,62 @@ isOneToOne: true
 isOneToOne: false
       referencedRelation: "plans"
       referencedColumns: ["key"]
+    }
+                  ]
+                },"job_materials": {
+                  Row: {
+                    "amount": number,"craftsman_id": string,"created_at": string,"id": string,"job_id": string,"name": string,"qty": string | null
+                  }
+                  Insert: {
+                    "amount"?: number,"craftsman_id": string,"created_at"?: string,"id"?: string,"job_id": string,"name": string,"qty"?: string | null
+                  }
+                  Update: {
+                    "amount"?: number,"craftsman_id"?: string,"created_at"?: string,"id"?: string,"job_id"?: string,"name"?: string,"qty"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "job_materials_craftsman_id_fkey"
+      columns: ["craftsman_id"]
+isOneToOne: false
+      referencedRelation: "craftsman_profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "job_materials_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "jobs"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"jobs": {
+                  Row: {
+                    "client_id": string | null,"conversation_id": string | null,"craftsman_id": string,"created_at": string,"done_at": string | null,"end_date": string,"end_time": string | null,"id": string,"labor_price": number | null,"materials_by_client": boolean,"note": string | null,"source": string,"start_date": string,"start_time": string | null,"status": string,"title": string,"transport_price": number | null,"updated_at": string
+                  }
+                  Insert: {
+                    "client_id"?: string | null,"conversation_id"?: string | null,"craftsman_id": string,"created_at"?: string,"done_at"?: string | null,"end_date": string,"end_time"?: string | null,"id"?: string,"labor_price"?: number | null,"materials_by_client"?: boolean,"note"?: string | null,"source"?: string,"start_date": string,"start_time"?: string | null,"status"?: string,"title": string,"transport_price"?: number | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "client_id"?: string | null,"conversation_id"?: string | null,"craftsman_id"?: string,"created_at"?: string,"done_at"?: string | null,"end_date"?: string,"end_time"?: string | null,"id"?: string,"labor_price"?: number | null,"materials_by_client"?: boolean,"note"?: string | null,"source"?: string,"start_date"?: string,"start_time"?: string | null,"status"?: string,"title"?: string,"transport_price"?: number | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "jobs_client_id_fkey"
+      columns: ["client_id"]
+isOneToOne: false
+      referencedRelation: "craftsman_clients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "jobs_conversation_id_fkey"
+      columns: ["conversation_id"]
+isOneToOne: false
+      referencedRelation: "conversations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "jobs_craftsman_id_fkey"
+      columns: ["craftsman_id"]
+isOneToOne: false
+      referencedRelation: "craftsman_profiles"
+      referencedColumns: ["id"]
     }
                   ]
                 },"link_visits": {
@@ -509,6 +584,9 @@ isOneToOne: false
 "calendar_freshness":
 { Args: { "p_confirmed": string }; Returns: string
                            },
+"can_manage_craftsman":
+{ Args: { "p_craftsman": string }; Returns: boolean
+                           },
 "can_review":
 { Args: { "p_craftsman": string }; Returns: boolean
                            },
@@ -571,12 +649,15 @@ isOneToOne: false
 "is_banned":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"job_report":
+{ Args: { "p_from": string,"p_to": string }; Returns: Json
+                           },
 "mark_conversation_read":
 { Args: { "p_conversation": string }; Returns: undefined
                            },
 "my_bookings":
 { Args: { "p_from"?: string }; Returns: {
-              "booking_date": string,"conversation_id": string,"end_time": string,"i_am": string,"id": string,"kind": string,"note": string,"partner_name": string,"partner_slug": string,"proposed_by_me": boolean,"start_time": string,"status": string
+              "booking_date": string,"conversation_id": string,"end_date": string,"end_time": string,"i_am": string,"id": string,"kind": string,"note": string,"partner_name": string,"partner_slug": string,"proposed_by_me": boolean,"start_time": string,"status": string
             }[]
                            },
 "my_conversations":
@@ -597,7 +678,7 @@ isOneToOne: false
 { Args: { "p_craftsman": string,"p_key": string }; Returns: number
                            },
 "propose_booking":
-{ Args: { "p_conversation": string,"p_date": string,"p_end"?: string,"p_kind"?: string,"p_note"?: string,"p_start"?: string }; Returns: string
+{ Args: { "p_conversation": string,"p_date": string,"p_end"?: string,"p_end_date"?: string,"p_kind"?: string,"p_note"?: string,"p_start"?: string }; Returns: string
                            },
 "record_link_visit":
 { Args: { "p_slug": string,"p_source": string }; Returns: undefined

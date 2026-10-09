@@ -48,6 +48,8 @@ async function user(role: "client" | "craftsman", name: string) {
   return { id: data.user!.id, c };
 }
 
+const addIso = (day: string, n: number) => new Date(new Date(`${day}T12:00:00Z`).getTime() + n * 86400_000).toISOString().slice(0, 10);
+
 async function main() {
   const anon = createClient(URL, ANON, { auth: { persistSession: false } });
   console.log("→ Подготовка на тестови потребители…");
@@ -289,6 +291,88 @@ async function main() {
     const { data: asClient } = await alice.c.from("contact_requests").select("id");
     ok("обикновен потребител не вижда запитванията", !asClient || asClient.length === 0);
     await admin.from("contact_requests").delete().in("name", ["Фирма Тест", "Бот"]);
+    await admin.auth.admin.deleteUser(boss.id);
+  }
+
+  console.log("\nПоръчки и работа за няколко дни");
+  {
+    const boss = await user("client", "boss2");
+    await admin.from("profiles").update({ role: "admin" }).eq("id", boss.id);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86400_000);
+    let monday = addDays(new Date(), 1);
+    while (monday.getUTCDay() !== 1) monday = addDays(monday, 1);
+    // three Mondays in a row, each with the 08:00–17:00 rule from the phone test
+    const m1 = iso(monday);
+    const m2 = iso(addDays(monday, 7));
+    const m3 = iso(addDays(monday, 14));
+    const statusOf = async (day: string) => (await anon.rpc("availability_days", { p_craftsman: craft.id, p_from: day, p_days: 1 })).data?.[0]?.status;
+    ok("понеделникът е свободен преди поръчката", (await statusOf(m1)) === "free", await statusOf(m1));
+
+    const job = (patch: Record<string, unknown>) => ({ craftsman_id: craft.id, title: "Тест поръчка", start_date: m1, end_date: m1, ...patch });
+    const { data: j1, error: j1e } = await craft.c.from("jobs").insert(job({})).select("id").single();
+    ok("безплатен план: проста поръчка (заетост) е позволена", !j1e && Boolean(j1), j1e);
+    ok("часовете на поръчката стават заети в публичния календар", (await statusOf(m1)) === "busy", await statusOf(m1));
+
+    const { error: priced } = await craft.c.from("jobs").insert(job({ start_date: m2, end_date: m2, labor_price: 50 }));
+    ok("безплатен план: цена към поръчка е в Pro", /Pro/.test(priced?.message ?? ""), priced?.message);
+    const { error: clientErr } = await craft.c.from("craftsman_clients").insert({ craftsman_id: craft.id, name: "Петров" });
+    ok("безплатен план: клиентска карта е в Pro", /Pro/.test(clientErr?.message ?? ""), clientErr?.message);
+    const { error: rep } = await craft.c.rpc("job_report", { p_from: m1, p_to: m3 });
+    ok("безплатен план: отчетът е в Pro", /Pro/.test(rep?.message ?? ""), rep?.message);
+
+    const { error: foreign } = await other.c.from("jobs").insert({ ...job({}), craftsman_id: craft.id });
+    ok("друг майстор не може да записва поръчки от чуждо име", Boolean(foreign));
+    const { data: seen } = await other.c.from("jobs").select("id").eq("craftsman_id", craft.id);
+    ok("друг майстор не вижда чужди поръчки", !seen || seen.length === 0);
+    const { data: anonJobs } = await anon.from("jobs").select("id");
+    ok("анонимен не вижда поръчки", !anonJobs || anonJobs.length === 0);
+
+    // several days: all covered days are busy
+    const { error: multiErr } = await craft.c.from("jobs").insert(job({ start_date: m2, end_date: m3, title: "Баня, 8 дни" }));
+    ok("поръчка за няколко дни", !multiErr, multiErr);
+    ok("първият ден от периода е зает", (await statusOf(m2)) === "busy");
+    ok("последният ден от периода е зает", (await statusOf(m3)) === "busy");
+    const { error: hoursMulti } = await craft.c.from("jobs").insert(job({ start_date: m2, end_date: m3, start_time: "09:00", end_time: "11:00" }));
+    ok("часове за период от няколко дни не се приемат", Boolean(hoursMulti));
+
+    // cancelling frees the days
+    await craft.c.from("jobs").update({ status: "cancelled" }).eq("title", "Баня, 8 дни");
+    ok("отменената поръчка освобождава дните", (await statusOf(m3)) === "free", await statusOf(m3));
+    const { data: doneRow } = await craft.c.from("jobs").update({ status: "done" }).eq("id", j1!.id).select("done_at").single();
+    ok("свършена поръчка получава време на приключване", Boolean(doneRow?.done_at));
+
+    // chat bookings: overlap with a planned job is refused, multi-day works
+    await craft.c.from("jobs").update({ status: "planned" }).eq("id", j1!.id);
+    const { error: clash } = await craft.c.rpc("propose_booking", { p_conversation: convId, p_date: m1, p_kind: "work" });
+    ok("уговорка върху зает от поръчка ден е отказана", /Вече имате/.test(clash?.message ?? ""), clash?.message);
+    const { error: multiBook } = await craft.c.rpc("propose_booking", { p_conversation: convId, p_date: m2, p_end_date: m3, p_kind: "work", p_note: "ремонт" });
+    ok("уговорка за няколко дни", !multiBook, multiBook);
+    ok("потвърдена уговорка за няколко дни заема всички дни", (await statusOf(m2)) === "busy" && (await statusOf(m3)) === "busy");
+    const { error: badInspect } = await craft.c.rpc("propose_booking", { p_conversation: convId, p_date: addIso(m3, 3), p_end_date: addIso(m3, 5), p_kind: "inspection" });
+    ok("огледът не може да е за няколко дни", Boolean(badInspect));
+
+    // Pro: details and the report
+    await boss.c.rpc("admin_set_plan", { p_craftsman: craft.id, p_plan: "pro" });
+    const { data: cl, error: cle } = await craft.c.from("craftsman_clients").insert({ craftsman_id: craft.id, name: "Петров", phone: "0888" }).select("id").single();
+    ok("с Pro: клиентска карта", !cle && Boolean(cl), cle);
+    const { data: j2, error: j2e } = await craft.c
+      .from("jobs")
+      .insert(job({ start_date: addIso(m3, 7), end_date: addIso(m3, 7), client_id: cl!.id, labor_price: 60, transport_price: 10, title: "Бойлер", status: "done" }))
+      .select("id")
+      .single();
+    ok("с Pro: цени към поръчка", !j2e && Boolean(j2), j2e);
+    const { error: matErr } = await craft.c.from("job_materials").insert({ job_id: j2!.id, craftsman_id: craft.id, name: "Бойлер 80 л", amount: 240 });
+    ok("с Pro: материали", !matErr, matErr);
+    const { data: other1 } = await other.c.from("craftsman_clients").select("id").eq("craftsman_id", craft.id);
+    ok("друг майстор не вижда чужди клиенти", !other1 || other1.length === 0);
+    const { error: stolen } = await craft.c.from("jobs").insert(job({ start_date: addIso(m3, 8), end_date: addIso(m3, 8), client_id: crypto.randomUUID() }));
+    ok("поръчка към несъществуващ или чужд клиент се отказва", Boolean(stolen));
+    const { data: report } = await craft.c.rpc("job_report", { p_from: m1, p_to: addIso(m3, 30) });
+    const r = report as { done: number; labor: number; materials: number; transport: number } | null;
+    ok("отчетът смята труд 60, транспорт 10 и материали 240 за свършените", r?.labor === 60 && r?.transport === 10 && r?.materials === 240, r);
+
+    await boss.c.rpc("admin_set_plan", { p_craftsman: craft.id, p_plan: "free" });
     await admin.auth.admin.deleteUser(boss.id);
   }
 

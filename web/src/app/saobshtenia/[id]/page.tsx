@@ -28,7 +28,7 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
     supabase.rpc("conversation_partner_phone", { p_conversation: id }),
     supabase
       .from("bookings")
-      .select("id, booking_date, start_time, end_time, kind, status, note, proposed_by, craftsman_id, client_id")
+      .select("id, booking_date, end_date, start_time, end_time, kind, status, note, proposed_by, craftsman_id, client_id")
       .eq("conversation_id", id)
       .order("created_at"),
   ]);
