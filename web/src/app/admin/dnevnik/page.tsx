@@ -14,6 +14,10 @@ const ACTION: Record<string, string> = {
   contact_status: "промени статус на запитване",
   reports_done: "приключи доклади",
   reports_dismissed: "отхвърли доклади",
+  org_create: "създаде фирма",
+  org_update: "промени фирма",
+  org_owner_invite: "направи линк за собственик на фирма",
+  org_set_owner: "добави собственик на фирма",
 };
 
 export default async function AdminLogPage() {

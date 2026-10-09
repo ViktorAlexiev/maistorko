@@ -85,7 +85,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
     });
   }
 
-  const [{ data: days }, { data: reviews }, { data: canReview }, { data: saved }, { data: conv }, { data: contact }] = await Promise.all([
+  const [{ data: days }, { data: reviews }, { data: canReview }, { data: saved }, { data: conv }, { data: contact }, { data: worksAt }] = await Promise.all([
     supabase.rpc("availability_days", { p_craftsman: c.id, p_from: todayISO(), p_days: 62 }),
     supabase.rpc("craftsman_reviews", { p_craftsman: c.id, p_limit: 30 }),
     viewer && !isSelf ? supabase.rpc("can_review", { p_craftsman: c.id }) : Promise.resolve({ data: false }),
@@ -96,7 +96,10 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
       ? supabase.from("conversations").select("id").eq("client_id", viewer.id).eq("craftsman_id", c.id).maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.rpc("craftsman_contact_info", { p_craftsman: c.id }).maybeSingle(),
+    supabase.from("organization_members").select("org:organizations(name, slug, is_verified, is_hidden)").eq("user_id", c.id).maybeSingle(),
   ]);
+  const orgRaw = worksAt?.org;
+  const company = (Array.isArray(orgRaw) ? orgRaw[0] : orgRaw) as { name: string; slug: string; is_verified: boolean; is_hidden: boolean } | null | undefined;
 
   const firstName = c.display_name.split(" ")[0];
   const confirmedDaysAgo = daysSince(c.last_confirmed_at);
@@ -189,6 +192,15 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
               )}
             </h1>
             {c.business_name && <p className="mt-1 text-lg font-semibold text-ink-2">{c.business_name}</p>}
+            {company && !company.is_hidden && (
+              <p className="mt-1 text-ink-2">
+                Работи във фирма{" "}
+                <Link href={`/firmi/${company.slug}`} className="link font-bold">
+                  {company.name}
+                </Link>
+                {company.is_verified && <span className="ml-1.5 align-middle"><VerifiedBadge /></span>}
+              </p>
+            )}
             <p className="mt-2 text-lg">{catList.map((x) => x.name).join(" · ")}</p>
             <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-ink-2">
               {c.city && (

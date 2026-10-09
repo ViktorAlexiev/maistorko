@@ -525,6 +525,81 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"organization_invites": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"email": string | null,"expires_at": string,"full_name": string | null,"organization_id": string,"role": string,"token": string,"used_at": string | null,"used_by": string | null
+                  }
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"email"?: string | null,"expires_at"?: string,"full_name"?: string | null,"organization_id": string,"role"?: string,"token"?: string,"used_at"?: string | null,"used_by"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"email"?: string | null,"expires_at"?: string,"full_name"?: string | null,"organization_id"?: string,"role"?: string,"token"?: string,"used_at"?: string | null,"used_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organization_invites_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_invites_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_invites_used_by_fkey"
+      columns: ["used_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"organization_members": {
+                  Row: {
+                    "joined_at": string,"organization_id": string,"role": string,"user_id": string
+                  }
+                  Insert: {
+                    "joined_at"?: string,"organization_id": string,"role": string,"user_id": string
+                  }
+                  Update: {
+                    "joined_at"?: string,"organization_id"?: string,"role"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organization_members_organization_id_fkey"
+      columns: ["organization_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "organization_members_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: true
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"organizations": {
+                  Row: {
+                    "city_id": number | null,"created_at": string,"description": string | null,"eik": string | null,"id": string,"is_hidden": boolean,"is_verified": boolean,"name": string,"phone": string | null,"plan_status": string,"plan_valid_until": string | null,"slug": string,"updated_at": string
+                  }
+                  Insert: {
+                    "city_id"?: number | null,"created_at"?: string,"description"?: string | null,"eik"?: string | null,"id"?: string,"is_hidden"?: boolean,"is_verified"?: boolean,"name": string,"phone"?: string | null,"plan_status"?: string,"plan_valid_until"?: string | null,"slug": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "city_id"?: number | null,"created_at"?: string,"description"?: string | null,"eik"?: string | null,"id"?: string,"is_hidden"?: boolean,"is_verified"?: boolean,"name"?: string,"phone"?: string | null,"plan_status"?: string,"plan_valid_until"?: string | null,"slug"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "organizations_city_id_fkey"
+      columns: ["city_id"]
+isOneToOne: false
+      referencedRelation: "cities"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"photo_share_requests": {
                   Row: {
                     "conversation_id": string,"created_at": string,"id": string,"message_id": number,"path": string,"published_at": string | null,"requested_by": string,"status": string
@@ -763,13 +838,25 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "admin_list_users":
+            "admin_create_org":
+{ Args: { "p_city"?: string,"p_eik"?: string,"p_name": string }; Returns: Json
+                           },
+"admin_list_users":
 { Args: { "p_limit"?: number,"p_offset"?: number,"p_q"?: string,"p_role"?: Database["public"]['Enums']["user_role"] }; Returns: {
               "craftsman_slug": string,"created_at": string,"email": string,"full_name": string,"id": string,"is_banned": boolean,"is_hidden": boolean,"is_verified": boolean,"role": Database["public"]['Enums']["user_role"],"total_count": number
             }[]
                            },
+"admin_owner_invite":
+{ Args: { "p_org": string }; Returns: string
+                           },
+"admin_set_org_owner":
+{ Args: { "p_email": string,"p_org": string }; Returns: undefined
+                           },
 "admin_set_plan":
 { Args: { "p_craftsman": string,"p_note"?: string,"p_plan": string,"p_valid_until"?: string }; Returns: undefined
+                           },
+"admin_update_org":
+{ Args: { "p_clear_until"?: boolean,"p_hidden"?: boolean,"p_org": string,"p_plan_status"?: string,"p_plan_until"?: string,"p_verified"?: boolean }; Returns: undefined
                            },
 "availability_days":
 { Args: { "p_craftsman": string,"p_days": number,"p_from": string }; Returns: {
@@ -816,6 +903,9 @@ isOneToOne: false
               "hourly_count": number,"hourly_median": number,"hourly_p25": number,"hourly_p75": number,"job_count": number,"job_median": number,"job_p25": number,"job_p75": number
             }[]
                            },
+"claim_org_invite":
+{ Args: { "p_token": string }; Returns: string
+                           },
 "cleanup_old_chats":
 { Args: { "p_days"?: number }; Returns: number
                            },
@@ -847,6 +937,9 @@ isOneToOne: false
               "author": string,"body": string,"created_at": string,"id": string,"is_mine": boolean,"rating": number
             }[]
                            },
+"create_org_invite":
+{ Args: { "p_email"?: string,"p_full_name"?: string,"p_role"?: string }; Returns: string
+                           },
 "create_review_invite":
 { Args: { "p_job"?: string }; Returns: string
                            },
@@ -874,8 +967,17 @@ isOneToOne: false
 "is_conversation_member":
 { Args: { "p_conversation": string }; Returns: boolean
                            },
+"is_org_manager":
+{ Args: { "p_org": string }; Returns: boolean
+                           },
+"is_org_member":
+{ Args: { "p_org": string }; Returns: boolean
+                           },
 "job_report":
 { Args: { "p_from": string,"p_to": string }; Returns: Json
+                           },
+"leave_org":
+{ Args: Record<PropertyKey, never>; Returns: undefined
                            },
 "log_admin_action":
 { Args: { "p_action": string,"p_details"?: Json,"p_target_id"?: string,"p_target_type"?: string }; Returns: undefined
@@ -907,6 +1009,22 @@ isOneToOne: false
                            },
 "next_free_date":
 { Args: { "p_craftsman": string,"p_from": string,"p_horizon"?: number,"p_slot"?: string }; Returns: string
+                           },
+"org_invite_info":
+{ Args: { "p_token": string }; Returns: {
+              "full_name": string,"org_name": string,"org_slug": string,"role": string,"state": string
+            }[]
+                           },
+"org_plan_active":
+{ Args: { "p_org": string }; Returns: boolean
+                           },
+"org_role":
+{ Args: { "p_org": string }; Returns: string
+                           },
+"org_team":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "avatar_url": string,"joined_at": string,"last_confirmed_at": string,"name": string,"next_free": string,"role": string,"slug": string,"user_id": string
+            }[]
                            },
 "owns_craftsman":
 { Args: { "p_id": string }; Returns: boolean
@@ -946,6 +1064,9 @@ isOneToOne: false
 "refresh_craftsman_search":
 { Args: { "p_id": string }; Returns: undefined
                            },
+"remove_org_member":
+{ Args: { "p_user": string }; Returns: undefined
+                           },
 "report_content":
 { Args: { "p_details"?: string,"p_reason": string,"p_target": string,"p_type": string }; Returns: undefined
                            },
@@ -966,6 +1087,9 @@ isOneToOne: false
               "avatar_url": string,"craftsman_name": string,"craftsman_slug": string,"state": string
             }[]
                            },
+"revoke_org_invite":
+{ Args: { "p_token": string }; Returns: undefined
+                           },
 "search_craftsmen":
 { Args: { "p_any"?: boolean,"p_category"?: string,"p_city"?: string,"p_date_from"?: string,"p_date_to"?: string,"p_ids"?: (string)[],"p_limit"?: number,"p_min_rating"?: number,"p_offset"?: number,"p_price_max"?: number,"p_price_min"?: number,"p_q"?: string,"p_seed"?: string,"p_sort"?: string,"p_time"?: string,"p_verified"?: boolean }; Returns: {
               "avatar_url": string,"business_name": string,"category_names": (string)[],"city_name": string,"city_slug": string,"created_at": string,"display_name": string,"freshness": string,"id": string,"is_verified": boolean,"matched_date": string,"next_free": string,"price_from": number,"price_from_unit": Database["public"]['Enums']["price_unit"],"quote_on_inspection": boolean,"rating_avg": number,"rating_count": number,"short_notice": boolean,"slug": string,"strip": string,"total_count": number,"years_experience": number
@@ -973,6 +1097,9 @@ isOneToOne: false
                            },
 "search_stem":
 { Args: { "token": string }; Returns: string
+                           },
+"set_member_role":
+{ Args: { "p_role": string,"p_user": string }; Returns: undefined
                            },
 "slugify":
 { Args: { "input": string }; Returns: string
@@ -991,6 +1118,9 @@ isOneToOne: false
                            },
 "unique_craftsman_slug":
 { Args: { "base": string,"self_id"?: string }; Returns: string
+                           },
+"unique_org_slug":
+{ Args: { "p_name": string }; Returns: string
                            },
 "unread_total":
 { Args: Record<PropertyKey, never>; Returns: number

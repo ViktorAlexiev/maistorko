@@ -1,11 +1,13 @@
 import { requireViewer } from "@/lib/auth";
 import { DashboardNav } from "@/components/dashboard-nav";
+import { getMyOrg } from "@/lib/org";
 
 export default async function DashboardLayout({ children }: LayoutProps<"/tabla">) {
   const viewer = await requireViewer();
   const craftsman = Boolean(viewer.craftsmanSlug);
+  const org = await getMyOrg();
 
-  const items = craftsman
+  const baseItems = craftsman
     ? [
         { href: "/tabla", label: "Преглед" },
         { href: "/tabla/kalendar", label: "Календар" },
@@ -24,6 +26,10 @@ export default async function DashboardLayout({ children }: LayoutProps<"/tabla"
         { href: "/saobshtenia", label: "Съобщения" },
         { href: "/tabla/profil", label: "Профил" },
       ];
+  // members of a company get "Фирма" before the profile entry
+  const items = org
+    ? baseItems.flatMap((it) => (it.href === "/tabla/profil" ? [{ href: "/tabla/firma", label: "Фирма" }, it] : [it]))
+    : baseItems;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">

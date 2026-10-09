@@ -14,6 +14,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             { href: "/admin", label: "Потребители" },
             { href: "/admin/dokladi", label: "Доклади" },
             { href: "/admin/zapitvaniya", label: "Запитвания" },
+            { href: "/admin/firmi", label: "Фирми" },
             { href: "/admin/kategorii", label: "Категории" },
             { href: "/admin/dnevnik", label: "Дневник" },
           ]}

@@ -736,6 +736,132 @@ async function main() {
     await admin.from("craftsman_profiles").update({ rating_avg: 0, rating_count: 0 }).eq("id", craft.id);
   }
 
+  console.log("\nФирми");
+  {
+    const boss = await user("client", "boss5");
+    await admin.from("profiles").update({ role: "admin" }).eq("id", boss.id);
+    const ownerU = await user("client", "owner");
+    const mgrU = await user("client", "manager");
+    const empU = await user("client", "employee");
+    const emp2U = await user("client", "employee2");
+    const owner2 = await user("client", "owner2");
+
+    // creating a company is for admins
+    const { error: notAdmin } = await alice.c.rpc("admin_create_org", { p_name: "Нелегална ООД" });
+    ok("само админ създава фирма", Boolean(notAdmin));
+    const { data: created, error: createErr } = await boss.c.rpc("admin_create_org", { p_name: "Тест Ремонти ЕООД", p_eik: "123456789", p_city: "sofia" });
+    const org = created as { id: string; slug: string; owner_token: string };
+    ok("админ създава фирма и получава покана за собственика", !createErr && Boolean(org?.owner_token), createErr);
+    const { data: bad } = await boss.c.rpc("admin_create_org", { p_name: "Лош ЕИК", p_eik: "12ab" });
+    ok("невалиден ЕИК се отказва", !bad);
+
+    // owner invite: public info, one use
+    const { data: pubInfo } = await anon.rpc("org_invite_info", { p_token: org.owner_token });
+    ok("поканата показва само име на фирма, роля и състояние", pubInfo?.[0]?.org_name === "Тест Ремонти ЕООД" && pubInfo[0].state === "open" && !JSON.stringify(pubInfo).includes(org.id), pubInfo);
+    const { error: anonClaim } = await anon.rpc("claim_org_invite", { p_token: org.owner_token });
+    ok("поканата се приема само с вход", Boolean(anonClaim));
+    const { data: ownerSlug, error: claimErr } = await ownerU.c.rpc("claim_org_invite", { p_token: org.owner_token });
+    ok("собственикът приема поканата", !claimErr && ownerSlug === org.slug, claimErr);
+    const { error: reuse } = await mgrU.c.rpc("claim_org_invite", { p_token: org.owner_token });
+    ok("поканата е за еднократна употреба", Boolean(reuse));
+
+    // employees are invited by the owner; a craftsman profile is created with the prepared name
+    const { data: tok1, error: inv1 } = await ownerU.c.rpc("create_org_invite", { p_full_name: "Иван Тестов", p_role: "craftsman" });
+    ok("собственикът кани майстор", !inv1 && Boolean(tok1), inv1);
+    const { error: outsiderInvite } = await alice.c.rpc("create_org_invite", { p_full_name: "Х" });
+    ok("външен човек не може да кани", Boolean(outsiderInvite));
+    await empU.c.rpc("claim_org_invite", { p_token: tok1 });
+    const { data: empProfile } = await admin.from("craftsman_profiles").select("display_name").eq("id", empU.id).maybeSingle();
+    ok("поканеният става майстор с подготвеното име", empProfile?.display_name === "Иван Тестов", empProfile);
+    const { data: tok2 } = await ownerU.c.rpc("create_org_invite", { p_full_name: "Втори", p_role: "craftsman" });
+    const { error: twoOrgs } = await empU.c.rpc("claim_org_invite", { p_token: tok2 });
+    ok("човек не може да е в две фирми", Boolean(twoOrgs));
+    await emp2U.c.rpc("claim_org_invite", { p_token: tok2 });
+
+    // manager role: given by the owner; managers invite craftsmen but not managers
+    const { data: tokM } = await ownerU.c.rpc("create_org_invite", { p_full_name: "Диспечер", p_role: "manager" });
+    await mgrU.c.rpc("claim_org_invite", { p_token: tokM });
+    const { error: mgrInvMgr } = await mgrU.c.rpc("create_org_invite", { p_role: "manager" });
+    ok("мениджър не може да добавя мениджъри", Boolean(mgrInvMgr));
+    const { error: mgrInvCraft } = await mgrU.c.rpc("create_org_invite", { p_full_name: "Нов", p_role: "craftsman" });
+    ok("мениджър кани майстори", !mgrInvCraft, mgrInvCraft);
+    const { error: empInv } = await empU.c.rpc("create_org_invite", { p_full_name: "Х" });
+    ok("майстор не може да кани", Boolean(empInv));
+    const { error: ownerInvite } = await ownerU.c.rpc("create_org_invite", { p_role: "owner" });
+    ok("нов собственик не се прави с покана на собственика", Boolean(ownerInvite));
+
+    // what a manager can reach: the employee's calendar and jobs, not other companies' people
+    const { error: ruleOk } = await mgrU.c.from("availability_rules").insert({ craftsman_id: empU.id, weekday: 3, start_time: "09:00", end_time: "13:00" });
+    ok("мениджър записва график на майстор от фирмата", !ruleOk, ruleOk);
+    const { data: ownRules } = await empU.c.from("availability_rules").select("weekday").eq("craftsman_id", empU.id);
+    ok("майсторът вижда този график", ownRules?.length === 1);
+    const { error: foreignRule } = await owner2.c.from("availability_rules").insert({ craftsman_id: empU.id, weekday: 4, start_time: "09:00", end_time: "13:00" });
+    ok("собственик на друга фирма не пише в графика му", Boolean(foreignRule));
+    const { error: outsiderRule } = await alice.c.from("availability_rules").insert({ craftsman_id: empU.id, weekday: 4, start_time: "09:00", end_time: "13:00" });
+    ok("и обикновен потребител не може", Boolean(outsiderRule));
+    const { error: jobOk } = await mgrU.c.from("jobs").insert({ craftsman_id: empU.id, title: "Поръчка от диспечера", start_date: "2031-03-03", end_date: "2031-03-03" });
+    ok("мениджър разпределя поръчка на майстор", !jobOk, jobOk);
+    const { data: seenJob } = await empU.c.from("jobs").select("title").eq("craftsman_id", empU.id);
+    ok("майсторът я вижда", seenJob?.length === 1);
+    const { data: foreignJobs } = await owner2.c.from("jobs").select("id").eq("craftsman_id", empU.id);
+    ok("друга фирма не вижда поръчките му", !foreignJobs || foreignJobs.length === 0);
+    const { error: svcBlock } = await mgrU.c.from("services").insert({ craftsman_id: empU.id, name: "Не бива", price_kind: "quote" });
+    ok("профилът на майстора (услуги) остава негов", Boolean(svcBlock));
+
+    // company plan: Pro features for the employee while the plan is active
+    const { data: planOn } = await admin.rpc("craftsman_plan", { p_craftsman: empU.id });
+    const { data: featOn } = await admin.rpc("has_feature", { p_craftsman: empU.id, p_feature: "job_details" });
+    ok("майсторът във фирма получава плана на фирмата", planOn === "company" && featOn === true, planOn);
+    await boss.c.rpc("admin_update_org", { p_org: org.id, p_plan_status: "paused" });
+    const { data: planOff } = await admin.rpc("craftsman_plan", { p_craftsman: empU.id });
+    ok("със спрян план на фирмата майсторът е безплатен", planOff === "free", planOff);
+    await boss.c.rpc("admin_update_org", { p_org: org.id, p_plan_status: "active" });
+
+    // company profile editing
+    const { error: nameOk } = await mgrU.c.from("organizations").update({ name: "Тест Ремонти и Монтаж", description: "Работим в София" }).eq("id", org.id);
+    ok("мениджър редактира профила на фирмата", !nameOk, nameOk);
+    const { error: verifyBlock } = await mgrU.c.from("organizations").update({ is_verified: true }).eq("id", org.id);
+    const { data: stillUnverified } = await admin.from("organizations").select("is_verified").eq("id", org.id).single();
+    ok("фирмата не може сама да се обяви за проверена", Boolean(verifyBlock) || stillUnverified?.is_verified === false);
+    const { error: outsiderEdit } = await alice.c.from("organizations").update({ name: "Хакнато" }).eq("id", org.id);
+    const { data: nameNow } = await admin.from("organizations").select("name").eq("id", org.id).single();
+    ok("външен човек не редактира фирма", Boolean(outsiderEdit) || nameNow?.name !== "Хакнато");
+    await boss.c.rpc("admin_update_org", { p_org: org.id, p_verified: true });
+    const { data: pubOrg } = await anon.from("organizations").select("name, is_verified").eq("id", org.id).single();
+    ok("публично се вижда проверената фирма", pubOrg?.is_verified === true);
+
+    // members: who is visible
+    const { data: seenByOwner } = await ownerU.c.from("organization_members").select("user_id, role").eq("organization_id", org.id);
+    ok("членовете на фирмата виждат екипа си", seenByOwner?.length === 4, seenByOwner?.length);
+    const { data: seenByOutsider } = await alice.c.from("organization_members").select("user_id").eq("organization_id", org.id);
+    ok("външен не вижда непубликуван екип", !seenByOutsider || seenByOutsider.length === 0);
+    const { data: invitesSeen } = await empU.c.from("organization_invites").select("token").eq("organization_id", org.id);
+    ok("майсторът не вижда поканите", !invitesSeen || invitesSeen.length === 0);
+
+    // removing and leaving
+    const { error: rmOwner } = await mgrU.c.rpc("remove_org_member", { p_user: ownerU.id });
+    ok("собственикът не може да бъде махнат", Boolean(rmOwner));
+    const { error: roleBlock } = await mgrU.c.rpc("set_member_role", { p_user: emp2U.id, p_role: "manager" });
+    ok("роли сменя само собственикът", Boolean(roleBlock));
+    const { error: roleOk } = await ownerU.c.rpc("set_member_role", { p_user: emp2U.id, p_role: "manager" });
+    ok("собственикът прави мениджър от майстор", !roleOk, roleOk);
+    const { error: leaveOwner } = await ownerU.c.rpc("leave_org");
+    ok("собственикът не може да напусне", Boolean(leaveOwner));
+    const { error: rmEmp } = await mgrU.c.rpc("remove_org_member", { p_user: empU.id });
+    ok("мениджър маха майстор", !rmEmp, rmEmp);
+    const { error: afterRemove } = await mgrU.c.from("availability_rules").insert({ craftsman_id: empU.id, weekday: 5, start_time: "09:00", end_time: "13:00" });
+    ok("махнатият вече не е достъпен за мениджъра", Boolean(afterRemove));
+    const { data: planAfter } = await admin.rpc("craftsman_plan", { p_craftsman: empU.id });
+    ok("и губи плана на фирмата", planAfter === "free", planAfter);
+    const { data: keepsProfile } = await admin.from("craftsman_profiles").select("id").eq("id", empU.id).maybeSingle();
+    ok("профилът на майстора остава негов", Boolean(keepsProfile));
+    const { error: leave } = await emp2U.c.rpc("leave_org");
+    ok("служител напуска сам", !leave, leave);
+
+    for (const id of [boss.id, ownerU.id, mgrU.id, empU.id, emp2U.id, owner2.id]) await admin.auth.admin.deleteUser(id);
+    await admin.from("organizations").delete().eq("id", org.id);
+  }
+
   console.log("\nМодерация");
   {
     await admin.from("craftsman_profiles").update({ is_hidden: true }).eq("id", other.id);

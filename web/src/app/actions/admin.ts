@@ -137,3 +137,50 @@ export async function resolveReports(targetUser: string, status: "done" | "dismi
   revalidatePath("/admin/dokladi");
   return { ok: !error, message: error ? "Неуспешно." : status === "done" ? "Докладите са приключени." : "Докладите са отхвърлени." };
 }
+
+// ---------------------------------------------------------------------------
+// Companies
+// ---------------------------------------------------------------------------
+export async function createOrganization(name: string, eik: string, city: string) {
+  const supabase = await adminClient();
+  const { data, error } = await supabase.rpc("admin_create_org", { p_name: name, p_eik: eik || undefined, p_city: city || undefined });
+  if (error) return { ok: false as const, message: error.message.includes("check") ? "Невалиден ЕИК (9 до 13 цифри)." : error.message };
+  const org = data as { id: string; slug: string; owner_token: string };
+  await log(supabase, "org_create", { type: "organization", id: org.id }, { name });
+  revalidatePath("/admin/firmi");
+  return { ok: true as const, message: "Фирмата е създадена.", slug: org.slug, token: org.owner_token };
+}
+
+export async function updateOrganization(
+  id: string,
+  patch: { verified?: boolean; hidden?: boolean; planStatus?: "active" | "paused" },
+) {
+  const supabase = await adminClient();
+  const { error } = await supabase.rpc("admin_update_org", {
+    p_org: id,
+    p_verified: patch.verified,
+    p_hidden: patch.hidden,
+    p_plan_status: patch.planStatus,
+  });
+  if (!error) await log(supabase, "org_update", { type: "organization", id }, patch);
+  revalidatePath("/admin/firmi");
+  revalidatePath("/firmi", "layout");
+  return { ok: !error, message: error ? "Неуспешно." : "Записано." };
+}
+
+export async function newOwnerInvite(id: string) {
+  const supabase = await adminClient();
+  const { data, error } = await supabase.rpc("admin_owner_invite", { p_org: id });
+  if (!error) await log(supabase, "org_owner_invite", { type: "organization", id });
+  return error || !data
+    ? { ok: false as const, message: "Неуспешно." }
+    : { ok: true as const, message: "Нов линк за собственика.", token: data as string };
+}
+
+export async function setOrganizationOwner(id: string, email: string) {
+  const supabase = await adminClient();
+  const { error } = await supabase.rpc("admin_set_org_owner", { p_org: id, p_email: email });
+  if (!error) await log(supabase, "org_set_owner", { type: "organization", id }, { email });
+  revalidatePath("/admin/firmi");
+  return { ok: !error, message: error ? error.message : "Собственикът е добавен." };
+}

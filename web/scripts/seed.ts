@@ -672,6 +672,7 @@ async function must<T>(p: PromiseLike<{ data: T; error: unknown }>, what: string
 }
 
 async function deleteDemoUsers() {
+  await db.from("organizations").delete().eq("slug", "stoyanov-remonti");
   let page = 1;
   for (;;) {
     const { data, error } = await db.auth.admin.listUsers({ page, perPage: 200 });
@@ -1015,6 +1016,31 @@ async function main() {
     }),
     "booking message",
   );
+
+  // A demo company: Стоянов owns it, Христо is a manager, Иван and Димитър are craftsmen
+  const { data: demoOrg } = await db
+    .from("organizations")
+    .insert({
+      slug: "stoyanov-remonti",
+      name: "Стоянов Ремонти ЕООД",
+      eik: "204512345",
+      city_id: cityId("sofia"),
+      is_verified: true,
+      description: "Ремонти на жилища и офиси в София: боя, ВиК и електро. Екип от четирима майстори, работим с писмена оферта.",
+      phone: "0899 000 200",
+    })
+    .select("id")
+    .single();
+  if (demoOrg) {
+    for (const [key, role] of [
+      ["stoyanov", "owner"],
+      ["hristo-ivanov", "manager"],
+      ["ivan-dimitrov", "craftsman"],
+      ["dimitar-kolev", "craftsman"],
+    ] as const) {
+      await must(db.from("organization_members").insert({ organization_id: demoOrg.id, user_id: craftsmanIds[key], role }), `org member ${key}`);
+    }
+  }
 
   // Saved craftsmen for the demo client
   await must(
