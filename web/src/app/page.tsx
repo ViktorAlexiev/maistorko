@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, CalendarCheck, MessageCircle, Tags } from "lucide-react";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isBot } from "@/lib/bots";
+import { rankSeed } from "@/lib/rank-seed";
+import { pickForHome } from "@/lib/home-picks";
 import { getCategoryCounts, getCategoryTree, getCities } from "@/lib/data";
 import { addDaysISO, onWeekday, todayISO } from "@/lib/format";
 import { SearchBand } from "@/components/search-band";
@@ -14,8 +18,15 @@ export default async function HomePage() {
     getCategoryTree(),
     getCities(),
     getCategoryCounts(),
-    supabase.rpc("search_craftsmen", { p_sort: "soonest", p_limit: 4, p_verified: true }),
+    supabase.rpc("search_craftsmen", { p_sort: "recommended", p_limit: 12, p_seed: await rankSeed("home") }),
   ]);
+  const homeRows = pickForHome((soon ?? []) as CraftsmanCardData[]);
+  if (homeRows.length && !(await isBot())) {
+    const ids = homeRows.map((r) => r.id);
+    after(async () => {
+      await supabase.rpc("record_impressions", { p_ids: ids });
+    });
+  }
 
   const target = addDaysISO(todayISO(), 2);
   const weekdayPhrase = onWeekday(target);
@@ -66,7 +77,7 @@ export default async function HomePage() {
             </div>
             <RuleLegend className="mt-2" />
             <div className="stagger stagger-slow mt-4 grid gap-3">
-              {(soon as CraftsmanCardData[] | null)?.slice(0, 3).map((c) => (
+              {homeRows.map((c) => (
                 <CraftsmanRow key={c.id} c={c} compact />
               ))}
             </div>

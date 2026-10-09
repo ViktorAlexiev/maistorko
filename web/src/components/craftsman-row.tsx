@@ -25,6 +25,7 @@ export type CraftsmanCardData = {
   matched_date: string | null;
   strip: string | null;
   freshness: string;
+  created_at?: string;
 };
 
 /** A catalog row: who, what, how much, and the folding rule of the next 14 days. */

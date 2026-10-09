@@ -326,13 +326,13 @@ isOneToOne: false
                   ]
                 },"daily_stats": {
                   Row: {
-                    "craftsman_id": string,"day": string,"impressions": number,"phone_reveals": number,"views": number
+                    "craftsman_id": string,"day": string,"exposure": number,"impressions": number,"phone_reveals": number,"views": number
                   }
                   Insert: {
-                    "craftsman_id": string,"day"?: string,"impressions"?: number,"phone_reveals"?: number,"views"?: number
+                    "craftsman_id": string,"day"?: string,"exposure"?: number,"impressions"?: number,"phone_reveals"?: number,"views"?: number
                   }
                   Update: {
-                    "craftsman_id"?: string,"day"?: string,"impressions"?: number,"phone_reveals"?: number,"views"?: number
+                    "craftsman_id"?: string,"day"?: string,"exposure"?: number,"impressions"?: number,"phone_reveals"?: number,"views"?: number
                   }
                   Relationships: [
                     {
@@ -876,8 +876,13 @@ isOneToOne: false
 "queue_email":
 { Args: { "p_notification": number }; Returns: undefined
                            },
+"rank_signals":
+{ Args: { "p_ids": (string)[] }; Returns: {
+              "craftsman_id": string,"e": number,"f": number,"n": number,"p": number,"q": number,"r": number
+            }[]
+                           },
 "record_impressions":
-{ Args: { "p_ids": (string)[] }; Returns: undefined
+{ Args: { "p_ids": (string)[],"p_offset"?: number }; Returns: undefined
                            },
 "record_link_visit":
 { Args: { "p_slug": string,"p_source": string }; Returns: undefined
@@ -906,7 +911,7 @@ isOneToOne: false
             }[]
                            },
 "search_craftsmen":
-{ Args: { "p_any"?: boolean,"p_category"?: string,"p_city"?: string,"p_date_from"?: string,"p_date_to"?: string,"p_ids"?: (string)[],"p_limit"?: number,"p_min_rating"?: number,"p_offset"?: number,"p_price_max"?: number,"p_price_min"?: number,"p_q"?: string,"p_sort"?: string,"p_time"?: string,"p_verified"?: boolean }; Returns: {
+{ Args: { "p_any"?: boolean,"p_category"?: string,"p_city"?: string,"p_date_from"?: string,"p_date_to"?: string,"p_ids"?: (string)[],"p_limit"?: number,"p_min_rating"?: number,"p_offset"?: number,"p_price_max"?: number,"p_price_min"?: number,"p_q"?: string,"p_seed"?: string,"p_sort"?: string,"p_time"?: string,"p_verified"?: boolean }; Returns: {
               "avatar_url": string,"business_name": string,"category_names": (string)[],"city_name": string,"city_slug": string,"created_at": string,"display_name": string,"freshness": string,"id": string,"is_verified": boolean,"matched_date": string,"next_free": string,"price_from": number,"price_from_unit": Database["public"]['Enums']["price_unit"],"quote_on_inspection": boolean,"rating_avg": number,"rating_count": number,"short_notice": boolean,"slug": string,"strip": string,"total_count": number,"years_experience": number
             }[]
                            },

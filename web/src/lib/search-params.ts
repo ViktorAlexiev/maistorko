@@ -1,7 +1,7 @@
 // Shareable search URLs: Bulgarian-transliterated query params <-> RPC args.
 
 export type TimeSlot = "morning" | "afternoon" | "evening";
-export type SortKey = "soonest" | "price" | "rating" | "newest" | "relevance";
+export type SortKey = "recommended" | "soonest" | "price" | "rating" | "newest" | "relevance";
 
 export const TIME_SLOTS: { value: TimeSlot; param: string; label: string; hours: string }[] = [
   { value: "morning", param: "sutrin", label: "Сутрин", hours: "до 12 ч." },
@@ -10,6 +10,7 @@ export const TIME_SLOTS: { value: TimeSlot; param: string; label: string; hours:
 ];
 
 export const SORTS: { value: SortKey; param: string; label: string }[] = [
+  { value: "recommended", param: "preporacani", label: "Препоръчани" },
   { value: "soonest", param: "nai-skoro", label: "Най-скоро свободни" },
   { value: "price", param: "nai-evtini", label: "Най-ниска цена" },
   { value: "rating", param: "reyting", label: "Най-висок рейтинг" },
@@ -43,7 +44,7 @@ export function parseSearch(raw: Raw, fixedCategory?: string): SearchState {
   const time = TIME_SLOTS.find((t) => t.param === one(raw.chas))?.value ?? "";
   const q = one(raw.q).slice(0, 120).trim();
   const sortParam = one(raw.sort);
-  const sort = SORTS.find((s) => s.param === sortParam)?.value ?? (q ? "relevance" : "soonest");
+  const sort = SORTS.find((s) => s.param === sortParam)?.value ?? "recommended";
   const date = one(raw.data);
   const dateTo = one(raw.do);
   return {
@@ -74,7 +75,7 @@ export function toQueryString(s: Partial<SearchState>, fixedCategory?: string) {
   if (s.priceMax) p.set("tsena_do", s.priceMax);
   if (s.rating) p.set("reyting", s.rating);
   if (s.verified) p.set("provereni", "1");
-  const defaultSort = s.q ? "relevance" : "soonest";
+  const defaultSort = "recommended";
   if (s.sort && s.sort !== defaultSort) p.set("sort", SORTS.find((x) => x.value === s.sort)!.param);
   if (s.page && s.page > 1) p.set("str", String(s.page));
   const str = p.toString();

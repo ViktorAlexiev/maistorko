@@ -585,6 +585,83 @@ async function main() {
     for (const id of [...extra, spammer.id, tidy.id, dupe.id, boss.id]) await admin.auth.admin.deleteUser(id);
   }
 
+  console.log("\nЧестно класиране");
+  {
+    type Sig = { craftsman_id: string; r: number; p: number; f: number; q: number; n: number; e: number };
+    const signals = async (ids: string[]) => ((await admin.rpc("rank_signals", { p_ids: ids })).data ?? []) as Sig[];
+    const pick = (rows: Sig[], id: string) => rows.find((r) => r.craftsman_id === id)!;
+
+    // one review of 5.0 does not beat forty of 4.8
+    await admin.from("craftsman_profiles").update({ rating_avg: 5, rating_count: 1 }).eq("id", craft.id);
+    await admin.from("craftsman_profiles").update({ rating_avg: 4.8, rating_count: 40 }).eq("id", other.id);
+    let sig = await signals([craft.id, other.id]);
+    ok("рейтингът е предпазлив: 40 отзива с 4,8 бият 1 отзив с 5,0", Number(pick(sig, other.id).r) > Number(pick(sig, craft.id).r), sig.map((x) => x.r));
+
+    // newcomer bonus only for new craftsmen with few reviews, fading with age
+    await admin.from("craftsman_profiles").update({ created_at: new Date(Date.now() - 200 * 86400_000).toISOString() }).eq("id", other.id);
+    sig = await signals([craft.id, other.id]);
+    ok("бонусът за нов е само за нови с малко отзиви", Number(pick(sig, craft.id).n) > 0.1 && Number(pick(sig, other.id).n) === 0, sig.map((x) => x.n));
+
+    // an old calendar scores 0 for freshness
+    await admin.from("craftsman_profiles").update({ last_confirmed_at: new Date(Date.now() - 40 * 86400_000).toISOString() }).eq("id", other.id);
+    sig = await signals([craft.id, other.id]);
+    ok("календар без потвърждение 40 дни носи 0 точки, пресен календар около 1", Number(pick(sig, other.id).f) === 0 && Number(pick(sig, craft.id).f) > 0.9, sig.map((x) => x.f));
+
+    // answering quickly beats having no history (prior 4 of 5)
+    sig = await signals([craft.id, other.id]);
+    ok("отговорил бързо е над този без история", Number(pick(sig, craft.id).p) > Number(pick(sig, other.id).p), sig.map((x) => x.p));
+    ok("всички показатели са в границите си", sig.every((x) => [x.r, x.p, x.f, x.q].every((v) => Number(v) >= 0 && Number(v) <= 1.0001) && Number(x.n) <= 0.15));
+
+    // determinism: the same seed gives the same order, and the function is open to the public
+    const order = async (seed: string | null, ids: string[]) =>
+      ((await anon.rpc("search_craftsmen", { p_sort: "recommended", p_ids: ids, p_seed: seed ?? undefined, p_limit: 20 })).data ?? []).map((r: { id: string }) => r.id);
+    ok("rank_signals не е достъпна през API", Boolean((await anon.rpc("rank_signals", { p_ids: [craft.id] })).error));
+
+    // exposure fairness with two identical craftsmen: the one shown far more moves down
+    const clones: string[] = [];
+    for (let n = 0; n < 2; n++) {
+      const { data } = await admin.auth.admin.createUser({
+        email: `clone-${n}-${Date.now()}@maistorko.test`,
+        password: PASS,
+        email_confirm: true,
+        user_metadata: { full_name: `Клон ${n}`, role: "craftsman", city: "sofia" },
+      });
+      const id = data.user!.id;
+      clones.push(id);
+      await admin.from("craftsman_profiles").update({ quote_on_inspection: true, bio: "Еднакво описание", rating_avg: 0, rating_count: 0 }).eq("id", id);
+      await admin.from("craftsman_categories").insert({ craftsman_id: id, category_id: cat!.id });
+      await admin.from("availability_rules").insert({ craftsman_id: id, weekday: 1, start_time: "08:00", end_time: "17:00" });
+      await admin.from("craftsman_profiles").update({ last_confirmed_at: new Date().toISOString(), created_at: "2026-01-01T00:00:00Z" }).eq("id", id);
+    }
+    clones.sort();
+    // same seed -> same order; different seeds take turns between equal craftsmen
+    const o1 = await order("seed-1", clones);
+    const o2 = await order("seed-1", clones);
+    ok("същото семе дава същия ред", o1.length === 2 && JSON.stringify(o1) === JSON.stringify(o2), { o1, o2 });
+    const firsts = new Set<string>();
+    for (let n = 0; n < 14; n++) firsts.add((await order(`seed-${n}`, clones))[0]);
+    ok("при равни оценки различните семена дават различен първи", firsts.size === 2, [...firsts]);
+    const base = await order(null, clones);
+    ok("еднакви майстори без показвания: редът е предвидим", base.length === 2 && base[0] === clones[0], base);
+    const day = new Date().toISOString().slice(0, 10);
+    await admin.from("daily_stats").upsert({ craftsman_id: clones[0], day, impressions: 500, exposure: 400 });
+    const flipped = await order(null, clones);
+    ok("който е бил показван много, слиза пред равен на него", flipped[0] === clones[1], flipped);
+    await admin.from("daily_stats").upsert({ craftsman_id: clones[1], day, impressions: 500, exposure: 400 });
+    const even = await order(null, clones);
+    ok("при равна видимост редът се връща", even[0] === clones[0], even);
+
+    // the recorded exposure follows position: first place is worth more than the tenth
+    await anon.rpc("record_impressions", { p_ids: [clones[0], clones[1]], p_offset: 0 });
+    const { data: ex } = await admin.from("daily_stats").select("craftsman_id, exposure").in("craftsman_id", clones);
+    const e0 = Number(ex?.find((r) => r.craftsman_id === clones[0])?.exposure);
+    const e1 = Number(ex?.find((r) => r.craftsman_id === clones[1])?.exposure);
+    ok("първо място носи повече видимост от второ", e0 - 400 > e1 - 400 && e0 - 400 > 0.99, { e0, e1 });
+
+    for (const id of clones) await admin.auth.admin.deleteUser(id);
+    await admin.from("craftsman_profiles").update({ rating_avg: 0, rating_count: 0 }).eq("id", craft.id);
+  }
+
   console.log("\nМодерация");
   {
     await admin.from("craftsman_profiles").update({ is_hidden: true }).eq("id", other.id);

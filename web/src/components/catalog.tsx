@@ -135,6 +135,14 @@ export async function Catalog({
         ) : (
           <>
             <RuleLegend className="mt-4" />
+            {state.sort === "recommended" && (
+              <p className="mt-2 text-sm text-ink-3">
+                „Препоръчани“ е подредено по едни и същи правила за всички.{" "}
+                <Link href="/kak-podrejdame" className="link font-semibold">
+                  Как подреждаме
+                </Link>
+              </p>
+            )}
             <ol className="stagger mt-3 grid gap-3">
               {result.rows.map((c) => (
                 <li key={c.id}>

@@ -21,6 +21,7 @@ export function SiteFooter() {
             ["/maistori", "Всички майстори"],
             ["/kategorii", "Категории"],
             ["/registratsia", "Регистрация"],
+            ["/kak-podrejdame", "Как подреждаме"],
           ]}
         />
         <FooterCol
