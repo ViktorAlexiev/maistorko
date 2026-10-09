@@ -3,6 +3,7 @@ import { requireViewer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Thread, type ChatMessage } from "./thread";
 import type { Booking } from "./booking";
+import type { Share } from "./chat-photos";
 
 export default async function ConversationPage({ params }: PageProps<"/saobshtenia/[id]">) {
   const { id } = await params;
@@ -17,7 +18,7 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
     .maybeSingle();
   if (!conv) notFound();
 
-  const [{ data: summaries }, { data: messages }, { data: phone }, { data: bookings }] = await Promise.all([
+  const [{ data: summaries }, { data: messages }, { data: phone }, { data: bookings }, { data: shares }] = await Promise.all([
     supabase.rpc("my_conversations"),
     supabase
       .from("messages")
@@ -31,6 +32,10 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
       .select("id, booking_date, end_date, start_time, end_time, kind, status, note, proposed_by, craftsman_id, client_id")
       .eq("conversation_id", id)
       .order("created_at"),
+    supabase
+      .from("photo_share_requests")
+      .select("id, message_id, path, status, published_at, requested_by")
+      .eq("conversation_id", id),
   ]);
   const summary = summaries?.find((s) => s.id === id);
   const category = Array.isArray(conv.category) ? conv.category[0] : conv.category;
@@ -54,6 +59,7 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
       categoryName={category?.name ?? null}
       initial={((messages ?? []) as ChatMessage[]).reverse()}
       initialBookings={(bookings ?? []) as Booking[]}
+      initialShares={(shares ?? []) as Share[]}
       craftsmanId={conv.craftsman_id}
       banned={viewer.profile.is_banned}
     />

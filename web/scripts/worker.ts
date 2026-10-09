@@ -100,6 +100,26 @@ export async function sendDueEmails() {
   return { sent, skipped, failed };
 }
 
+/** Deletes the photo files of conversations whose messages were purged (files cannot be removed with SQL). */
+export async function purgeChatPhotos() {
+  const { data: queue } = await db.from("chat_photo_purge_queue").select("conversation_id").limit(20);
+  let removed = 0;
+  for (const q of queue ?? []) {
+    for (let round = 0; round < 50; round++) {
+      const { data: files, error } = await db.storage.from("chat-photos").list(q.conversation_id, { limit: 100 });
+      if (error) break; // stays queued, tried again next minute
+      if (!files?.length) {
+        await db.from("chat_photo_purge_queue").delete().eq("conversation_id", q.conversation_id);
+        break;
+      }
+      const { error: rmErr } = await db.storage.from("chat-photos").remove(files.map((f) => `${q.conversation_id}/${f.name}`));
+      if (rmErr) break;
+      removed += files.length;
+    }
+  }
+  return removed;
+}
+
 let lastDaily = "";
 let lastWeekly = "";
 
@@ -131,6 +151,8 @@ export async function runMaintenance(now = new Date()) {
 async function tick() {
   const mails = await sendDueEmails();
   const maintenance = await runMaintenance();
+  const photos = await purgeChatPhotos();
+  if (photos) maintenance.push(`изтрити снимки от чата: ${photos}`);
   const parts = [
     mails.sent || mails.skipped || mails.failed ? `писма: изпратени ${mails.sent}, пропуснати ${mails.skipped}, грешки ${mails.failed}` : "",
     ...maintenance,

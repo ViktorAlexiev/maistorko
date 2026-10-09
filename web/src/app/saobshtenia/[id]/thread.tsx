@@ -3,12 +3,23 @@
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, CalendarCheck, CalendarDays, CalendarPlus, Check, CheckCheck, Phone, RotateCw, SendHorizontal, Star } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/avatar";
 import { formatDate, formatTime, relativeDay, servicePrice, todayISO, type PriceKind, type PriceUnit } from "@/lib/format";
 import { slotLabel } from "@/lib/slots";
 import { BookingCard, BookingSheet, bookingWhen, KIND_LABEL, type Booking } from "./booking";
 import { ReportButton } from "@/components/report-button";
+import {
+  AttachButton,
+  AttachmentStrip,
+  MAX_ATTACHMENTS,
+  PhotoTile,
+  publishToPortfolio,
+  uploadChatPhotos,
+  type Attachment,
+  type Share,
+} from "./chat-photos";
 
 export type ChatMessage = {
   id: number;
@@ -24,6 +35,8 @@ export type ChatMessage = {
     price_kind?: PriceKind;
     price?: number | null;
     unit?: PriceUnit;
+    photos?: { path: string }[];
+    share_request?: string;
   } | null;
   created_at: string;
   pending?: boolean;
@@ -40,6 +53,7 @@ type Props = {
   categoryName: string | null;
   initial: ChatMessage[];
   initialBookings: Booking[];
+  initialShares?: Share[];
   craftsmanId: string;
   banned: boolean;
   /** Inside the chat window on a profile: the window draws its own header. */
@@ -53,7 +67,7 @@ type Props = {
 let tempSeq = 0;
 const sofiaDay = (ts: string) => new Date(ts).toLocaleDateString("en-CA", { timeZone: "Europe/Sofia" });
 
-export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, craftsmanId, banned, embedded, draft, purgedAt }: Props) {
+export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, banned, embedded, draft, purgedAt }: Props) {
   const supabase = createClient();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   const [text, setText] = useState(draft ?? "");
@@ -65,6 +79,11 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
   const [live, setLive] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [sheet, setSheet] = useState(false);
+  const [shares, setShares] = useState<Share[]>(initialShares);
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [sending, setSending] = useState(false);
+  const [busyPath, setBusyPath] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const atBottom = useRef(true);
@@ -86,6 +105,35 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
     if (data && seq === bookingSeq.current) setBookings(data as Booking[]);
   }, [supabase, conversationId]);
 
+  const refreshShares = useCallback(async () => {
+    const { data } = await supabase
+      .from("photo_share_requests")
+      .select("id, message_id, path, status, published_at, requested_by")
+      .eq("conversation_id", conversationId);
+    if (data) setShares(data as Share[]);
+  }, [supabase, conversationId]);
+
+  // Photos live in a private bucket: ask for short-lived signed links for the ones on screen
+  useEffect(() => {
+    const need = [...new Set(messages.flatMap((m) => m.meta?.photos ?? []).map((p) => p.path))].filter((p) => !urls[p]);
+    if (!need.length) return;
+    let alive = true;
+    supabase.storage
+      .from("chat-photos")
+      .createSignedUrls(need, 3600)
+      .then(({ data }) => {
+        if (!alive || !data) return;
+        setUrls((u) => {
+          const n = { ...u };
+          for (const d of data) if (d.path && d.signedUrl) n[d.path] = d.signedUrl;
+          return n;
+        });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [messages, urls, supabase]);
+
   // Realtime: new messages and booking changes in this conversation (RLS-filtered on the server)
   useEffect(() => {
     markRead();
@@ -105,7 +153,13 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
           });
           if (m.sender_id !== me && document.visibilityState === "visible") markRead();
           if (m.meta?.booking_id) refreshBookings();
+          if (m.meta?.share_request) refreshShares();
         },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "photo_share_requests", filter: `conversation_id=eq.${conversationId}` },
+        () => refreshShares(),
       )
       .on(
         "postgres_changes",
@@ -119,20 +173,21 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
       document.removeEventListener("visibilitychange", onVisible);
       supabase.removeChannel(channel);
     };
-  }, [supabase, conversationId, me, markRead, refreshBookings]);
+  }, [supabase, conversationId, me, markRead, refreshBookings, refreshShares]);
 
   useLayoutEffect(() => {
     const el = scroller.current;
     if (el && atBottom.current) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  async function send(body: string, tempId = crypto.randomUUID()) {
+  async function send(body: string, tempId = crypto.randomUUID(), photos?: string[]) {
+    const meta = photos?.length ? { photos: photos.map((path) => ({ path })) } : {};
     const optimistic: ChatMessage = {
       id: --tempSeq,
       tempId,
       sender_id: me,
       body,
-      meta: {},
+      meta,
       created_at: new Date().toISOString(),
       pending: true,
     };
@@ -140,7 +195,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
     setMessages((xs) => [...xs.filter((x) => x.tempId !== tempId), optimistic]);
     const { data, error } = await supabase
       .from("messages")
-      .insert({ conversation_id: conversationId, sender_id: me, body })
+      .insert({ conversation_id: conversationId, sender_id: me, body, ...(photos?.length ? { meta } : {}) })
       .select("id, sender_id, body, meta, created_at")
       .single();
     setMessages((xs) => {
@@ -150,14 +205,90 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
     });
   }
 
-  function submit(e?: React.FormEvent) {
+  async function submit(e?: React.FormEvent) {
     e?.preventDefault();
     const body = text.trim();
-    if (!body || body.length > 4000) return;
+    if ((!body && attachments.length === 0) || body.length > 4000 || sending) return;
+    if (attachments.length === 0) {
+      setText("");
+      send(body);
+      box.current?.focus();
+      return;
+    }
+    setSending(true);
+    const { paths, errors } = await uploadChatPhotos(supabase, conversationId, attachments.map((a) => a.file));
+    errors.forEach((msg) => toast.error(msg));
+    attachments.forEach((a) => URL.revokeObjectURL(a.preview));
+    setAttachments([]);
+    setSending(false);
     setText("");
-    send(body);
+    if (paths.length) await send(body || (paths.length === 1 ? "📷 Снимка" : `📷 Снимки (${paths.length})`), undefined, paths);
+    else if (body) await send(body);
     box.current?.focus();
   }
+
+  function pickFiles(files: File[]) {
+    const room = MAX_ATTACHMENTS - attachments.length;
+    if (files.length > room) toast.message(`Най-много ${MAX_ATTACHMENTS} снимки наведнъж.`);
+    setAttachments((xs) => [
+      ...xs,
+      ...files.slice(0, Math.max(room, 0)).map((file) => ({ key: crypto.randomUUID(), file, preview: URL.createObjectURL(file) })),
+    ]);
+  }
+
+  function removeAttachment(key: string) {
+    setAttachments((xs) => {
+      const gone = xs.find((a) => a.key === key);
+      if (gone) URL.revokeObjectURL(gone.preview);
+      return xs.filter((a) => a.key !== key);
+    });
+  }
+
+  // Craftsman: add a chat photo to the public portfolio (his own, or the client's after the client agreed)
+  async function addToProfile(path: string, shareId?: string) {
+    setBusyPath(path);
+    try {
+      await publishToPortfolio(supabase, me, path);
+      if (shareId) {
+        await supabase.rpc("mark_photo_share_published", { p_request: shareId });
+        await refreshShares();
+      }
+      toast.success("Снимката е добавена в профила ти.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Снимката не беше добавена.");
+    } finally {
+      setBusyPath(null);
+    }
+  }
+
+  async function askShare(messageId: number, path: string) {
+    setBusyPath(path);
+    const { error } = await supabase.rpc("request_photo_share", { p_message: messageId, p_path: path });
+    setBusyPath(null);
+    if (error) return void toast.error(error.message);
+    toast.success("Питахме клиента. Снимката се добавя само ако се съгласи.");
+    refreshShares();
+  }
+
+  async function respondShare(id: string, accept: boolean) {
+    const { error } = await supabase.rpc("respond_photo_share", { p_request: id, p_accept: accept });
+    if (error) toast.error(error.message);
+    refreshShares();
+  }
+
+  function photoAction(m: ChatMessage, path: string) {
+    if (iAmClient || m.pending || m.failed || m.id < 0) return undefined;
+    const busy = busyPath === path;
+    if (m.sender_id === me) return { label: "Покажи в профила", disabled: busy, onClick: () => addToProfile(path) };
+    const share = shares.find((s) => s.message_id === m.id && s.path === path);
+    if (!share) return { label: "Поискай съгласие", disabled: busy, onClick: () => askShare(m.id, path) };
+    if (share.status === "pending") return { label: "Чака клиента", disabled: true };
+    if (share.status === "declined") return { label: "Клиентът не се съгласи", disabled: true };
+    if (share.published_at) return { label: "В профила ти", disabled: true, done: true };
+    return { label: "Добави в профила", disabled: busy, onClick: () => addToProfile(path, share.id) };
+  }
+
+  const shareById = new Map(shares.map((s) => [s.id, s]));
 
   const partnerReplied = messages.some((m) => m.sender_id === partner.id);
   const today = todayISO();
@@ -251,7 +382,38 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
                     {day === today ? "Днес" : relativeDay(day, today) === "утре" ? formatDate(day) : formatDate(day, true)}
                   </p>
                 )}
-                {m.meta?.booking_id ? (
+                {m.meta?.share_request ? (
+                  m.meta.event === "asked" ? (
+                    <div className="mx-auto my-2 w-full max-w-md rounded-[10px] border-[1.5px] border-ink bg-surface p-3.5">
+                      <p className="text-sm font-bold text-ink-2">Снимка в профила</p>
+                      <p className="mt-0.5">{m.body}</p>
+                      {(() => {
+                        const share = shareById.get(m.meta!.share_request!);
+                        if (!share) return null;
+                        if (share.status !== "pending") {
+                          return <p className="mt-2 text-sm font-semibold text-ink-3">{share.status === "approved" ? "Съгласие дадено." : "Отказано."}</p>;
+                        }
+                        return iAmClient ? (
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <button type="button" className="btn bg-free text-white hover:bg-free/90" onClick={() => respondShare(share.id, true)}>
+                              Съгласен съм
+                            </button>
+                            <button type="button" className="btn btn-outline" onClick={() => respondShare(share.id, false)}>
+                              Не
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-sm text-ink-2">Чакаме отговор от {partner.name.split(" ")[0]}.</p>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <p className="my-1 text-center text-sm text-ink-2">
+                      <span className="font-semibold">{mine ? "Вие" : partner.name.split(" ")[0]}:</span> {m.body}
+                      <span className="ml-1.5 text-xs text-ink-3">{formatTime(m.created_at)}</span>
+                    </p>
+                  )
+                ) : m.meta?.booking_id ? (
                   firstMessageFor.get(m.meta.booking_id) === m.id && byId.get(m.meta.booking_id) ? (
                     <BookingCard booking={byId.get(m.meta.booking_id)!} me={me} partnerName={partner.name} onChanged={refreshBookings} />
                   ) : (
@@ -292,6 +454,13 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
                           m.meta.category && <span className="font-semibold">{m.meta.category}</span>
                         )}
                       </p>
+                    )}
+                    {m.meta?.photos && m.meta.photos.length > 0 && (
+                      <div className="mb-1.5 flex flex-wrap gap-1.5">
+                        {m.meta.photos.map((p) => (
+                          <PhotoTile key={p.path} url={urls[p.path]} action={photoAction(m, p.path)} />
+                        ))}
+                      </div>
                     )}
                     <p className="whitespace-pre-wrap break-words">{m.body}</p>
                     <p className={`mt-0.5 flex items-center justify-end gap-1 text-[0.72rem] ${mine ? "text-white/60" : "text-ink-3"}`}>
@@ -337,7 +506,9 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
         </p>
       ) : (
         <form onSubmit={submit} className="safe-bottom border-t border-line bg-surface px-3 pt-3 sm:px-4">
+          <AttachmentStrip items={attachments} onRemove={removeAttachment} busy={sending} />
           <div className="mx-auto flex max-w-2xl items-end gap-2">
+            <AttachButton onPick={pickFiles} disabled={sending || attachments.length >= MAX_ATTACHMENTS} />
             <button
               type="button"
               className="btn btn-outline size-11 shrink-0 p-0 sm:w-auto sm:px-3"
@@ -372,7 +543,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
               className="field max-h-40 min-h-11 resize-none py-2.5"
               enterKeyHint="send"
             />
-            <button type="submit" className="btn btn-primary size-11 shrink-0 p-0" disabled={!text.trim()} aria-label="Изпрати">
+            <button type="submit" className="btn btn-primary size-11 shrink-0 p-0" disabled={(!text.trim() && attachments.length === 0) || sending} aria-label="Изпрати">
               <SendHorizontal className="size-5" aria-hidden />
             </button>
           </div>

@@ -135,6 +135,8 @@ npm run worker:once   # one pass
 
 The worker uses the service role key, so it is a server-side process of its own, never part of the web app. In production run it as a separate process or scheduled job.
 
+Photos in chats: the paperclip next to the message box. Photos are re-encoded in the browser (EXIF/GPS dropped) and stored in the private bucket `chat-photos/<conversation id>/…`; only the two participants can read them (signed links, one hour). A craftsman can add his own chat photos to his portfolio, and a client's photo only after the client says yes in the chat ("Поискай съгласие"). The photos of a conversation are deleted by the worker together with its messages after 60 idle days.
+
 Review links: a craftsman creates one per finished job (Поръчки → "Поискай отзив") and sends it to the client, who signs in and rates at `/otzyv/<token>`. A link works once and expires after 90 days.
 
 ## How it works

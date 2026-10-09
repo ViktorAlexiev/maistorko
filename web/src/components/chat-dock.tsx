@@ -7,6 +7,7 @@ import { startConversation } from "@/app/actions/engage";
 import type { FormState } from "@/app/actions/auth";
 import { Thread, type ChatMessage } from "@/app/saobshtenia/[id]/thread";
 import type { Booking } from "@/app/saobshtenia/[id]/booking";
+import type { Share } from "@/app/saobshtenia/[id]/chat-photos";
 import { Avatar } from "@/components/avatar";
 import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
 import { createClient } from "@/lib/supabase/client";
@@ -317,6 +318,7 @@ function FirstMessage({
 type Loaded = {
   messages: ChatMessage[];
   bookings: Booking[];
+  shares: Share[];
   phone: string | null;
   requestedDate: string | null;
   categoryName: string | null;
@@ -355,13 +357,18 @@ function DockThread({
         .eq("conversation_id", conversationId)
         .order("created_at"),
       supabase.rpc("conversation_partner_phone", { p_conversation: conversationId }),
-    ]).then(([conv, msgs, bookings, phone]) => {
+      supabase
+        .from("photo_share_requests")
+        .select("id, message_id, path, status, published_at, requested_by")
+        .eq("conversation_id", conversationId),
+    ]).then(([conv, msgs, bookings, phone, shares]) => {
       if (stale) return;
       if (conv.error || msgs.error || !conv.data) return setFailed(true);
       const cat = Array.isArray(conv.data.category) ? conv.data.category[0] : conv.data.category;
       setData({
         messages: ((msgs.data ?? []) as ChatMessage[]).reverse(),
         bookings: (bookings.data ?? []) as Booking[],
+        shares: (shares.data ?? []) as Share[],
         phone: phone.data ?? null,
         requestedDate: conv.data.requested_date,
         categoryName: cat?.name ?? null,
@@ -394,6 +401,7 @@ function DockThread({
         categoryName={data.categoryName}
         initial={data.messages}
         initialBookings={data.bookings}
+        initialShares={data.shares}
         craftsmanId={craftsman.id}
         banned={banned}
         embedded

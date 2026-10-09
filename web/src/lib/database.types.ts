@@ -142,6 +142,19 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"chat_photo_purge_queue": {
+                  Row: {
+                    "conversation_id": string,"created_at": string
+                  }
+                  Insert: {
+                    "conversation_id": string,"created_at"?: string
+                  }
+                  Update: {
+                    "conversation_id"?: string,"created_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"cities": {
                   Row: {
                     "id": number,"is_major": boolean,"name": string,"region": string,"slug": string,"sort": number
@@ -512,6 +525,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"photo_share_requests": {
+                  Row: {
+                    "conversation_id": string,"created_at": string,"id": string,"message_id": number,"path": string,"published_at": string | null,"requested_by": string,"status": string
+                  }
+                  Insert: {
+                    "conversation_id": string,"created_at"?: string,"id"?: string,"message_id": number,"path": string,"published_at"?: string | null,"requested_by": string,"status"?: string
+                  }
+                  Update: {
+                    "conversation_id"?: string,"created_at"?: string,"id"?: string,"message_id"?: number,"path"?: string,"published_at"?: string | null,"requested_by"?: string,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "photo_share_requests_conversation_id_fkey"
+      columns: ["conversation_id"]
+isOneToOne: false
+      referencedRelation: "conversations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "photo_share_requests_message_id_fkey"
+      columns: ["message_id"]
+isOneToOne: false
+      referencedRelation: "messages"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "photo_share_requests_requested_by_fkey"
+      columns: ["requested_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"plans": {
                   Row: {
                     "features": (string)[],"key": string,"limits": NonNullable<Json>,"name": string,"price_month": number,"sort": number
@@ -827,6 +871,9 @@ isOneToOne: false
 "is_banned":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"is_conversation_member":
+{ Args: { "p_conversation": string }; Returns: boolean
+                           },
 "job_report":
 { Args: { "p_from": string,"p_to": string }; Returns: Json
                            },
@@ -838,6 +885,9 @@ isOneToOne: false
                            },
 "mark_notifications_read":
 { Args: { "p_ids"?: (number)[] }; Returns: number
+                           },
+"mark_photo_share_published":
+{ Args: { "p_request": string }; Returns: undefined
                            },
 "my_bookings":
 { Args: { "p_from"?: string }; Returns: {
@@ -899,8 +949,14 @@ isOneToOne: false
 "report_content":
 { Args: { "p_details"?: string,"p_reason": string,"p_target": string,"p_type": string }; Returns: undefined
                            },
+"request_photo_share":
+{ Args: { "p_message": number,"p_path": string }; Returns: string
+                           },
 "respond_booking":
 { Args: { "p_action": string,"p_booking": string }; Returns: string
+                           },
+"respond_photo_share":
+{ Args: { "p_accept": boolean,"p_request": string }; Returns: string
                            },
 "reveal_phone":
 { Args: { "p_craftsman": string }; Returns: string

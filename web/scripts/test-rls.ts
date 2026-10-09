@@ -376,6 +376,77 @@ async function main() {
     await admin.auth.admin.deleteUser(boss.id);
   }
 
+  console.log("\nСнимки в чата");
+  {
+    const PNG = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
+    const upload = (c: typeof alice.c, path: string) => c.storage.from("chat-photos").upload(path, PNG, { contentType: "image/png" });
+    const p1 = `${convId}/test-${Date.now()}-a.png`;
+    const p2 = `${convId}/test-${Date.now()}-b.png`;
+
+    const { error: upOk } = await upload(alice.c, p1);
+    ok("участник качва снимка в своя разговор", !upOk, upOk);
+    const { error: upCraft } = await upload(craft.c, p2);
+    ok("и другият участник може да качва", !upCraft, upCraft);
+    const { error: upOut } = await upload(bob.c, `${convId}/outsider.png`);
+    ok("външен човек не може да качва в чужд разговор", Boolean(upOut));
+    const { error: upAnon } = await upload(anon as typeof alice.c, `${convId}/anon.png`);
+    ok("анонимен не може да качва", Boolean(upAnon));
+    const { error: wrongType } = await alice.c.storage.from("chat-photos").upload(`${convId}/x.html`, new Blob(["<script>"], { type: "text/html" }), { contentType: "text/html" });
+    ok("не приема файлове, които не са снимки", Boolean(wrongType));
+
+    const { data: signed } = await craft.c.storage.from("chat-photos").createSignedUrl(p1, 60);
+    ok("другият участник вижда снимката през подписан линк", Boolean(signed?.signedUrl), signed);
+    const { data: bobSigned, error: bobSignErr } = await bob.c.storage.from("chat-photos").createSignedUrl(p1, 60);
+    ok("външен човек не получава линк към снимката", Boolean(bobSignErr) || !bobSigned?.signedUrl, bobSigned);
+    const { error: bobDl } = await bob.c.storage.from("chat-photos").download(p1);
+    ok("външен човек не може да я свали", Boolean(bobDl));
+    const { error: anonUrl } = await anon.storage.from("chat-photos").createSignedUrl(p1, 60);
+    ok("анонимен не получава линк към снимката", Boolean(anonUrl));
+    const publicTry = await fetch(`${URL}/storage/v1/object/public/chat-photos/${p1}`);
+    ok("кофата не е публична", publicTry.status >= 400, publicTry.status);
+
+    // messages with photos: only inside their own conversation folder, at most 6
+    const { data: pm, error: pmErr } = await alice.c
+      .from("messages")
+      .insert({ conversation_id: convId, sender_id: alice.id, body: "📷 Снимка", meta: { photos: [{ path: p1 }] } })
+      .select("id")
+      .single();
+    ok("съобщение със снимка", !pmErr && Boolean(pm), pmErr);
+    const { error: foreignPath } = await alice.c.from("messages").insert({ conversation_id: convId, sender_id: alice.id, body: "x", meta: { photos: [{ path: `${crypto.randomUUID()}/x.png` }] } });
+    ok("снимка от друг разговор се отказва", Boolean(foreignPath));
+    const { error: manyPhotos } = await alice.c.from("messages").insert({ conversation_id: convId, sender_id: alice.id, body: "x", meta: { photos: Array.from({ length: 7 }, (_, n) => ({ path: `${convId}/${n}.png` })) } });
+    ok("над 6 снимки в съобщение се отказват", Boolean(manyPhotos));
+    const { error: traversal } = await alice.c.from("messages").insert({ conversation_id: convId, sender_id: alice.id, body: "x", meta: { photos: [{ path: `${convId}/../x.png` }] } });
+    ok("път с .. се отказва", Boolean(traversal));
+
+    // the craftsman asks, the client decides
+    const { data: reqId, error: reqErr } = await craft.c.rpc("request_photo_share", { p_message: pm!.id, p_path: p1 });
+    ok("майсторът пита за снимка на клиента", !reqErr && Boolean(reqId), reqErr);
+    const { data: again } = await craft.c.rpc("request_photo_share", { p_message: pm!.id, p_path: p1 });
+    ok("същата заявка не се дублира", again === reqId);
+    const { error: clientAsks } = await alice.c.rpc("request_photo_share", { p_message: pm!.id, p_path: p1 });
+    ok("клиентът не може да пита себе си", Boolean(clientAsks));
+    const { error: notClients } = await craft.c.rpc("request_photo_share", { p_message: pm!.id, p_path: `${convId}/not-in-message.png` });
+    ok("не се пита за снимка, която не е в съобщението", Boolean(notClients));
+    const { error: earlyPublish } = await craft.c.rpc("mark_photo_share_published", { p_request: reqId });
+    ok("без съгласие снимката не се отбелязва за публикуване", Boolean(earlyPublish));
+    const { error: bobResp } = await bob.c.rpc("respond_photo_share", { p_request: reqId, p_accept: true });
+    ok("външен човек не може да отговаря", Boolean(bobResp));
+    const { error: craftResp } = await craft.c.rpc("respond_photo_share", { p_request: reqId, p_accept: true });
+    ok("майсторът не може да отговаря вместо клиента", Boolean(craftResp));
+    const { data: seenByBob } = await bob.c.from("photo_share_requests").select("id");
+    ok("заявките не се виждат от външни", !seenByBob || seenByBob.length === 0);
+    const { data: answer, error: ansErr } = await alice.c.rpc("respond_photo_share", { p_request: reqId, p_accept: true });
+    ok("клиентът се съгласява", !ansErr && answer === "approved", ansErr);
+    const { error: twice } = await alice.c.rpc("respond_photo_share", { p_request: reqId, p_accept: false });
+    ok("не може да промени отговора", Boolean(twice));
+    const { error: publish } = await craft.c.rpc("mark_photo_share_published", { p_request: reqId });
+    ok("след съгласие майсторът отбелязва публикуване", !publish, publish);
+
+    await alice.c.storage.from("chat-photos").remove([p1]);
+    await craft.c.storage.from("chat-photos").remove([p2]);
+  }
+
   console.log("\nИзвестия, отзив по линк и чистене");
   {
     // several messages in one conversation stay one notification and one pending e-mail
@@ -444,6 +515,9 @@ async function main() {
     const { data: purged } = await admin.rpc("cleanup_old_chats", { p_days: 60 });
     const { count: msgsAfter } = await admin.from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", convId);
     ok("след 60 дни без разговор текстовете се изтриват", (msgsBefore ?? 0) > 0 && msgsAfter === 0 && (purged ?? 0) >= 1, { msgsBefore, msgsAfter, purged });
+    const { data: queued } = await admin.from("chat_photo_purge_queue").select("conversation_id").eq("conversation_id", convId);
+    ok("файловете на изчистен разговор влизат в опашка за триене", (queued?.length ?? 0) === 1);
+    await admin.from("chat_photo_purge_queue").delete().eq("conversation_id", convId);
     const { data: kept } = await admin.from("conversations").select("messages_purged_at").eq("id", convId).single();
     ok("разговорът остава, с отбелязано чистене", Boolean(kept?.messages_purged_at));
     const { count: bookingsKept } = await admin.from("bookings").select("id", { count: "exact", head: true }).eq("conversation_id", convId);
