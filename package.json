@@ -13,7 +13,12 @@
     "test:rls": "npm --prefix web run test:rls",
     "dev": "npm --prefix web run dev",
     "build": "npm --prefix web run build",
-    "lint": "npm --prefix web run lint"
+    "lint": "npm --prefix web run lint",
+    "build:demo": "node scripts/demo.mjs build",
+    "start": "npm --prefix web run start",
+    "demo:up": "node scripts/demo.mjs up",
+    "demo:url": "node scripts/demo.mjs url",
+    "demo:down": "node scripts/demo.mjs down"
   },
   "devDependencies": {
     "supabase": "^2.118.0"

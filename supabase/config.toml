@@ -162,6 +162,9 @@ site_url = "http://localhost:3000"
 additional_redirect_urls = ["http://localhost:3000/**", "http://127.0.0.1:3000/**"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
+# Own secret instead of the CLI's well-known default, so the public demo (nginx + tunnel) can't be
+# accessed with forged tokens. Set in supabase/.env (gitignored, see supabase/.env.example).
+jwt_secret = "env(SUPABASE_AUTH_JWT_SECRET)"
 # JWT issuer URL. If not set, defaults to auth.external_url.
 # jwt_issuer = ""
 # Path to JWT signing key. DO NOT commit your signing keys file to git.

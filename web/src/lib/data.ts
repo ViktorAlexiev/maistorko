@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { storageBase } from "@/lib/supabase/config";
 
 export type City = { id: number; slug: string; name: string; region: string; is_major: boolean };
 export type Category = {
@@ -46,5 +47,5 @@ export const getCategoryCounts = cache(async (): Promise<Record<string, number>>
 
 export function photoUrl(path: string) {
   if (path.startsWith("/") || path.startsWith("http")) return path;
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/work-photos/${path}`;
+  return `${storageBase}/storage/v1/object/public/work-photos/${path}`;
 }

@@ -1,4 +1,5 @@
 import { initials } from "@/lib/format";
+import { publicStorageUrl } from "@/lib/supabase/config";
 
 // Deterministic monogram colors from the rule world (enamel, ink, brass, green)
 const PAIRS = [
@@ -34,7 +35,7 @@ export function Avatar({
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={url}
+        src={publicStorageUrl(url)}
         alt=""
         width={size}
         height={size}

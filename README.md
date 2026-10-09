@@ -32,8 +32,11 @@ Requirements: Node 20.9+, Docker Desktop (running), ~4 GB free RAM for the Supab
 ```bash
 npm install          # installs the Supabase CLI (root)
 npm run setup        # installs the web app
+cp supabase/.env.example supabase/.env   # then put a long random string in SUPABASE_AUTH_JWT_SECRET
 npm run db:start     # starts local Supabase and applies supabase/migrations
 ```
+
+The own JWT secret replaces the CLI's publicly known default, so tokens can't be forged when the demo is exposed through the tunnel (section 4).
 
 Copy the keys printed by `npm run db:status` (or `npx supabase status -o env`) into `web/.env.local`:
 
@@ -96,6 +99,24 @@ npm --prefix web run typecheck
 `test:rls` creates throwaway users with the service role, runs every assertion through the public anon key as anonymous / client / craftsman / admin, then deletes them. It covers private profiles, chat privacy, spoofed senders, reviews only after a real conversation, protected columns (verified badge, rating, role), storage folder ownership and MIME limits, hidden and banned users.
 
 ---
+
+## 4. Public demo (nginx + Cloudflare tunnel)
+
+Lets friends open the local site from anywhere at a random `https://….trycloudflare.com` address. Nothing on the router changes.
+
+```bash
+npm run db:start     # local Supabase (with the own JWT secret from supabase/.env)
+npm run build:demo   # build where the browser reaches Supabase through the site's own origin
+npm start            # the site on :3000
+npm run demo:up      # nginx (local http://localhost:8080) + tunnel; prints the public URL
+npm run demo:down    # stop nginx + tunnel
+```
+
+- nginx (`demo/nginx.conf`) serves the app and proxies only `/rest/v1`, `/auth/v1`, `/storage/v1` and `/realtime/v1` to Supabase. Studio, Mailpit, pg-meta and the auth admin API are not reachable. The CLI's public `sb_secret_` key is rejected, and auth calls are rate-limited.
+- The quick-tunnel URL changes every time the tunnel restarts; `npm run demo:url` prints the current one. No rebuild is needed when it changes.
+- Port 80 on Windows is often taken by IIS (W3SVC). The tunnel does not need it. To use port 80 locally anyway, stop IIS and run `DEMO_PORT=80 npm run demo:up`.
+- A `build:demo` build expects nginx in front of it. For plain local development use `npm run dev` or a normal `npm run build`.
+- The demo accounts and their password are in this README, which is public on GitHub. Anyone who gets the tunnel URL can log in as them, including the admin.
 
 ## How it works
 
