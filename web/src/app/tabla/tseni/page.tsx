@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireCraftsman } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PricingForm, type Initial } from "./pricing-form";
+import { getMyPlan } from "@/lib/plan";
 import { ServicesEditor } from "./services-editor";
 
 export const metadata: Metadata = { title: "Цени и услуги", robots: { index: false } };
@@ -9,6 +10,7 @@ export const metadata: Metadata = { title: "Цени и услуги", robots: {
 export default async function PricesPage() {
   const viewer = await requireCraftsman();
   const supabase = await createClient();
+  const plan = await getMyPlan();
   const [{ data: cp }, { data: services }, { data: links }] = await Promise.all([
     supabase
       .from("craftsman_profiles")
@@ -99,6 +101,7 @@ export default async function PricesPage() {
         userId={viewer.id}
         initial={(services ?? []).map((s) => ({ ...s, price: s.price != null ? String(s.price) : "" }))}
         categories={cats.map((c) => ({ id: c.id, name: c.name }))}
+        limit={plan.limits.services ?? null}
       />
     </div>
   );

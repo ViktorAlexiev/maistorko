@@ -7,11 +7,13 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { checkImage, shrinkImage } from "@/components/image-upload";
 import { EmptyState } from "@/components/bits";
+import { LimitNote } from "@/components/limit-note";
 
 type Photo = { id: string; path: string; caption: string | null; sort: number; url: string };
-const MAX = 24;
+const HARD_MAX = 24;
 
-export function PhotoManager({ userId, initial }: { userId: string; initial: Photo[] }) {
+export function PhotoManager({ userId, initial, limit }: { userId: string; initial: Photo[]; limit: number | null }) {
+  const MAX = limit ?? HARD_MAX;
   const supabase = createClient();
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
@@ -21,7 +23,10 @@ export function PhotoManager({ userId, initial }: { userId: string; initial: Pho
 
   async function upload(files: FileList) {
     const list = Array.from(files).slice(0, MAX - photos.length);
-    if (files.length > list.length) toast.message(`Можете да имате до ${MAX} снимки.`);
+    if (files.length > list.length) {
+      toast.message(limit != null ? `Безплатният план позволява до ${MAX} снимки. С Pro няма ограничение.` : `Можете да имате до ${MAX} снимки.`);
+    }
+    if (list.length === 0) return;
     setUploading(list.length);
     for (const file of list) {
       const problem = checkImage(file, 5);
@@ -101,9 +106,10 @@ export function PhotoManager({ userId, initial }: { userId: string; initial: Pho
         <button type="button" className="btn btn-primary" disabled={uploading > 0 || photos.length >= MAX} onClick={() => input.current?.click()}>
           <ImagePlus className="size-4" aria-hidden /> {uploading ? `Качваме (${uploading})…` : "Качи снимки"}
         </button>
-        <p className="text-sm text-ink-3">
-          JPG, PNG или WEBP, до 5 MB всяка. {photos.length}/{MAX}
-        </p>
+        <div className="grid gap-0.5">
+          <p className="text-sm text-ink-3">JPG, PNG или WEBP, до 5 MB всяка.</p>
+          {limit != null ? <LimitNote used={photos.length} limit={limit} what="снимки" /> : <p className="text-sm text-ink-3 tabular">{photos.length}/{HARD_MAX}</p>}
+        </div>
       </div>
 
       {photos.length === 0 && uploading === 0 ? (

@@ -737,6 +737,13 @@ async function main() {
     const email = `${c.key}@${DOMAIN}`;
     const id = await createUser(email, { full_name: c.name, role: "craftsman", city: c.city });
     craftsmanIds[c.key] = id;
+    // The main demo craftsman has Pro so every Pro feature can be shown; the others stay on the free plan
+    if (c.key === "maistor") {
+      await must(
+        db.from("craftsman_subscriptions").insert({ craftsman_id: id, plan: "pro", source: "admin", note: "демо" }),
+        "demo pro plan",
+      );
+    }
     // Demo numbers only (0899 000 1xx), never real ones
     await must(db.from("profiles").update({ phone: `0899 000 ${String(100 + i)}` }).eq("id", id), "craftsman phone");
 

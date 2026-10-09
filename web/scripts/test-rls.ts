@@ -251,6 +251,47 @@ async function main() {
     ok("майсторът не може сам да променя броячите", Boolean(writeErr) || still?.[0]?.visits === 2, still);
   }
 
+  console.log("\nПланове и лимити");
+  {
+    const boss = await user("client", "boss");
+    await admin.from("profiles").update({ role: "admin" }).eq("id", boss.id);
+
+    const svc = (n: number) => ({ craftsman_id: craft.id, name: `Услуга ${n}`, price_kind: "fixed" as const, price: 10 });
+    let firstFail = 0;
+    for (let n = 1; n <= 9; n++) {
+      const { error } = await craft.c.from("services").insert(svc(n));
+      if (error && !firstFail) firstFail = n;
+    }
+    ok("безплатен план: 9-та услуга е отказана", firstFail === 9, firstFail);
+    const { error: limitMsg } = await craft.c.from("services").insert(svc(10));
+    ok("съобщението за лимита е на български", /Безплатният план/.test(limitMsg?.message ?? ""), limitMsg?.message);
+
+    const { error: selfPro } = await craft.c.rpc("admin_set_plan", { p_craftsman: craft.id, p_plan: "pro" });
+    ok("майсторът не може сам да си даде Pro", Boolean(selfPro));
+    const { error: bossPro } = await boss.c.rpc("admin_set_plan", { p_craftsman: craft.id, p_plan: "pro" });
+    ok("админ може да включи Pro", !bossPro, bossPro);
+    const { error: afterPro } = await craft.c.from("services").insert(svc(11));
+    ok("с Pro няма лимит за услуги", !afterPro, afterPro);
+    const { data: mine } = await craft.c.rpc("my_plan");
+    ok("my_plan показва Pro и ползването", (mine as { plan?: string; usage?: { services: number } })?.plan === "pro" && (mine as { usage: { services: number } }).usage.services >= 9, mine);
+    await boss.c.rpc("admin_set_plan", { p_craftsman: craft.id, p_plan: "free" });
+    const { data: back } = await craft.c.rpc("craftsman_plan", { p_craftsman: craft.id });
+    ok("връщане към безплатен план", back === "free", back);
+
+    // contact requests: only through the function, only admins read
+    const { error: directInsert } = await anon.from("contact_requests").insert({ kind: "pro", name: "Тест", contact: "0888000000" });
+    ok("не може да се пише директно в contact_requests", Boolean(directInsert));
+    const { data: sent, error: sendErr } = await anon.rpc("submit_contact_request", { p_kind: "company", p_name: "Фирма Тест", p_contact: "0888 000 000", p_message: "Здравейте", p_payload: { employees: "5" }, p_trap: "" });
+    ok("анонимен може да изпрати запитване през функцията", !sendErr && Boolean(sent), sendErr);
+    await anon.rpc("submit_contact_request", { p_kind: "other", p_name: "Бот", p_contact: "bot@example.com", p_trap: "http://spam" });
+    const { data: asAdmin } = await boss.c.from("contact_requests").select("name, kind").in("name", ["Фирма Тест", "Бот"]);
+    ok("админ вижда запитването, а капанът за ботове не записва нищо", asAdmin?.length === 1 && asAdmin[0].name === "Фирма Тест", asAdmin);
+    const { data: asClient } = await alice.c.from("contact_requests").select("id");
+    ok("обикновен потребител не вижда запитванията", !asClient || asClient.length === 0);
+    await admin.from("contact_requests").delete().in("name", ["Фирма Тест", "Бот"]);
+    await admin.auth.admin.deleteUser(boss.id);
+  }
+
   console.log("\nМодерация");
   {
     await admin.from("craftsman_profiles").update({ is_hidden: true }).eq("id", other.id);

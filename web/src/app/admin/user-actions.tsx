@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { setBanned, setHidden, setVerified } from "@/app/actions/admin";
+import { setBanned, setHidden, setPlan, setVerified } from "@/app/actions/admin";
 
 export function UserActions({
   id,
@@ -11,6 +11,7 @@ export function UserActions({
   banned,
   verified,
   hidden,
+  plan,
 }: {
   id: string;
   isAdmin: boolean;
@@ -18,6 +19,7 @@ export function UserActions({
   banned: boolean;
   verified: boolean;
   hidden: boolean;
+  plan: string;
 }) {
   const [pending, start] = useTransition();
   const act = (fn: () => Promise<{ ok: boolean; message: string }>) =>
@@ -37,6 +39,15 @@ export function UserActions({
         <>
           <button type="button" className="btn btn-outline btn-sm" disabled={pending} onClick={() => act(() => setVerified(id, !verified))}>
             {verified ? "Махни „Проверен“" : "Маркирай като проверен"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            disabled={pending}
+            onClick={() => act(() => (plan === "free" ? setPlan(id, "pro", 12) : setPlan(id, "free", null)))}
+            title={plan === "free" ? "Включва Pro за 12 месеца" : "Връща безплатния план"}
+          >
+            {plan === "free" ? "Дай Pro (12 мес.)" : `Махни ${plan === "pro" ? "Pro" : "плана"}`}
           </button>
           <button type="button" className="btn btn-outline btn-sm" disabled={pending} onClick={() => act(() => setHidden(id, !hidden))}>
             {hidden ? "Покажи" : "Скрий"}

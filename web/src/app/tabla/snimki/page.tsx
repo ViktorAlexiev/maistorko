@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireCraftsman } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { photoUrl } from "@/lib/data";
+import { getMyPlan } from "@/lib/plan";
 import { PhotoManager } from "./photo-manager";
 
 export const metadata: Metadata = { title: "Снимки", robots: { index: false } };
@@ -9,6 +10,7 @@ export const metadata: Metadata = { title: "Снимки", robots: { index: fals
 export default async function PhotosPage() {
   const viewer = await requireCraftsman();
   const supabase = await createClient();
+  const plan = await getMyPlan();
   const { data } = await supabase
     .from("work_photos")
     .select("id, path, caption, sort")
@@ -25,6 +27,7 @@ export default async function PhotosPage() {
       </div>
       <PhotoManager
         userId={viewer.id}
+        limit={plan.limits.photos ?? null}
         initial={(data ?? []).map((p) => ({ ...p, url: photoUrl(p.path) }))}
       />
     </div>

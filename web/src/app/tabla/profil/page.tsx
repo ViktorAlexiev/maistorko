@@ -3,6 +3,7 @@ import { requireViewer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getCategoryTree, getCities } from "@/lib/data";
 import { AvatarUpload } from "@/components/avatar-upload";
+import { getMyPlan } from "@/lib/plan";
 import { ClientProfileForm, CraftsmanProfileForm } from "./profile-forms";
 
 export const metadata: Metadata = { title: "Профил", robots: { index: false } };
@@ -50,6 +51,7 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
     );
   }
 
+  const plan = await getMyPlan();
   const [{ data: cp }, { data: cats }, { data: areas }] = await Promise.all([
     supabase
       .from("craftsman_profiles")
@@ -67,6 +69,7 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
         email={viewer.email}
         cities={cities}
         tree={tree}
+        maxAreas={plan.limits.cities != null ? Math.max(plan.limits.cities - 1, 0) : null}
         initial={{
           displayName: cp?.display_name ?? "",
           businessName: cp?.business_name ?? "",

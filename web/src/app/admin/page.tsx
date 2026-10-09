@@ -25,6 +25,14 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
     p_offset: (page - 1) * PAGE,
   });
   const total = Number(data?.[0]?.total_count ?? 0);
+  const ids = (data ?? []).filter((u) => u.craftsman_slug).map((u) => u.id);
+  const { data: subs } = ids.length
+    ? await supabase.from("craftsman_subscriptions").select("craftsman_id, plan, status, valid_until").in("craftsman_id", ids)
+    : { data: [] };
+  const planOf = (id: string) => {
+    const s = (subs ?? []).find((x) => x.craftsman_id === id);
+    return s && s.status === "active" && (!s.valid_until || new Date(s.valid_until) > new Date()) ? s.plan : "free";
+  };
   const qs = (patch: Record<string, string | number>) => {
     const p = new URLSearchParams();
     const merged = { q, rolya: role, str: page, ...patch };
@@ -108,6 +116,9 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
                       {u.is_banned && <span className="rounded bg-danger-soft px-1.5 py-0.5 text-xs font-bold text-danger">блокиран</span>}
                       {u.is_hidden && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs font-bold">скрит</span>}
                       {u.is_verified && <span className="rounded bg-free-soft px-1.5 py-0.5 text-xs font-bold text-free">проверен</span>}
+                      {u.craftsman_slug && planOf(u.id) !== "free" && (
+                        <span className="rounded bg-rule px-1.5 py-0.5 text-xs font-bold">{planOf(u.id) === "pro" ? "Pro" : "фирма"}</span>
+                      )}
                       {!u.is_banned && !u.is_hidden && !u.is_verified && <span className="text-sm text-ink-3">активен</span>}
                     </div>
                   </td>
@@ -119,6 +130,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
                       banned={u.is_banned}
                       verified={Boolean(u.is_verified)}
                       hidden={Boolean(u.is_hidden)}
+                      plan={planOf(u.id)}
                     />
                   </td>
                 </tr>

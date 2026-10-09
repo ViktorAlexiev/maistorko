@@ -92,3 +92,20 @@ export async function deleteCategory(id: number) {
   revalidatePath("/", "layout");
   return { ok: !error, message: error ? "Категорията не беше изтрита." : "Категорията е изтрита." };
 }
+
+export async function setPlan(userId: string, plan: "free" | "pro" | "company", months: number | null) {
+  const supabase = await adminClient();
+  const until = months ? new Date(Date.now() + months * 30 * 86400_000).toISOString() : null;
+  const { error } = await supabase.rpc("admin_set_plan", { p_craftsman: userId, p_plan: plan, p_valid_until: until ?? undefined });
+  revalidatePath("/admin");
+  return { ok: !error, message: error ? "Неуспешно." : plan === "free" ? "Планът е върнат на безплатен." : `Включен е план ${plan === "pro" ? "Pro" : "Фирма"}${months ? ` за ${months} мес.` : ""}.` };
+}
+
+export async function setContactStatus(id: string, status: "new" | "talking" | "done" | "rejected", note?: string) {
+  const supabase = await adminClient();
+  const patch: { status: typeof status; admin_note?: string | null } = { status };
+  if (note !== undefined) patch.admin_note = note.trim() || null;
+  const { error } = await supabase.from("contact_requests").update(patch).eq("id", id);
+  revalidatePath("/admin/zapitvaniya");
+  return { ok: !error, message: error ? "Неуспешно." : "Записано." };
+}

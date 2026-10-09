@@ -5,6 +5,7 @@ import { updateClientProfile, updateCraftsmanProfile } from "@/app/actions/dashb
 import type { FormState } from "@/app/actions/auth";
 import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
 import { CategoryIcon } from "@/components/category-icon";
+import { LimitNote } from "@/components/limit-note";
 import { LANGUAGE_LABEL } from "@/lib/format";
 
 type City = { id: number; slug: string; name: string; region: string; is_major: boolean };
@@ -109,16 +110,21 @@ export function CraftsmanProfileForm({
   cities,
   tree,
   initial,
+  maxAreas,
 }: {
   email: string;
   cities: City[];
   tree: Tree;
   initial: CraftInitial;
+  /** extra cities besides the main one; null = unlimited */
+  maxAreas: number | null;
 }) {
   const [state, action] = useActionState<FormState, FormData>(updateCraftsmanProfile, {});
   const v = { ...initial, ...state.values } as CraftInitial;
   const [picked, setPicked] = useState(new Set(initial.categories));
   const [bioLen, setBioLen] = useState(initial.bio.length);
+  const [areaChecked, setAreaChecked] = useState(() => new Set(initial.areas));
+  const areaCount = areaChecked.size;
   const regions = Array.from(new Set(cities.map((c) => c.region)));
   const otherIds = new Set(
     tree.flatMap((t) => [t, ...t.children]).filter((c) => OTHER_SLUGS.has(c.slug)).map((c) => String(c.id)),
@@ -291,6 +297,11 @@ export function CraftsmanProfileForm({
         </div>
         <fieldset>
           <legend className="label">Пътувам и до</legend>
+          {maxAreas != null && (
+            <div className="mb-2">
+              <LimitNote used={areaCount + 1} limit={maxAreas + 1} what="града (с основния)" />
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             {regions.map((r) => (
               <div key={r}>
@@ -300,7 +311,23 @@ export function CraftsmanProfileForm({
                     .filter((c) => c.region === r)
                     .map((c) => (
                       <label key={c.slug} className="flex cursor-pointer items-center gap-2.5">
-                        <input type="checkbox" name="areas" value={c.slug} className="check" defaultChecked={initial.areas.includes(c.slug)} />
+                        <input
+                          type="checkbox"
+                          name="areas"
+                          value={c.slug}
+                          className="check"
+                          defaultChecked={initial.areas.includes(c.slug)}
+                          disabled={maxAreas != null && areaCount >= maxAreas && !areaChecked.has(c.slug)}
+                          onChange={(e) => {
+                            const on = e.target.checked;
+                            setAreaChecked((s) => {
+                              const n = new Set(s);
+                              if (on) n.add(c.slug);
+                              else n.delete(c.slug);
+                              return n;
+                            });
+                          }}
+                        />
                         {c.name}
                       </label>
                     ))}

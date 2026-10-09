@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { fieldErrors, serviceSchema, toMoney, type FieldErrors } from "@/lib/validation";
 import { servicePrice, UNIT_OPTIONS, type PriceKind, type PriceUnit } from "@/lib/format";
 import { EmptyState } from "@/components/bits";
+import { LimitNote } from "@/components/limit-note";
 
 type Service = {
   id: string;
@@ -26,10 +27,12 @@ export function ServicesEditor({
   userId,
   initial,
   categories,
+  limit,
 }: {
   userId: string;
   initial: Service[];
   categories: { id: number; name: string }[];
+  limit: number | null;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -89,7 +92,9 @@ export function ServicesEditor({
           .insert({ ...row, craftsman_id: userId, sort: items.length })
           .select("id, name, description, price_kind, price, unit, category_id, sort")
           .single();
-        if (error || !data) return void toast.error("Услугата не беше добавена.");
+        if (error || !data) {
+          return void toast.error(error?.message.startsWith("Безплатният план") ? error.message : "Услугата не беше добавена.");
+        }
         setItems((xs) => [...xs, { ...data, price: data.price != null ? String(data.price) : "" } as Service]);
         toast.success("Услугата е добавена.");
       } else if (editing) {
@@ -123,10 +128,13 @@ export function ServicesEditor({
           Ценоразпис
         </h2>
         {editing === null && (
-          <button type="button" className="btn btn-primary" onClick={() => edit()}>
+          <button type="button" className="btn btn-primary" disabled={limit != null && items.length >= limit} onClick={() => edit()}>
             <Plus className="size-4" aria-hidden /> Добави услуга
           </button>
         )}
+      </div>
+      <div className="mt-1">
+        <LimitNote used={items.length} limit={limit} what="услуги" />
       </div>
       <p className="mt-1 text-ink-2">Конкретни услуги с фиксирана цена, „от X €“ или „по оглед“.</p>
 

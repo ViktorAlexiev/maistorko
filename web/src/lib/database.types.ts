@@ -136,6 +136,25 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"contact_requests": {
+                  Row: {
+                    "admin_note": string | null,"contact": string,"created_at": string,"id": string,"ip_hash": string | null,"kind": string,"message": string | null,"name": string,"payload": NonNullable<Json>,"status": string,"user_id": string | null
+                  }
+                  Insert: {
+                    "admin_note"?: string | null,"contact": string,"created_at"?: string,"id"?: string,"ip_hash"?: string | null,"kind": string,"message"?: string | null,"name": string,"payload"?: NonNullable<Json>,"status"?: string,"user_id"?: string | null
+                  }
+                  Update: {
+                    "admin_note"?: string | null,"contact"?: string,"created_at"?: string,"id"?: string,"ip_hash"?: string | null,"kind"?: string,"message"?: string | null,"name"?: string,"payload"?: NonNullable<Json>,"status"?: string,"user_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "contact_requests_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"conversations": {
                   Row: {
                     "category_id": number | null,"client_id": string,"client_last_read_at": string,"craftsman_id": string,"craftsman_last_read_at": string,"created_at": string,"id": string,"last_message_at": string,"last_message_preview": string,"last_sender_id": string | null,"requested_date": string | null
@@ -242,6 +261,31 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"craftsman_subscriptions": {
+                  Row: {
+                    "craftsman_id": string,"created_at": string,"note": string | null,"plan": string,"source": string,"status": string,"updated_at": string,"valid_until": string | null
+                  }
+                  Insert: {
+                    "craftsman_id": string,"created_at"?: string,"note"?: string | null,"plan": string,"source"?: string,"status"?: string,"updated_at"?: string,"valid_until"?: string | null
+                  }
+                  Update: {
+                    "craftsman_id"?: string,"created_at"?: string,"note"?: string | null,"plan"?: string,"source"?: string,"status"?: string,"updated_at"?: string,"valid_until"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "craftsman_subscriptions_craftsman_id_fkey"
+      columns: ["craftsman_id"]
+isOneToOne: true
+      referencedRelation: "craftsman_profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "craftsman_subscriptions_plan_fkey"
+      columns: ["plan"]
+isOneToOne: false
+      referencedRelation: "plans"
+      referencedColumns: ["key"]
+    }
+                  ]
                 },"link_visits": {
                   Row: {
                     "craftsman_id": string,"day": string,"source": string,"visits": number
@@ -285,6 +329,19 @@ isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
+                  ]
+                },"plans": {
+                  Row: {
+                    "features": (string)[],"key": string,"limits": NonNullable<Json>,"name": string,"price_month": number,"sort": number
+                  }
+                  Insert: {
+                    "features"?: (string)[],"key": string,"limits"?: NonNullable<Json>,"name": string,"price_month"?: number,"sort"?: number
+                  }
+                  Update: {
+                    "features"?: (string)[],"key"?: string,"limits"?: NonNullable<Json>,"name"?: string,"price_month"?: number,"sort"?: number
+                  }
+                  Relationships: [
+                    
                   ]
                 },"profiles": {
                   Row: {
@@ -423,6 +480,9 @@ isOneToOne: false
               "craftsman_slug": string,"created_at": string,"email": string,"full_name": string,"id": string,"is_banned": boolean,"is_hidden": boolean,"is_verified": boolean,"role": Database["public"]['Enums']["user_role"],"total_count": number
             }[]
                            },
+"admin_set_plan":
+{ Args: { "p_craftsman": string,"p_note"?: string,"p_plan": string,"p_valid_until"?: string }; Returns: undefined
+                           },
 "availability_days":
 { Args: { "p_craftsman": string,"p_days": number,"p_from": string }; Returns: {
               "day": string,"free_hours": number,"ranges": Json,"status": string
@@ -482,6 +542,9 @@ isOneToOne: false
 "craftsman_phone":
 { Args: { "p_craftsman": string }; Returns: string
                            },
+"craftsman_plan":
+{ Args: { "p_craftsman": string }; Returns: string
+                           },
 "craftsman_reviews":
 { Args: { "p_craftsman": string,"p_limit"?: number }; Returns: {
               "author": string,"body": string,"created_at": string,"id": string,"is_mine": boolean,"rating": number
@@ -495,6 +558,9 @@ isOneToOne: false
                            },
 "free_hours":
 { Args: { "ranges": unknown }; Returns: number
+                           },
+"has_feature":
+{ Args: { "p_craftsman": string,"p_feature": string }; Returns: boolean
                            },
 "is_admin":
 { Args: Record<PropertyKey, never>; Returns: boolean
@@ -518,11 +584,17 @@ isOneToOne: false
               "category_name": string,"i_am": string,"id": string,"last_from_me": boolean,"last_message_at": string,"last_message_preview": string,"partner_avatar": string,"partner_id": string,"partner_name": string,"partner_slug": string,"requested_date": string,"unread_count": number
             }[]
                            },
+"my_plan":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "next_free_date":
 { Args: { "p_craftsman": string,"p_from": string,"p_horizon"?: number,"p_slot"?: string }; Returns: string
                            },
 "owns_craftsman":
 { Args: { "p_id": string }; Returns: boolean
+                           },
+"plan_limit":
+{ Args: { "p_craftsman": string,"p_key": string }; Returns: number
                            },
 "propose_booking":
 { Args: { "p_conversation": string,"p_date": string,"p_end"?: string,"p_kind"?: string,"p_note"?: string,"p_start"?: string }; Returns: string
@@ -552,6 +624,9 @@ isOneToOne: false
                            },
 "start_conversation":
 { Args: { "p_body": string,"p_category"?: number,"p_craftsman": string,"p_date"?: string,"p_service"?: string,"p_slot"?: string }; Returns: string
+                           },
+"submit_contact_request":
+{ Args: { "p_contact": string,"p_kind": string,"p_message"?: string,"p_name": string,"p_payload"?: Json,"p_trap"?: string }; Returns: string
                            },
 "time_window":
 { Args: { "p_day": string,"p_slot": string }; Returns: unknown

@@ -94,6 +94,13 @@ export async function updateCraftsmanProfile(_: FormState, formData: FormData): 
   const mainCity = cityId(d.city);
   if (!mainCity) return { errors: { city: "Изберете град." }, values };
 
+  // Checked first: a rejected save must not leave the profile half-written
+  const areaIds = d.areas.map(cityId).filter((x): x is number => Boolean(x) && x !== mainCity);
+  const { data: citiesLimit } = await supabase.rpc("plan_limit", { p_craftsman: id, p_key: "cities" });
+  if (citiesLimit != null && areaIds.length + 1 > citiesLimit) {
+    return { message: `Безплатният план позволява до ${citiesLimit} града с основния. С Pro няма ограничение.`, values };
+  }
+
   const { error: e1 } = await supabase
     .from("craftsman_profiles")
     .update({
@@ -121,7 +128,6 @@ export async function updateCraftsmanProfile(_: FormState, formData: FormData): 
       .insert(catIds.map((category_id) => ({ craftsman_id: id, category_id })));
     if (error) return { message: "Категориите не бяха записани.", values };
   }
-  const areaIds = d.areas.map(cityId).filter((x): x is number => Boolean(x) && x !== mainCity);
   await supabase.from("craftsman_service_areas").delete().eq("craftsman_id", id);
   if (areaIds.length) {
     await supabase.from("craftsman_service_areas").insert(areaIds.map((city_id) => ({ craftsman_id: id, city_id })));
