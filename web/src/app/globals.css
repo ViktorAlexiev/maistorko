@@ -393,6 +393,11 @@ textarea.field {
 input[type="date"].field,
 input[type="time"].field {
   font-variant-numeric: tabular-nums;
+  padding-inline: 0.625rem;
+}
+input[type="date"].field::-webkit-calendar-picker-indicator,
+input[type="time"].field::-webkit-calendar-picker-indicator {
+  margin-inline-start: 0.25rem;
 }
 
 .label {

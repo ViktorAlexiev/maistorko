@@ -191,7 +191,7 @@ export function SearchFilters({ state, categories, cities, fixedCategory, total 
             );
           })}
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid gap-2 min-[360px]:grid-cols-2 lg:grid-cols-1">
           <div>
             <label htmlFor="f-from" className="text-sm font-semibold text-ink-2">
               От дата
