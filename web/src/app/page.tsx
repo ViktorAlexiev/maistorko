@@ -86,9 +86,9 @@ export default async function HomePage() {
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Category index: a hardware-store directory, not a tile grid          */}
+      {/* Category index: separate tiles on the paper, spacing instead of lines */}
       {/* ------------------------------------------------------------------ */}
-      <section aria-labelledby="cats-heading" className="border-y border-line bg-surface">
+      <section aria-labelledby="cats-heading">
         <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <h2 id="cats-heading" className="display text-5xl">
@@ -98,24 +98,27 @@ export default async function HomePage() {
               Всички категории <ArrowRight className="size-4" aria-hidden />
             </Link>
           </div>
-          <ul className="stagger mt-8 grid border-t border-ink sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="stagger mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {tree.filter((cat) => (counts[cat.slug] ?? 0) > 0).map((cat) => (
-              <li key={cat.id} className="border-b border-line sm:odd:border-r lg:border-r lg:[&:nth-child(3n)]:border-r-0">
+              <li key={cat.id}>
                 <Link
                   href={`/kategorii/${cat.slug}`}
-                  className="group flex items-start gap-3.5 px-1 py-4 transition-colors hover:bg-rule-soft/50 sm:px-4"
+                  className="group flex h-full items-center gap-4 rounded-lg bg-surface p-4 shadow-[var(--shadow-sm)] transition-[box-shadow,translate] duration-200 ease-[var(--ease-out)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]"
                 >
-                  <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-[8px] bg-paper ring-1 ring-inset ring-line transition-colors group-hover:bg-rule group-hover:ring-ink/40">
-                    <CategoryIcon name={cat.icon} className="size-5" />
+                  <span className="grid size-12 shrink-0 place-items-center rounded-md bg-rule-soft transition-colors group-hover:bg-rule">
+                    <CategoryIcon name={cat.icon} className="size-6" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className="text-[1.05rem] font-extrabold">{cat.name}</span>
-                      <span className="numerals shrink-0 text-lg text-ink-3">{counts[cat.slug] ?? 0}</span>
-                    </span>
+                    <span className="block text-[1.05rem] font-extrabold">{cat.name}</span>
                     <span className="mt-0.5 line-clamp-1 text-sm text-ink-3">
                       {cat.children.map((c) => c.name).join(", ")}
                     </span>
+                  </span>
+                  <span
+                    className="numerals grid h-8 min-w-8 shrink-0 place-items-center rounded-full bg-paper px-2 text-lg text-ink-2"
+                    aria-label={`${counts[cat.slug] ?? 0} майстори`}
+                  >
+                    {counts[cat.slug] ?? 0}
                   </span>
                 </Link>
               </li>

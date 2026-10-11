@@ -14,25 +14,31 @@ export default async function CategoriesPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <PageHeading title="Категории">Изберете вида работа, после филтрирайте по град и дата.</PageHeading>
-      <div className="columns-1 gap-8 sm:columns-2 lg:columns-3">
+      <div className="grid gap-4 sm:auto-rows-fr sm:grid-cols-2 lg:grid-cols-3">
         {tree.map((cat) => (
-          <section key={cat.id} className="mb-8 break-inside-avoid border-t-[1.5px] border-ink pt-4">
+          <section key={cat.id} className="flex flex-col rounded-lg bg-surface p-5 shadow-[var(--shadow-sm)]">
             <h2 className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-[8px] bg-rule ring-1 ring-inset ring-ink/40">
-                <CategoryIcon name={cat.icon} />
+              <span className="grid size-12 shrink-0 place-items-center rounded-md bg-rule">
+                <CategoryIcon name={cat.icon} className="size-6" />
               </span>
               <Link href={`/kategorii/${cat.slug}`} className="text-xl font-extrabold hover:underline">
                 {cat.name}
               </Link>
-              <span className="numerals ml-auto text-xl text-ink-3" aria-label={`${counts[cat.slug] ?? 0} майстори`}>
+              <span
+                className="numerals ml-auto grid h-8 min-w-8 shrink-0 place-items-center rounded-full bg-paper px-2 text-lg text-ink-2"
+                aria-label={`${counts[cat.slug] ?? 0} майстори`}
+              >
                 {counts[cat.slug] ?? 0}
               </span>
             </h2>
-            {cat.description && <p className="mt-2 text-sm text-ink-2">{cat.description}</p>}
-            <ul className="mt-3 grid gap-1">
+            {cat.description && <p className="mt-3 line-clamp-2 text-sm text-ink-2">{cat.description}</p>}
+            <ul className="mt-4 flex flex-wrap gap-2">
               {cat.children.map((c) => (
                 <li key={c.id}>
-                  <Link href={`/kategorii/${cat.slug}?kategoria=${c.slug}`} className="link text-ink-2 hover:text-ink">
+                  <Link
+                    href={`/kategorii/${cat.slug}?kategoria=${c.slug}`}
+                    className="inline-flex min-h-10 items-center rounded-full bg-paper px-3.5 text-sm font-semibold text-ink-2 transition-colors hover:bg-rule-soft hover:text-ink"
+                  >
                     {c.name}
                   </Link>
                 </li>
