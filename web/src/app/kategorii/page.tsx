@@ -16,12 +16,19 @@ export default async function CategoriesPage() {
       <PageHeading title="Категории">Изберете вида работа, после филтрирайте по град и дата.</PageHeading>
       <div className="grid gap-4 sm:auto-rows-fr sm:grid-cols-2 lg:grid-cols-3">
         {tree.map((cat) => (
-          <section key={cat.id} className="flex flex-col rounded-lg bg-surface p-5 shadow-[var(--shadow-sm)]">
+          <section
+            key={cat.id}
+            className="group relative flex flex-col rounded-lg bg-surface p-5 shadow-[var(--shadow-sm)] transition-[box-shadow,translate] duration-200 ease-[var(--ease-out)] has-[>h2_a:hover]:-translate-y-0.5 has-[>h2_a:hover]:shadow-[var(--shadow-md)]"
+          >
+            {/* The title link stretches over the whole card; subcategory chips sit above it */}
             <h2 className="flex items-center gap-3">
-              <span className="grid size-12 shrink-0 place-items-center rounded-md bg-rule">
+              <span className="grid size-12 shrink-0 place-items-center rounded-md bg-rule transition-colors group-has-[>h2_a:hover]:bg-rule-deep">
                 <CategoryIcon name={cat.icon} className="size-6" />
               </span>
-              <Link href={`/kategorii/${cat.slug}`} className="text-xl font-extrabold hover:underline">
+              <Link
+                href={`/kategorii/${cat.slug}`}
+                className="text-xl font-extrabold after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:underline"
+              >
                 {cat.name}
               </Link>
               <span
@@ -37,7 +44,7 @@ export default async function CategoriesPage() {
                 <li key={c.id}>
                   <Link
                     href={`/kategorii/${cat.slug}?kategoria=${c.slug}`}
-                    className="inline-flex min-h-10 items-center rounded-full bg-paper px-3.5 text-sm font-semibold text-ink-2 transition-colors hover:bg-rule-soft hover:text-ink"
+                    className="relative inline-flex min-h-10 items-center rounded-full bg-paper px-3.5 text-sm font-semibold text-ink-2 transition-colors hover:bg-rule-soft hover:text-ink"
                   >
                     {c.name}
                   </Link>
