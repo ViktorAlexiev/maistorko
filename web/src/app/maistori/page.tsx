@@ -22,8 +22,11 @@ export default async function CraftsmenPage({ searchParams }: PageProps<"/maisto
   const city = cities.find((c) => c.slug === state.city)?.name;
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-      <h1 className="display mb-6 text-5xl sm:text-6xl">{city ? `Майстори в ${city}` : "Майстори"}</h1>
-      <Catalog state={state} basePath="/maistori" />
+      <Catalog
+        state={state}
+        basePath="/maistori"
+        title={<h1 className="display text-5xl sm:text-6xl">{city ? `Майстори в ${city}` : "Майстори"}</h1>}
+      />
     </div>
   );
 }

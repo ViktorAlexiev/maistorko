@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { getCategoryTree, getCities, type CategoryNode } from "@/lib/data";
 import { runSearch } from "@/lib/search";
@@ -6,6 +7,7 @@ import { PAGE_SIZE, TIME_SLOTS, toQueryString, type SearchState } from "@/lib/se
 import { addDaysISO, formatDate, relativeDay } from "@/lib/format";
 import { CraftsmanRow } from "@/components/craftsman-row";
 import { SearchFilters } from "@/components/search-filters";
+import { QuerySearch } from "@/components/query-search";
 import { SortControl } from "@/components/sort-control";
 import { EmptyState } from "@/components/bits";
 import { RuleLegend } from "@/components/rule-strip";
@@ -14,10 +16,13 @@ export async function Catalog({
   state,
   basePath,
   fixedCategory,
+  title,
 }: {
   state: SearchState;
   basePath: string;
   fixedCategory?: CategoryNode;
+  /** Page title, shown above the filter column so the search lines up with the results */
+  title?: ReactNode;
 }) {
   const [tree, cities, result] = await Promise.all([getCategoryTree(), getCities(), runSearch(state)]);
   const fixedSlug = fixedCategory?.slug;
@@ -55,16 +60,20 @@ export async function Catalog({
     : "Всички налични";
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-10">
+    <div className="grid gap-x-10 gap-y-6 lg:grid-cols-[18rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:gap-y-8">
+      {title && <div className="min-w-0 lg:self-end">{title}</div>}
+      <QuerySearch state={state} fixedCategory={fixedSlug} className="lg:col-start-2 lg:row-start-1 lg:self-start" />
       <SearchFilters
         state={state}
         categories={tree}
         cities={cities}
         fixedCategory={fixedCategory}
         total={result.total}
+        // Without a title the sidebar starts level with the search instead of leaving an empty cell beside it
+        asideClassName={title ? "" : "lg:col-start-1 lg:row-span-2 lg:row-start-1"}
       />
 
-      <section aria-labelledby="results-heading" className="min-w-0">
+      <section aria-labelledby="results-heading" className="min-w-0 lg:col-start-2">
         <div className="flex flex-wrap items-end gap-x-4 gap-y-2 border-b border-ink pb-3">
           <h2 id="results-heading" className="text-lg font-extrabold">
             <span className="numerals mr-1.5 text-3xl">{result.total}</span>

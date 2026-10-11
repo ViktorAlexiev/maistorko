@@ -16,9 +16,11 @@ type Props = {
   /** On a category page the category is fixed; show its subcategories instead */
   fixedCategory?: Cat;
   total: number;
+  /** Extra classes for the desktop sidebar, so the page can place it in its grid */
+  asideClassName?: string;
 };
 
-export function SearchFilters({ state, categories, cities, fixedCategory, total }: Props) {
+export function SearchFilters({ state, categories, cities, fixedCategory, total, asideClassName = "" }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
@@ -71,30 +73,6 @@ export function SearchFilters({ state, categories, cities, fixedCategory, total 
 
   const body = (
     <div className="grid gap-6">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          update({ q: s.q });
-        }}
-      >
-        <label htmlFor="f-q" className="label">
-          Какво търсите?
-        </label>
-        <div className="flex gap-2">
-          <input
-            id="f-q"
-            className="field"
-            value={s.q}
-            onChange={(e) => setS({ ...s, q: e.target.value })}
-            placeholder="напр. смяна на бойлер"
-            enterKeyHint="search"
-          />
-          <button type="submit" className="btn btn-primary shrink-0 px-3.5">
-            Търси
-          </button>
-        </div>
-      </form>
-
       {fixedCategory ? (
         fixedCategory.children.length > 0 && (
           <fieldset>
@@ -316,7 +294,7 @@ export function SearchFilters({ state, categories, cities, fixedCategory, total 
   return (
     <>
       {/* Desktop: sticky sidebar */}
-      <aside aria-label="Филтри" className="hidden lg:block">
+      <aside aria-label="Филтри" className={`hidden lg:block ${asideClassName}`}>
         <div className="sticky top-24">{body}</div>
       </aside>
 
