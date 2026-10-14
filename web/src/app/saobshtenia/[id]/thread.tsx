@@ -184,6 +184,15 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
     if (el && atBottom.current) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  // The composer grows with its text, including a prefilled draft and the reset after sending
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    el.style.height = "auto";
+    // border-box: scrollHeight leaves out the border, so add it back or a scrollbar appears
+    el.style.height = `${Math.min(el.scrollHeight + el.offsetHeight - el.clientHeight, 160)}px`;
+  }, [text]);
+
   async function send(body: string, tempId = crypto.randomUUID(), photos?: string[]) {
     const meta = photos?.length ? { photos: photos.map((path) => ({ path })) } : {};
     const optimistic: ChatMessage = {
@@ -513,20 +522,21 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
           Профилът ви е блокиран и не можете да пишете.
         </p>
       ) : (
-        <form onSubmit={submit} className="safe-bottom border-t border-line bg-surface px-3 pt-3 sm:px-4">
+        <form onSubmit={submit} className="safe-bottom @container border-t border-line bg-surface px-3 pt-3 sm:px-4">
           <AttachmentStrip items={attachments} onRemove={removeAttachment} busy={sending} />
           <div className="mx-auto flex max-w-2xl items-end gap-2">
             <AttachButton onPick={pickFiles} disabled={sending || attachments.length >= MAX_ATTACHMENTS} />
             {canBook && (
             <button
               type="button"
-              className="btn btn-outline size-11 shrink-0 p-0 sm:w-auto sm:px-3"
+              className="btn btn-outline size-11 shrink-0 p-0 @lg:w-auto @lg:px-3"
               onClick={() => setSheet(true)}
               aria-label={iAmClient ? "Предложи час" : "Запази час"}
               title={iAmClient ? "Предложи ден и час за оглед или работа" : "Запази ден и час в календара си"}
             >
               <CalendarPlus className="size-5" aria-hidden />
-              <span className="hidden sm:inline">Уговорка</span>
+              {/* By the composer's own width: the chat dock is narrow even on a wide screen */}
+              <span className="hidden @lg:inline">Уговорка</span>
             </button>
             )}
             <label htmlFor="msg" className="sr-only">
@@ -538,18 +548,14 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
               rows={1}
               maxLength={4000}
               value={text}
-              onChange={(e) => {
-                setText(e.target.value);
-                e.target.style.height = "auto";
-                e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
-              }}
+              onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
                   submit();
                 }
               }}
-              placeholder="Напишете съобщение…"
+              placeholder="Съобщение…"
               className="field max-h-40 min-h-11 resize-none py-2.5"
               enterKeyHint="send"
             />

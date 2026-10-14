@@ -152,9 +152,7 @@ export function SearchBand({
                   {w === 1 && i > 0 && (
                     <span aria-hidden className="absolute -left-[5px] top-[18px] size-2.5 rounded-full border border-ink/70 bg-brass" />
                   )}
-                  <span
-                    className={`numerals text-2xl leading-none ${d === today ? "text-red" : ""} ${active ? "underline decoration-2 underline-offset-4" : ""}`}
-                  >
+                  <span className={`numerals text-2xl leading-none ${d === today ? "text-red" : ""}`}>
                     {dt.getUTCDate()}
                   </span>
                   <span className={`text-[0.7rem] font-bold uppercase leading-none ${w >= 6 ? "text-ink/60" : "text-ink/85"}`}>

@@ -103,9 +103,9 @@ export default async function HomePage() {
               <li key={cat.id}>
                 <Link
                   href={`/kategorii/${cat.slug}`}
-                  className="group flex h-full items-center gap-4 rounded-lg bg-surface p-4 shadow-[var(--shadow-sm)] transition-[box-shadow,translate] duration-200 ease-[var(--ease-out)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]"
+                  className="flex h-full items-center gap-4 rounded-lg bg-surface p-4 shadow-[var(--shadow-sm)] transition-[box-shadow,translate] duration-200 ease-[var(--ease-out)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]"
                 >
-                  <span className="grid size-12 shrink-0 place-items-center rounded-md bg-rule-soft transition-colors group-hover:bg-rule">
+                  <span className="grid size-12 shrink-0 place-items-center rounded-md bg-rule-soft">
                     <CategoryIcon name={cat.icon} className="size-6" />
                   </span>
                   <span className="min-w-0 flex-1">
