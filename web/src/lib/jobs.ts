@@ -4,7 +4,7 @@ export type JobSource = "maistorko" | "recommendation" | "phone" | "facebook" | 
 export type JobStatus = "planned" | "done" | "cancelled";
 
 export const SOURCE_LABEL: Record<JobSource, string> = {
-  maistorko: "От Майсторко",
+  maistorko: "От Майсторлъка",
   recommendation: "Препоръка",
   phone: "Обаждане",
   facebook: "Facebook",

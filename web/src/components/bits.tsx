@@ -33,7 +33,7 @@ export function VerifiedBadge({ withLabel = false }: { withLabel?: boolean }) {
   return (
     <span
       className="inline-flex items-center gap-1 text-free"
-      title="Проверен от екипа на Майсторко"
+      title="Проверен от екипа на Майсторлъка"
       aria-label="Проверен майстор"
     >
       <BadgeCheck className="size-[1.15em]" strokeWidth={2} aria-hidden />

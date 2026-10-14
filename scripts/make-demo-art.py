@@ -20,7 +20,7 @@ BRASS = "#a8843a"
 def svg(body, bg="#e9e5da", defs=""):
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}">'
-        f"<!-- Демо илюстрация за Майсторко (синтетична, генерирана от scripts/make-demo-art.py) -->"
+        f"<!-- Демо илюстрация за Майсторлъка (синтетична, генерирана от scripts/make-demo-art.py) -->"
         f"{defs}<rect width=\"{W}\" height=\"{H}\" fill=\"{bg}\"/>{body}</svg>"
     )
 

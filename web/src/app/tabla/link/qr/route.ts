@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const fmt = request.nextUrl.searchParams.get("fmt") === "svg" ? "svg" : "png";
   const wanted = Number(request.nextUrl.searchParams.get("size"));
   const size = [512, 1024, 2048].includes(wanted) ? wanted : 1024;
-  const name = `maistorko-${viewer.craftsmanSlug}-qr`;
+  const name = `maystorlaka-${viewer.craftsmanSlug}-qr`;
 
   if (fmt === "svg") {
     const svg = await QRCode.toString(url, { type: "svg", margin: 2, errorCorrectionLevel: "M" });

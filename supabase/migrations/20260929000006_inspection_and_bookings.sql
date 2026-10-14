@@ -1,4 +1,4 @@
--- Майсторко: inspection terms, time slots in first messages, and bookings
+-- Майсторлъка: inspection terms, time slots in first messages, and bookings
 -- agreed in chat. A confirmed booking removes its interval from the public
 -- calendar. Still no payments: a booking is an agreed visit, not a purchase.
 

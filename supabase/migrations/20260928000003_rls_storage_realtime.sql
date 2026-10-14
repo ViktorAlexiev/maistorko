@@ -1,4 +1,4 @@
--- Майсторко: Row Level Security on every table, storage buckets, realtime.
+-- Майсторлъка: Row Level Security on every table, storage buckets, realtime.
 
 alter table public.cities enable row level security;
 alter table public.categories enable row level security;

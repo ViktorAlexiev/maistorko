@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-09-29T00:00:00Z",
-  "title": "Design System: Майсторко",
+  "title": "Design System: Майсторлъка",
   "extensions": {
     "colorMeta": {
       "rule-yellow": { "role": "primary", "displayName": "Enamel Rule Yellow", "canonical": "#f2c200", "tonalRamp": ["#3d3100", "#6b5500", "#9a7b00", "#c9a000", "#f2c200", "#f7d64d", "#fbeaa6", "#fdf6d9"] },
@@ -86,7 +86,7 @@
   ],
   "narrative": {
     "northStar": "The Folding Rule",
-    "overview": "Майсторко is drawn from the yellow wooden folding carpenter's rule (сгъваем метър) that lives in every Bulgarian craftsman's back pocket. The product answers three questions, who can, how much, when free, and the rule answers the third one visually: every craftsman carries a graduated strip of the next 14 days, hinged at seven, with free days inked green and busy days left bare yellow. Time is measured like a job.",
+    "overview": "Майсторлъка is drawn from the yellow wooden folding carpenter's rule (сгъваем метър) that lives in every Bulgarian craftsman's back pocket. The product answers three questions, who can, how much, when free, and the rule answers the third one visually: every craftsman carries a graduated strip of the next 14 days, hinged at seven, with free days inked green and busy days left bare yellow. Time is measured like a job.",
     "keyCharacteristics": [
       "A 14-day folding rule on every craftsman (catalog rows, profile, dashboard, calendar editor).",
       "Yellow is a field, not an accent. Red is reserved for \"today\" and the date marker.",

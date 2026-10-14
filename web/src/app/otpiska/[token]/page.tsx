@@ -18,7 +18,7 @@ export default async function UnsubscribePage({ params }: PageProps<"/otpiska/[t
       <h1 className="display text-5xl">{ok ? "Спряхме писмата" : "Линкът не е валиден"}</h1>
       <p className="mt-3 text-lg text-ink-2">
         {ok
-          ? "Няма да получаваш писма от Майсторко. Известията в сайта продължават. Може да ги включиш пак от Профил."
+          ? "Няма да получаваш писма от Майсторлъка. Известията в сайта продължават. Може да ги включиш пак от Профил."
           : "Този линк за спиране на писма не е верен или е стар."}
       </p>
       <Link href="/tabla/profil" className="btn btn-primary mt-6">

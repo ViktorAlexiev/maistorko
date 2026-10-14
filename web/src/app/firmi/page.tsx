@@ -5,7 +5,7 @@ import { ContactForm } from "@/components/contact-form";
 
 export const metadata: Metadata = {
   title: "За фирми",
-  description: "Майсторко за фирми с няколко майстори: общ календар, разпределение на поръчки, статистика и фирмен профил.",
+  description: "Майсторлъка за фирми с няколко майстори: общ календар, разпределение на поръчки, статистика и фирмен профил.",
   alternates: { canonical: "/firmi" },
 };
 
@@ -27,7 +27,7 @@ export default async function CompaniesPage() {
   const viewer = await getViewer();
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
-      <h1 className="display text-5xl sm:text-7xl">Майсторко за фирми</h1>
+      <h1 className="display text-5xl sm:text-7xl">Майсторлъка за фирми</h1>
       <p className="mt-4 max-w-2xl text-xl text-ink-2">
         Имате няколко майстори? Дайте им общ календар и профили, през които клиентите ги намират по свободни дни. Условията се договарят с
         вас, а за по-голям екип има намаление.

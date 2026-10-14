@@ -1,5 +1,5 @@
 /**
- * Local demo seed for Майсторко.
+ * Local demo seed for Майсторлъка.
  *
  * Creates demo auth users (via the service role key; LOCAL ONLY), craftsman
  * profiles, prices, calendars, work photos, clients, conversations and reviews.
@@ -719,7 +719,7 @@ async function main() {
 
   // Admin
   console.log("→ Администратор…");
-  const adminId = await createUser(`admin@${DOMAIN}`, { full_name: "Админ Майсторко", role: "client", city: "sofia" });
+  const adminId = await createUser(`admin@${DOMAIN}`, { full_name: "Админ Майсторлъка", role: "client", city: "sofia" });
   await must(db.from("profiles").update({ role: "admin" }).eq("id", adminId), "admin role");
 
   // Clients

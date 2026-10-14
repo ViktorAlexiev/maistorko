@@ -12,7 +12,7 @@
  *   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  *   SITE_URL    public address used in e-mail links     (default http://localhost:3000)
  *   SMTP_URL    e.g. smtp://127.0.0.1:54325 (Mailpit)   (default that)
- *   MAIL_FROM   sender                                  (default "Майсторко <no-reply@maistorko.test>")
+ *   MAIL_FROM   sender                                  (default "Майсторлъка <no-reply@maistorko.test>")
  */
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
@@ -27,7 +27,7 @@ if (!url || !key) {
   process.exit(1);
 }
 const SITE_URL = (process.env.SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
-const MAIL_FROM = process.env.MAIL_FROM ?? "Майсторко <no-reply@maistorko.test>";
+const MAIL_FROM = process.env.MAIL_FROM ?? "Майсторлъка <no-reply@maistorko.test>";
 const db = createClient(url, key, { auth: { persistSession: false } });
 const mail = nodemailer.createTransport(process.env.SMTP_URL ?? "smtp://127.0.0.1:54325");
 
@@ -48,7 +48,7 @@ type Outbox = {
 function render(m: Outbox) {
   const lines = [m.body];
   if (m.link) lines.push("", `Отвори: ${SITE_URL}${m.link}`);
-  lines.push("", "—", "Майсторко");
+  lines.push("", "—", "Майсторлъка");
   if (m.unsub_token) lines.push(`Не искаш такива писма? Спри ги: ${SITE_URL}/otpiska/${m.unsub_token}`);
   return lines.join("\n");
 }

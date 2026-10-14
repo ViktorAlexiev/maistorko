@@ -1,7 +1,7 @@
 {
   "name": "maistorko",
   "private": true,
-  "description": "Майсторко: каталог на майстори по свободни дни (Next.js + Supabase)",
+  "description": "Майсторлъка: каталог на майстори по свободни дни (Next.js + Supabase)",
   "scripts": {
     "db:start": "supabase start",
     "db:stop": "supabase stop",

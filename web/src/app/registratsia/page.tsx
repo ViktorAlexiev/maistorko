@@ -7,7 +7,7 @@ import { RegisterForm } from "./register-form";
 
 export const metadata: Metadata = {
   title: "Регистрация",
-  description: "Създайте профил на клиент или на майстор в Майсторко. Безплатно.",
+  description: "Създайте профил на клиент или на майстор в Майсторлъка. Безплатно.",
 };
 
 export default async function RegisterPage({ searchParams }: PageProps<"/registratsia">) {

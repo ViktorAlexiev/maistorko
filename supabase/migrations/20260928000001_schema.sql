@@ -1,4 +1,4 @@
--- Майсторко: core schema
+-- Майсторлъка: core schema
 -- Profiles linked to auth.users, craftsman catalog, pricing, availability,
 -- messaging, reviews, saved craftsmen.
 

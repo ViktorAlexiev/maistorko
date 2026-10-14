@@ -42,7 +42,7 @@ Not a "post a job and collect bids" site and not pay-per-lead. The differentiato
 
 ## Brand Commitments
 
-- Name: **Майсторко** (chosen by Claude on the user's delegation; not yet validated with users or trademark-checked).
+- Name: **Майсторлъка** (chosen by the user on 2026-10-14, replacing the working name Майсторко; not yet validated with users or trademark-checked).
 - Voice: plain, direct, friendly Bulgarian; addresses users with "ти" in UI microcopy only where warm, formal enough to feel trustworthy.
 
 ## Evidence on Hand

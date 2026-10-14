@@ -1,4 +1,4 @@
--- Майсторко: functions, triggers, availability engine, search RPC, chat RPCs
+-- Майсторлъка: functions, triggers, availability engine, search RPC, chat RPCs
 
 -- ---------------------------------------------------------------------------
 -- Role helpers (security definer so policies can call them without recursion)

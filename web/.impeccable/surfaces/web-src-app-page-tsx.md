@@ -35,4 +35,4 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 ## Unresolved
 
-Brand name Майсторко not trademark-checked. Real craftsman photos pending (placeholders are generated SVG portraits/initials and labeled work-photo placeholders).
+Brand name Майсторлъка not trademark-checked. Real craftsman photos pending (placeholders are generated SVG portraits/initials and labeled work-photo placeholders).

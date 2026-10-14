@@ -1,4 +1,4 @@
--- Майсторко: publish gate.
+-- Майсторлъка: publish gate.
 -- A craftsman appears in public listings (search, category counts, home) only
 -- once the profile is usable: at least one category, a price or "по оглед",
 -- and a weekly schedule. Incomplete sign-ups stay private until finished.

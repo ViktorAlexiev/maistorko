@@ -129,11 +129,11 @@ begin
 
   v_delay := case n.kind when 'message' then interval '10 minutes' when 'booking' then interval '3 minutes' else interval '0' end;
   v_subject := case n.kind
-    when 'message' then 'Ново съобщение в Майсторко'
-    when 'booking' then 'Уговорка в Майсторко'
-    when 'review' then 'Нов отзив в Майсторко'
+    when 'message' then 'Ново съобщение в Майсторлъка'
+    when 'booking' then 'Уговорка в Майсторлъка'
+    when 'review' then 'Нов отзив в Майсторлъка'
     when 'calendar' then 'Календарът ти още ли е верен?'
-    else 'Майсторко' end;
+    else 'Майсторлъка' end;
 
   insert into public.email_outbox (user_id, notification_id, to_email, subject, body, link, unsub_token, send_after)
   values (n.user_id, n.id, v_email, v_subject, n.title || coalesce(E'\n\n' || n.body, ''), n.link, v_prefs.unsub_token, now() + v_delay);

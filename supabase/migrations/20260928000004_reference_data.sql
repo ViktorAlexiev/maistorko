@@ -1,4 +1,4 @@
--- Майсторко: reference data (cities, category tree, search synonyms).
+-- Майсторлъка: reference data (cities, category tree, search synonyms).
 -- Categories remain editable from the admin area.
 
 insert into public.cities (slug, name, region, is_major, sort) values

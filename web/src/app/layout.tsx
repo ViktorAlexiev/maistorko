@@ -23,16 +23,16 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Майсторко: виж кой майстор е свободен",
-    template: "%s | Майсторко",
+    default: "Майсторлъка: виж кой майстор е свободен",
+    template: "%s | Майсторлъка",
   },
   description:
     "Намери майстор, който може да свърши работата, виж цените му и кога е свободен, после просто му пиши. Електротехници, ВиК, бояджии, плочкаджии и още.",
-  applicationName: "Майсторко",
+  applicationName: "Майсторлъка",
   openGraph: {
     type: "website",
     locale: "bg_BG",
-    siteName: "Майсторко",
+    siteName: "Майсторлъка",
   },
   formatDetection: { telephone: false },
 };

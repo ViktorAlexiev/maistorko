@@ -18,9 +18,9 @@ export function RuleMark({ className = "" }: { className?: string }) {
 
 export function Logo({ className = "" }: { className?: string }) {
   return (
-    <Link href="/" className={`group inline-flex items-center gap-2 ${className}`} aria-label="Майсторко, начало">
+    <Link href="/" className={`group inline-flex items-center gap-2 ${className}`} aria-label="Майсторлъка, начало">
       <RuleMark className="h-6 w-12 transition-transform duration-300 ease-out group-hover:-rotate-3" />
-      <span className="display text-[1.7rem] font-black leading-none tracking-[-0.01em]">Майсторко</span>
+      <span className="display text-[1.7rem] font-black leading-none tracking-[-0.01em]">Майсторлъка</span>
     </Link>
   );
 }

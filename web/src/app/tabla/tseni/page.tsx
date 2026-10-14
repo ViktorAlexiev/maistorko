@@ -59,7 +59,7 @@ export default async function PricesPage() {
           <h2 id="guide-heading" className="text-lg font-extrabold">
             Обичайни цени в твоите категории
           </h2>
-          <p className="mt-1 text-sm text-ink-2">Изчислени от профилите на други майстори в Майсторко. Само за ориентир.</p>
+          <p className="mt-1 text-sm text-ink-2">Изчислени от профилите на други майстори в Майсторлъка. Само за ориентир.</p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {guides
               .filter((x) => x.g && (x.g.hourly_count > 0 || x.g.job_count > 0))

@@ -109,7 +109,7 @@ export function TeamList({ team, meId, myRole }: { team: TeamMember[]; meId: str
 }
 
 function ShareLink({ link, name }: { link: string; name?: string | null }) {
-  const text = encodeURIComponent(`${name ? `${name}, ` : ""}отвори този линк, за да приемеш поканата ни в Майсторко: ${link}`);
+  const text = encodeURIComponent(`${name ? `${name}, ` : ""}отвори този линк, за да приемеш поканата ни в Майсторлъка: ${link}`);
   return (
     <div className="mt-2 flex flex-wrap gap-2">
       <input readOnly className="field min-w-0 flex-1 text-sm" value={link} aria-label="Линк за поканата" onFocus={(e) => e.currentTarget.select()} />

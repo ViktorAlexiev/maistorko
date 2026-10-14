@@ -9,7 +9,7 @@ export function SiteFooter() {
         <div>
           <div className="flex items-center gap-2">
             <RuleMark className="h-6 w-12" />
-            <span className="display text-3xl font-black text-white">Майсторко</span>
+            <span className="display text-3xl font-black text-white">Майсторлъка</span>
           </div>
           <p className="mt-4 max-w-sm text-[#bdb8aa]">
             Виж кой може, колко струва и кога е свободен. После просто му пиши.
@@ -46,7 +46,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-white/10">
         <p className="mx-auto max-w-7xl px-4 py-5 text-sm text-[#9e998b] sm:px-6">
-          © {new Date().getFullYear()} Майсторко. Календарът е ориентировъчен: майсторът потвърждава датата в чата.
+          © {new Date().getFullYear()} Майсторлъка. Календарът е ориентировъчен: майсторът потвърждава датата в чата.
         </p>
       </div>
     </footer>

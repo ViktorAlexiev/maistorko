@@ -1,5 +1,5 @@
 ---
-name: Майсторко
+name: Майсторлъка
 description: A catalog of craftsmen measured like a job. Every craftsman carries a folding rule of the next 14 days.
 colors:
   rule-yellow: "#f2c200"
@@ -108,13 +108,13 @@ components:
     padding: "20px"
 ---
 
-# Design System: Майсторко
+# Design System: Майсторлъка
 
 ## Overview
 
 **Creative North Star: "The Folding Rule"**
 
-Майсторко is drawn from the yellow wooden folding carpenter's rule (сгъваем метър) that lives in every Bulgarian craftsman's back pocket. The product answers three questions, *who can, how much, when free*, and the rule answers the third one visually: every craftsman carries a graduated strip of the next 14 days, hinged at seven, with free days inked green and busy days left bare yellow. Time is measured like a job.
+Майсторлъка is drawn from the yellow wooden folding carpenter's rule (сгъваем метър) that lives in every Bulgarian craftsman's back pocket. The product answers three questions, *who can, how much, when free*, and the rule answers the third one visually: every craftsman carries a graduated strip of the next 14 days, hinged at seven, with free days inked green and busy days left bare yellow. Time is measured like a job.
 
 The world is enamel yellow and printed ink on a neutral concrete-paper ground. Yellow is not an accent sprinkled on buttons. It owns whole fields: the search band, every availability rule, and the "Майстор ли си?" band. Everything else stays quiet (ink type, hairline dividers, warm off-white cards), so the rule is always the loudest object on the page. Type is Bulgarian-designed Sofia Sans. Its extra-condensed cut carries headlines and every number (dates, prices, counts), the way numerals are printed on a rule.
 
