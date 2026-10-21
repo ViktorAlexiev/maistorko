@@ -13,7 +13,7 @@ export default async function MessagesLayout({ children }: LayoutProps<"/saobsht
 
   return (
     <div className="mx-auto max-w-7xl px-0 sm:px-6 sm:py-6">
-      <div className="grid h-[calc(100dvh-4rem)] overflow-hidden border-line bg-surface sm:h-[calc(100dvh-7rem)] sm:rounded-[12px] sm:border md:grid-cols-[22rem_minmax(0,1fr)]">
+      <div className="grid h-[calc(100dvh-4rem)] overflow-hidden sm:h-[calc(100dvh-7rem)] md:grid-cols-[22rem_minmax(0,1fr)]">
         <ConversationSidebar userId={viewer.id} initial={(data ?? []) as ConversationSummary[]} />
         {children}
       </div>

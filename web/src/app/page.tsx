@@ -48,6 +48,9 @@ export default async function HomePage() {
               Виж кой може да свърши работата, колко струва и кога е свободен. После просто му пиши и се
               разберете в чата.
             </p>
+            <p className="mt-3 max-w-xl text-base font-semibold">
+              Най-вече за дребни ремонти и поправки в дома: течаща чешма, контакт, закачане, монтаж.
+            </p>
             <div className="mt-8">
               <SearchBand categories={flatCats} cities={cities} />
             </div>
@@ -110,15 +113,9 @@ export default async function HomePage() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[1.05rem] font-extrabold">{cat.name}</span>
-                    <span className="mt-0.5 line-clamp-1 text-sm text-ink-3">
+                    <span className="mt-0.5 block text-sm text-ink-3">
                       {cat.children.map((c) => c.name).join(", ")}
                     </span>
-                  </span>
-                  <span
-                    className="numerals grid h-8 min-w-8 shrink-0 place-items-center rounded-full bg-paper px-2 text-lg text-ink-2"
-                    aria-label={`${counts[cat.slug] ?? 0} майстори`}
-                  >
-                    {counts[cat.slug] ?? 0}
                   </span>
                 </Link>
               </li>

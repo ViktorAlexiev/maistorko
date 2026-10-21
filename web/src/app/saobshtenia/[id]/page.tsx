@@ -5,6 +5,7 @@ import { Thread, type ChatMessage } from "./thread";
 import type { Booking } from "./booking";
 import type { Share } from "./chat-photos";
 import { getMyOrg, isManager } from "@/lib/org";
+import { getMyPlan, hasFeature } from "@/lib/plan";
 
 export default async function ConversationPage({ params }: PageProps<"/saobshtenia/[id]">) {
   const { id } = await params;
@@ -42,6 +43,8 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
   const category = Array.isArray(conv.category) ? conv.category[0] : conv.category;
   const iAmClient = conv.client_id === viewer.id;
   const bookingCraftsman = conv.craftsman_id ?? conv.assigned_to;
+  // offers by link are a Pro feature of the craftsman who writes them
+  const canOffer = !iAmClient && viewer.id === conv.craftsman_id && hasFeature(await getMyPlan(), "offers");
 
   // A conversation with a company: managers can hand it to one of the craftsmen
   let org: { name: string; slug: string; canAssign: boolean; team: { id: string; name: string }[]; assignedTo: string | null; assignedName: string | null } | undefined;
@@ -81,6 +84,7 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
       initialBookings={(bookings ?? []) as Booking[]}
       initialShares={(shares ?? []) as Share[]}
       craftsmanId={bookingCraftsman}
+      canOffer={canOffer}
       org={org}
       banned={viewer.profile.is_banned}
     />

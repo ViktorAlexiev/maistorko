@@ -13,6 +13,7 @@ import { FieldError, FormMessage, SubmitButton } from "@/components/submit-butto
 import { createClient } from "@/lib/supabase/client";
 import { relativeDay } from "@/lib/format";
 import { slotLabel, type Slot } from "@/lib/slots";
+import { composeAnswers, questionsFor } from "@/lib/inquiry-questions";
 
 export const OPEN_CHAT = "maistorko:open-chat";
 
@@ -27,7 +28,15 @@ export function OpenChatButton({ className, children }: { className?: string; ch
 
 export type WorkOption = { value: string; label: string; priced: boolean };
 
-type Craftsman = { id: string; name: string; firstName: string; avatar: string | null; slug: string };
+type Craftsman = {
+  id: string;
+  name: string;
+  firstName: string;
+  avatar: string | null;
+  slug: string;
+  /** the craftsman's main kinds of work: the first message offers questions for them */
+  categories?: { slug: string; name: string }[];
+};
 
 type Props = {
   open: boolean;
@@ -220,14 +229,19 @@ function FirstMessage({
   }, [state, onStarted]);
   const priced = workOptions.filter((o) => o.priced);
   const other = workOptions.filter((o) => !o.priced);
+  const cats = craftsman.categories ?? [];
+  const [catSlug, setCatSlug] = useState(cats[0]?.slug ?? "");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [askOpen, setAskOpen] = useState(false);
+  const questions = questionsFor(catSlug);
+  const composed = composeAnswers(questions, answers);
 
   return (
     <form
       action={action}
-      className="grid flex-1 content-start gap-4 overflow-y-auto bg-ink p-4 text-white sm:p-5 [&_.error-text]:text-[#ff9f94]"
+      className="grid flex-1 content-start gap-3 overflow-y-auto bg-ink p-4 text-white [&_.error-text]:text-[#ff9f94]"
       noValidate
     >
-      <p className="display text-3xl text-rule">Пиши на {craftsman.firstName}</p>
       <input type="hidden" name="craftsmanId" value={craftsman.id} />
       <input type="hidden" name="slug" value={craftsman.slug} />
       <input type="hidden" name="inline" value="1" />
@@ -235,7 +249,7 @@ function FirstMessage({
       <input type="hidden" name="slot" value={date && slot ? slot : ""} />
       <div>
         <label htmlFor="dock-date" className="label text-white">
-          Дата
+          Дата <span className="font-normal text-[#bdb8aa]">(по желание)</span>
         </label>
         <input
           id="dock-date"
@@ -245,19 +259,15 @@ function FirstMessage({
           value={date ?? ""}
           onChange={(e) => onDate(e.target.value || null)}
         />
-        <p className="hint text-[#bdb8aa]">
-          {date ? (
-            <>
-              {slot ? `Предпочитано: ${slotLabel(slot)}. ` : ""}
-              {busyDay ? "Отбелязан като зает: питайте дали може. " : ""}
-              <button type="button" className="underline" onClick={() => onDate(null)}>
-                Без конкретна дата
-              </button>
-            </>
-          ) : (
-            "По желание. Можете да изберете и от календара."
-          )}
-        </p>
+        {date && (
+          <p className="hint text-[#bdb8aa]">
+            {slot ? `Предпочитано: ${slotLabel(slot)}. ` : ""}
+            {busyDay ? "Отбелязан като зает: питайте дали може. " : ""}
+            <button type="button" className="underline" onClick={() => onDate(null)}>
+              Без конкретна дата
+            </button>
+          </p>
+        )}
       </div>
       <div>
         <label htmlFor="dock-work" className="label text-white">
@@ -285,6 +295,69 @@ function FirstMessage({
           )}
         </select>
       </div>
+      <div className="rounded-[8px] border border-white/25">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm font-bold"
+          onClick={() => setAskOpen((v) => !v)}
+          aria-expanded={askOpen}
+        >
+          <span>Помогнете на майстора да даде цена</span>
+          <span aria-hidden>{askOpen ? "−" : "+"}</span>
+        </button>
+        {askOpen && (
+          <div className="grid gap-3 border-t border-white/25 p-3">
+            {cats.length > 1 && (
+              <div>
+                <label htmlFor="dock-q-cat" className="label text-white">
+                  Вид работа
+                </label>
+                <select id="dock-q-cat" className="field" value={catSlug} onChange={(e) => { setCatSlug(e.target.value); setAnswers({}); }}>
+                  {cats.map((c) => (
+                    <option key={c.slug} value={c.slug}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {questions.map((q) => (
+              <div key={q.id}>
+                <label htmlFor={`dock-q-${q.id}`} className="label text-white">
+                  {q.label}
+                </label>
+                {q.options ? (
+                  <select id={`dock-q-${q.id}`} className="field" value={answers[q.id] ?? ""} onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}>
+                    <option value="">Не е задължително</option>
+                    {q.options.map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input id={`dock-q-${q.id}`} className="field" maxLength={160} value={answers[q.id] ?? ""} placeholder={q.placeholder} onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))} />
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              className="btn btn-rule btn-sm justify-self-start"
+              disabled={!composed}
+              onClick={() => {
+                setBody((b) => (b.trim() ? `${b.trim()}
+
+${composed}` : composed));
+                setAnswers({});
+                setAskOpen(false);
+              }}
+            >
+              Добави към съобщението
+            </button>
+            <p className="hint text-[#bdb8aa]">Снимки на проблема можете да изпратите в разговора веднага след първото съобщение.</p>
+          </div>
+        )}
+      </div>
       <div>
         <label htmlFor="dock-body" className="label text-white">
           Съобщение
@@ -293,7 +366,7 @@ function FirstMessage({
           id="dock-body"
           name="body"
           className="field"
-          rows={4}
+          rows={3}
           maxLength={4000}
           required
           value={body}
@@ -303,12 +376,12 @@ function FirstMessage({
           aria-describedby={state.errors?.body ? "dock-body-err" : "dock-body-hint"}
         />
         <p id="dock-body-hint" className="hint text-[#bdb8aa]">
-          Опишете накратко работата. Телефонът ви не се показва на майстора, освен ако не го напишете.
+          Телефонът ви остава скрит, освен ако не го напишете.
         </p>
         <FieldError id="dock-body-err" message={state.errors?.body} />
       </div>
       <FormMessage state={state.ok ? {} : state} />
-      <SubmitButton className="btn btn-rule btn-lg w-full" pendingText="Изпращаме…">
+      <SubmitButton className="btn btn-rule w-full" pendingText="Изпращаме…">
         Изпрати съобщение
       </SubmitButton>
     </form>

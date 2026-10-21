@@ -10,6 +10,7 @@ import { isBot } from "@/lib/bots";
 import { photoUrl } from "@/lib/data";
 import {
   daysSince,
+  formatDate,
   formatEur,
   headlinePrice,
   LANGUAGE_LABEL,
@@ -29,6 +30,7 @@ import { OrgChatButton } from "@/components/org-chat-button";
 import { SaveButton } from "@/components/save-button";
 import { Gallery } from "@/components/gallery";
 import { ReviewForm } from "@/components/review-form";
+import { BUSY_UNTIL_NOTE } from "@/components/busy-until";
 import { deleteReview } from "@/app/actions/engage";
 
 /** PostgREST self-joins may come back as an object or a one-element array. */
@@ -86,7 +88,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
     });
   }
 
-  const [{ data: days }, { data: reviews }, { data: canReview }, { data: saved }, { data: conv }, { data: contact }, { data: worksAt }] = await Promise.all([
+  const [{ data: days }, { data: reviews }, { data: canReview }, { data: saved }, { data: conv }, { data: contact }, { data: worksAt }, { data: busyRows }] = await Promise.all([
     supabase.rpc("availability_days", { p_craftsman: c.id, p_from: todayISO(), p_days: 62 }),
     supabase.rpc("craftsman_reviews", { p_craftsman: c.id, p_limit: 30 }),
     viewer && !isSelf ? supabase.rpc("can_review", { p_craftsman: c.id }) : Promise.resolve({ data: false }),
@@ -98,7 +100,17 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
       : Promise.resolve({ data: null }),
     supabase.rpc("craftsman_contact_info", { p_craftsman: c.id }).maybeSingle(),
     supabase.from("organization_members").select("org:organizations(id, name, slug, is_verified, is_hidden)").eq("user_id", c.id).maybeSingle(),
+    supabase
+      .from("availability_exceptions")
+      .select("end_date")
+      .eq("craftsman_id", c.id)
+      .eq("note", BUSY_UNTIL_NOTE)
+      .lte("start_date", todayISO())
+      .gte("end_date", todayISO())
+      .order("end_date", { ascending: false })
+      .limit(1),
   ]);
+  const busyUntil = busyRows?.[0]?.end_date ?? null;
   const orgRaw = worksAt?.org;
   const company = (Array.isArray(orgRaw) ? orgRaw[0] : orgRaw) as { id: string; name: string; slug: string; is_verified: boolean; is_hidden: boolean } | null | undefined;
 
@@ -235,6 +247,11 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
 
       <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14">
         <div className="grid min-w-0 gap-14">
+          {busyUntil && (
+            <p role="status" className="rounded-[8px] bg-rule px-4 py-3 font-bold shadow-[inset_0_0_0_1.5px_var(--ink)]">
+              {firstName} е зает до {formatDate(busyUntil)}. Можете да му пишете за след този период.
+            </p>
+          )}
           {expired ? (
             <section aria-labelledby="cal-heading">
               <h2 id="cal-heading" className="display text-4xl">
@@ -247,7 +264,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
             </section>
           ) : null}
           <ProfileBooking
-            craftsman={{ id: c.id, name: c.display_name, firstName, avatar: c.avatar_url, slug: c.slug }}
+            craftsman={{ id: c.id, name: c.display_name, firstName, avatar: c.avatar_url, slug: c.slug, categories: catList.map((x) => ({ slug: x.slug, name: x.name })) }}
             days={expired ? [] : dayInfo}
             stale={stale && !expired}
             workOptions={workOptions}

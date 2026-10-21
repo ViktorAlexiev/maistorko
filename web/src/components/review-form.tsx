@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { submitReview } from "@/app/actions/engage";
 import type { FormState } from "@/app/actions/auth";
@@ -12,24 +12,26 @@ export function ReviewForm({
   craftsmanId = "",
   slug,
   existing,
-  token,
+  onDone,
 }: {
   craftsmanId?: string;
   slug: string;
   existing?: { rating: number; body: string } | null;
-  /** review invite link: the client rates a job done outside the chat */
-  token?: string;
+  /** called after the review was saved (e.g. to close a dialog) */
+  onDone?: () => void;
 }) {
   const [state, action] = useActionState<FormState, FormData>(submitReview, {});
   const [rating, setRating] = useState(existing?.rating ?? 0);
   const [hover, setHover] = useState(0);
   const shown = hover || rating;
+  useEffect(() => {
+    if (state.ok) onDone?.();
+  }, [state.ok, onDone]);
 
   return (
     <form action={action} className="grid gap-4 rounded-[10px] border border-line bg-surface p-4 sm:p-5">
       <input type="hidden" name="craftsmanId" value={craftsmanId} />
       <input type="hidden" name="slug" value={slug} />
-      {token && <input type="hidden" name="token" value={token} />}
       <input type="hidden" name="rating" value={rating || ""} />
       <fieldset>
         <legend className="label">{existing ? "Вашата оценка" : "Оценете работата"}</legend>

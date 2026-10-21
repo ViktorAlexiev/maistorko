@@ -76,19 +76,6 @@ export async function submitReview(_: FormState, formData: FormData): Promise<Fo
   const me = claims?.claims?.sub;
   if (!me) return { message: "Влезте в профила си, за да оставите отзив." };
 
-  // Review invite link: the database checks the link and creates the review
-  const token = String(formData.get("token") ?? "");
-  if (/^[0-9a-f-]{36}$/.test(token)) {
-    const { data: reviewedSlug, error } = await supabase.rpc("submit_review_by_token", {
-      p_token: token,
-      p_rating: parsed.data.rating,
-      p_body: parsed.data.body ?? "",
-    });
-    if (error) return { message: error.message, values: { body: raw.body } };
-    revalidatePath(`/maistori/${reviewedSlug}`);
-    redirect(`/maistori/${reviewedSlug}#otzivi`);
-  }
-
   const { data: existing } = await supabase
     .from("reviews")
     .select("id")

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, CalendarCheck, CalendarDays, CalendarPlus, Check, CheckCheck, Phone, RotateCw, SendHorizontal, Star } from "lucide-react";
+import { ArrowLeft, BadgeEuro, CalendarCheck, CalendarDays, CalendarPlus, Check, CheckCheck, ChevronUp, Handshake, Phone, RotateCw, SendHorizontal, Star } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/avatar";
@@ -10,6 +10,9 @@ import { formatDate, formatTime, relativeDay, servicePrice, todayISO, type Price
 import { slotLabel } from "@/lib/slots";
 import { BookingCard, BookingSheet, bookingWhen, KIND_LABEL, type Booking } from "./booking";
 import { ReportButton } from "@/components/report-button";
+import { ReviewForm } from "@/components/review-form";
+import { QuickReplies } from "./quick-replies";
+import { OfferSheet, type CreatedOffer } from "./offer-sheet";
 import {
   AttachButton,
   AttachmentStrip,
@@ -37,6 +40,9 @@ export type ChatMessage = {
     unit?: PriceUnit;
     photos?: { path: string }[];
     share_request?: string;
+    offer?: string;
+    title?: string;
+    total?: number | string;
   } | null;
   created_at: string;
   pending?: boolean;
@@ -65,12 +71,14 @@ type Props = {
   purgedAt?: string | null;
   /** Text to put in the composer, e.g. a question about the day picked on the profile. */
   draft?: string;
+  /** the craftsman has offers by link (Pro) */
+  canOffer?: boolean;
 };
 
 let tempSeq = 0;
 const sofiaDay = (ts: string) => new Date(ts).toLocaleDateString("en-CA", { timeZone: "Europe/Sofia" });
 
-export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, org, banned, embedded, draft, purgedAt }: Props) {
+export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, org, banned, embedded, draft, purgedAt, canOffer }: Props) {
   const supabase = createClient();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   const [text, setText] = useState(draft ?? "");
@@ -87,6 +95,11 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [sending, setSending] = useState(false);
   const [busyPath, setBusyPath] = useState<string | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [offerOpen, setOfferOpen] = useState(false);
+  const [myReview, setMyReview] = useState<{ rating: number; body: string } | null>(null);
+  const [askingReview, setAskingReview] = useState(false);
   const canBook = Boolean(craftsmanId) && (iAmClient || craftsmanId === me);
   const scroller = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
@@ -304,6 +317,38 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
 
   const shareById = new Map(shares.map((s) => [s.id, s]));
 
+  const canReview = iAmClient && Boolean(partner.id) && Boolean(partner.slug);
+
+  async function openReview() {
+    if (!partner.id) return;
+    const { data } = await supabase.from("reviews").select("rating, body").eq("craftsman_id", partner.id).eq("client_id", me).maybeSingle();
+    setMyReview(data ?? null);
+    setReviewOpen(true);
+  }
+
+  // Craftsman: an offer written from the chat arrives as a card the client can open and accept
+  async function sendOffer(o: CreatedOffer) {
+    const body = `Оферта: ${o.title}, ${o.total.toFixed(2).replace(".", ",")} €`;
+    const { data, error } = await supabase
+      .from("messages")
+      .insert({ conversation_id: conversationId, sender_id: me, body, meta: { offer: o.token, title: o.title, total: o.total } })
+      .select("id, sender_id, body, meta, created_at")
+      .single();
+    if (error || !data) return void toast.error("Офертата е записана, но съобщението не стигна. Изпратете линка от „Оферти“.");
+    atBottom.current = true;
+    setMessages((xs) => (xs.some((x) => x.id === data.id) ? xs : [...xs, data as ChatMessage]));
+    toast.success("Офертата е изпратена в разговора.");
+  }
+
+  // Craftsman: tell the client the work is done; the client gets a message with the review button
+  async function askReview() {
+    setAskingReview(true);
+    const { error } = await supabase.rpc("request_review_in_chat", { p_conversation: conversationId });
+    setAskingReview(false);
+    if (error) toast.error(error.message);
+    else toast.success("Клиентът получи съобщение с покана за отзив.");
+  }
+
   const partnerReplied = messages.some((m) => m.sender_id === partner.id);
   const today = todayISO();
   const byId = new Map(bookings.map((b) => [b.id, b]));
@@ -317,7 +362,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
     <section aria-label={`Разговор с ${partner.name}`} className="flex min-h-0 flex-col bg-paper">
       {/* Header */}
       {!embedded && (
-      <header className="flex items-center gap-3 border-b border-line bg-surface px-3 py-2.5 sm:px-4">
+      <header className="flex items-center gap-3 border-b border-line px-3 py-2.5 sm:px-4">
         <Link href="/saobshtenia" className="btn btn-ghost btn-sm md:hidden" aria-label="Всички разговори">
           <ArrowLeft className="size-5" aria-hidden />
         </Link>
@@ -399,7 +444,32 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
                     {day === today ? "Днес" : relativeDay(day, today) === "утре" ? formatDate(day) : formatDate(day, true)}
                   </p>
                 )}
-                {m.meta?.share_request ? (
+                {m.meta?.offer && /^[0-9a-f-]{36}$/.test(m.meta.offer) && !m.meta.share_request && !m.meta.booking_id ? (
+                  <div className="mx-auto my-2 w-full max-w-md rounded-[10px] border-[1.5px] border-ink bg-surface p-3.5">
+                    <p className="flex items-center gap-1.5 text-sm font-bold text-ink-2">
+                      <BadgeEuro className="size-4" aria-hidden /> Оферта
+                    </p>
+                    <p className="mt-0.5 font-bold">{m.meta.title}</p>
+                    {m.meta.total != null && <p className="numerals text-3xl">{Number(m.meta.total).toFixed(2).replace(".", ",")} €</p>}
+                    <a href={`/oferta/${m.meta.offer}`} target="_blank" rel="noopener noreferrer" className="btn btn-primary mt-3 w-full">
+                      {iAmClient ? "Виж и приеми офертата" : "Виж как я вижда клиентът"}
+                    </a>
+                  </div>
+                ) : m.meta?.event === "review_request" && !m.meta.share_request && !m.meta.booking_id ? (
+                  <div className="mx-auto my-2 w-full max-w-md rounded-[10px] border-[1.5px] border-ink bg-surface p-3.5">
+                    <p className="flex items-center gap-1.5 text-sm font-bold text-ink-2">
+                      <Star className="size-4" aria-hidden /> Работата е свършена
+                    </p>
+                    <p className="mt-0.5">{m.body}</p>
+                    {canReview ? (
+                      <button type="button" className="btn btn-primary mt-3 w-full" onClick={openReview}>
+                        Остави отзив
+                      </button>
+                    ) : (
+                      <p className="mt-2 text-sm text-ink-3">{iAmClient ? "" : "Клиентът може да остави отзив от този разговор."}</p>
+                    )}
+                  </div>
+                ) : m.meta?.share_request ? (
                   m.meta.event === "asked" ? (
                     <div className="mx-auto my-2 w-full max-w-md rounded-[10px] border-[1.5px] border-ink bg-surface p-3.5">
                       <p className="text-sm font-bold text-ink-2">Снимка в профила</p>
@@ -505,13 +575,22 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
             );
           })}
         </ol>
-        {iAmClient && partnerReplied && partner.slug && (
+        {canReview && partnerReplied && (
           <div className="mx-auto mt-6 flex max-w-2xl items-center gap-3 rounded-[10px] border border-dashed border-line-strong p-3 text-sm">
             <Star className="size-5 shrink-0" aria-hidden />
             <p className="flex-1">Свърши ли работата? Отзивът ви помага на други клиенти.</p>
-            <Link href={`/maistori/${partner.slug}#otzivi`} className="btn btn-outline btn-sm">
+            <button type="button" className="btn btn-outline btn-sm" onClick={openReview}>
               Оцени
-            </Link>
+            </button>
+          </div>
+        )}
+        {!iAmClient && craftsmanId === me && messages.length > 0 && (
+          <div className="mx-auto mt-6 flex max-w-2xl items-center gap-3 rounded-[10px] border border-dashed border-line-strong p-3 text-sm">
+            <Star className="size-5 shrink-0" aria-hidden />
+            <p className="flex-1">Свърши ли работата? Поискай отзив и клиентът ще го види в този разговор.</p>
+            <button type="button" className="btn btn-outline btn-sm" onClick={askReview} disabled={askingReview}>
+              Работата е свършена
+            </button>
           </div>
         )}
       </div>
@@ -522,22 +601,100 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
           Профилът ви е блокиран и не можете да пишете.
         </p>
       ) : (
-        <form onSubmit={submit} className="safe-bottom @container border-t border-line bg-surface px-3 pt-3 sm:px-4">
+        <form onSubmit={submit} className={`safe-bottom @container border-t border-line px-3 pt-3 sm:px-4 ${embedded ? "bg-surface" : ""}`}>
+          {!iAmClient && craftsmanId === me && (
+            <QuickReplies
+              me={me}
+              current={text}
+              onPick={(t) => {
+                setText(t);
+                box.current?.focus();
+              }}
+            />
+          )}
           <AttachmentStrip items={attachments} onRemove={removeAttachment} busy={sending} />
           <div className="mx-auto flex max-w-2xl items-end gap-2">
             <AttachButton onPick={pickFiles} disabled={sending || attachments.length >= MAX_ATTACHMENTS} />
-            {canBook && (
-            <button
-              type="button"
-              className="btn btn-outline size-11 shrink-0 p-0 @lg:w-auto @lg:px-3"
-              onClick={() => setSheet(true)}
-              aria-label={iAmClient ? "Предложи час" : "Запази час"}
-              title={iAmClient ? "Предложи ден и час за оглед или работа" : "Запази ден и час в календара си"}
-            >
-              <CalendarPlus className="size-5" aria-hidden />
-              {/* By the composer's own width: the chat dock is narrow even on a wide screen */}
-              <span className="hidden @lg:inline">Уговорка</span>
-            </button>
+            {canBook && iAmClient && (
+              <button
+                type="button"
+                className="btn btn-outline size-11 shrink-0 p-0 @lg:w-auto @lg:px-3"
+                onClick={() => setSheet(true)}
+                aria-label="Предложи час"
+                title="Предложи ден и час за оглед или работа"
+              >
+                <CalendarPlus className="size-5" aria-hidden />
+                {/* By the composer's own width: the chat dock is narrow even on a wide screen */}
+                <span className="hidden @lg:inline">Уговорка</span>
+              </button>
+            )}
+            {canBook && !iAmClient && (
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  className="btn btn-outline size-11 p-0 @lg:w-auto @lg:px-3"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  aria-label="Предложи уговорка или оферта"
+                  title="Уговорка за ден и час или оферта с цена"
+                >
+                  <Handshake className="size-5" aria-hidden />
+                  <span className="hidden @lg:inline">Предложи</span>
+                  <ChevronUp className={`hidden size-4 transition-transform @lg:inline ${menuOpen ? "" : "rotate-180"}`} aria-hidden />
+                </button>
+                {menuOpen && (
+                  <>
+                    <button type="button" className="fixed inset-0 z-10 cursor-default" aria-label="Затвори менюто" onClick={() => setMenuOpen(false)} />
+                    <ul role="menu" className="absolute bottom-full left-0 z-20 mb-2 w-64 overflow-hidden rounded-[10px] border border-line-strong bg-surface shadow-[var(--shadow-md)]">
+                      <li role="none">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-surface-2"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            setSheet(true);
+                          }}
+                        >
+                          <CalendarPlus className="mt-0.5 size-5 shrink-0" aria-hidden />
+                          <span>
+                            <span className="block font-bold">Уговорка</span>
+                            <span className="block text-sm text-ink-2">Ден и час в календара ти</span>
+                          </span>
+                        </button>
+                      </li>
+                      <li role="none" className="border-t border-line">
+                        {canOffer ? (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-surface-2"
+                            onClick={() => {
+                              setMenuOpen(false);
+                              setOfferOpen(true);
+                            }}
+                          >
+                            <BadgeEuro className="mt-0.5 size-5 shrink-0" aria-hidden />
+                            <span>
+                              <span className="block font-bold">Оферта</span>
+                              <span className="block text-sm text-ink-2">Цена и срок, които клиентът приема с клик</span>
+                            </span>
+                          </button>
+                        ) : (
+                          <Link href="/tabla/plan" role="menuitem" className="flex w-full items-start gap-3 px-3 py-2.5 hover:bg-surface-2">
+                            <BadgeEuro className="mt-0.5 size-5 shrink-0" aria-hidden />
+                            <span>
+                              <span className="block font-bold">Оферта (Pro)</span>
+                              <span className="block text-sm text-ink-2">Офертите са в плана Pro</span>
+                            </span>
+                          </Link>
+                        )}
+                      </li>
+                    </ul>
+                  </>
+                )}
+              </div>
             )}
             <label htmlFor="msg" className="sr-only">
               Съобщение
@@ -564,9 +721,25 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
             </button>
           </div>
           <p className="mx-auto mt-1 hidden max-w-2xl text-xs text-ink-3 sm:block">
-            Enter изпраща, Shift+Enter за нов ред. Когато се разберете за ден, натиснете „Уговорка“.
+            Enter изпраща, Shift+Enter за нов ред. Когато се разберете, натиснете {iAmClient ? "„Уговорка“" : "„Предложи“"}.
           </p>
         </form>
+      )}
+      {reviewOpen && canReview && partner.id && partner.slug && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-4" role="dialog" aria-modal="true" aria-label={`Отзив за ${partner.name}`} onClick={() => setReviewOpen(false)}>
+          <div className="max-h-full w-full max-w-md overflow-y-auto rounded-[12px] bg-paper p-4 sm:p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <h2 className="display text-2xl">Отзив за {partner.name}</h2>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReviewOpen(false)} aria-label="Затвори">
+                ✕
+              </button>
+            </div>
+            <ReviewForm craftsmanId={partner.id} slug={partner.slug} existing={myReview} onDone={() => setReviewOpen(false)} />
+          </div>
+        </div>
+      )}
+      {!banned && canOffer && !iAmClient && craftsmanId === me && (
+        <OfferSheet open={offerOpen} onClose={() => setOfferOpen(false)} craftsmanId={me} partnerName={partner.name} onCreated={sendOffer} />
       )}
       {!banned && canBook && craftsmanId && (
         <BookingSheet

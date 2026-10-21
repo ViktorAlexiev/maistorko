@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { requireCraftsman } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PricingForm, type Initial } from "./pricing-form";
-import { getMyPlan } from "@/lib/plan";
+import Link from "next/link";
+import { Lock } from "lucide-react";
+import { getMyPlan, hasFeature } from "@/lib/plan";
 import { ServicesEditor } from "./services-editor";
 
 export const metadata: Metadata = { title: "Цени и услуги", robots: { index: false } };
@@ -37,12 +39,15 @@ export default async function PricesPage() {
     const parent = Array.isArray(c.parent) ? c.parent[0] : c.parent;
     tops.set(parent?.id ?? c.id, parent?.name ?? c.name);
   }
-  const guides = await Promise.all(
-    [...tops.entries()].map(async ([id, name]) => {
-      const { data } = await supabase.rpc("category_price_guide", { p_category: id });
-      return { id, name, g: data?.[0] };
-    }),
-  );
+  const proHints = hasFeature(plan, "price_hints");
+  const guides = proHints
+    ? await Promise.all(
+        [...tops.entries()].map(async ([id, name]) => {
+          const { data } = await supabase.rpc("category_price_hint", { p_category: id });
+          return { id, name, g: data?.[0] };
+        }),
+      )
+    : [];
 
   return (
     <div className="grid gap-10">
@@ -54,34 +59,45 @@ export default async function PricesPage() {
         </p>
       </div>
 
-      {guides.some((x) => x.g && (x.g.hourly_count > 0 || x.g.job_count > 0)) && (
-        <section aria-labelledby="guide-heading" className="rounded-[10px] bg-rule-soft p-5">
-          <h2 id="guide-heading" className="text-lg font-extrabold">
-            Обичайни цени в твоите категории
-          </h2>
-          <p className="mt-1 text-sm text-ink-2">Изчислени от профилите на други майстори в Майсторлъка. Само за ориентир.</p>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-            {guides
-              .filter((x) => x.g && (x.g.hourly_count > 0 || x.g.job_count > 0))
-              .map(({ id, name, g }) => (
-                <li key={id} className="rounded-[8px] bg-surface p-3">
-                  <p className="font-bold">{name}</p>
-                  {g!.hourly_count > 0 && (
-                    <p className="text-sm">
-                      На час: <span className="numerals text-lg">{g!.hourly_p25}–{g!.hourly_p75} €</span>{" "}
-                      <span className="text-ink-3">(средно {g!.hourly_median} €, {g!.hourly_count} майстори)</span>
-                    </p>
-                  )}
-                  {g!.job_count > 0 && (
-                    <p className="text-sm">
-                      На услуга: <span className="numerals text-lg">{g!.job_p25}–{g!.job_p75} €</span>{" "}
-                      <span className="text-ink-3">(средно {g!.job_median} €)</span>
-                    </p>
-                  )}
-                </li>
-              ))}
-          </ul>
-        </section>
+      {!proHints ? (
+        <p className="flex items-start gap-3 rounded-[10px] border border-dashed border-line-strong p-5 text-ink-2">
+          <Lock className="mt-0.5 size-5 shrink-0" aria-hidden />
+          <span>
+            Ценови подсказки („колегите в твоя град вземат от … до …“) са в Pro.{" "}
+            <Link href="/tabla/plan" className="link font-bold">
+              Виж плановете
+            </Link>
+          </span>
+        </p>
+      ) : (
+        guides.some((x) => x.g) && (
+          <section aria-labelledby="guide-heading" className="rounded-[10px] bg-rule-soft p-5">
+            <h2 id="guide-heading" className="text-lg font-extrabold">
+              Какво вземат колегите
+            </h2>
+            <p className="mt-1 text-sm text-ink-2">Изчислено от цените на други майстори в Майсторлъка. Показва се само когато има достатъчно данни. Само за ориентир.</p>
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+              {guides
+                .filter((x) => x.g)
+                .map(({ id, name, g }) => (
+                  <li key={id} className="rounded-[8px] bg-surface p-3">
+                    <p className="font-bold">{name}</p>
+                    <p className="text-xs text-ink-3">{g!.scope === "city" ? "В твоя град" : "В цялата страна"}</p>
+                    {g!.hourly_p25 != null && (
+                      <p className="text-sm">
+                        На час: <span className="numerals text-lg">{g!.hourly_p25}–{g!.hourly_p75} €</span>
+                      </p>
+                    )}
+                    {g!.job_p25 != null && (
+                      <p className="text-sm">
+                        На услуга: <span className="numerals text-lg">{g!.job_p25}–{g!.job_p75} €</span>
+                      </p>
+                    )}
+                  </li>
+                ))}
+            </ul>
+          </section>
+        )
       )}
 
       <PricingForm

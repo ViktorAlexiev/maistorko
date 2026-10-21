@@ -137,7 +137,13 @@ The worker uses the service role key, so it is a server-side process of its own,
 
 Photos in chats: the paperclip next to the message box. Photos are re-encoded in the browser (EXIF/GPS dropped) and stored in the private bucket `chat-photos/<conversation id>/…`; only the two participants can read them (signed links, one hour). A craftsman can add his own chat photos to his portfolio, and a client's photo only after the client says yes in the chat ("Поискай съгласие"). The photos of a conversation are deleted by the worker together with its messages after 60 idle days.
 
-Review links: a craftsman creates one per finished job (Поръчки → "Поискай отзив") and sends it to the client, who signs in and rates at `/otzyv/<token>`. A link works once and expires after 90 days.
+Reviews: only clients who talked to the craftsman on the site can review. When a craftsman marks the work done in the chat ("Работата е свършена"), the client gets a message with an "Остави отзив" button that opens the review window. There are no reviews for work done outside the site.
+
+Offers by link (Pro): `/tabla/oferti`. The craftsman picks work, materials and an optional period; the client opens `/oferta/<token>` without an account and accepts or declines. If a period was given, accepting creates a job. It is a shared price and deadline, not an invoice.
+
+Client notebook (Pro): `/tabla/klienti`. Stages, a call reminder, a yearly-check switch and a log of notes per client; due reminders show on the dashboard.
+
+Other: "Заето до …" (busy period in one tap, stored as a busy exception with the note "Заето до"), quick replies in the chat (own ones in `quick_replies`), questions by kind of work in the first message (`src/lib/inquiry-questions.ts`), price hints for Pro (`category_price_hint`, needs 5 prices), a small ranking boost and the "Препоръчан партньор" mark for Pro, period search that shows "free N of M days", and GDPR: download all data (`/tabla/profil/eksport`) and delete the account (server action with the service role key).
 
 ## How it works
 

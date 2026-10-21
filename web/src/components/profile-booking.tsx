@@ -21,7 +21,7 @@ export type DayInfo = { day: string; status: "free" | "partial" | "busy"; ranges
 const CODE: Record<DayInfo["status"], DayStatus> = { free: "F", partial: "P", busy: "B" };
 
 type Props = {
-  craftsman: { id: string; name: string; firstName: string; avatar: string | null; slug: string };
+  craftsman: { id: string; name: string; firstName: string; avatar: string | null; slug: string; categories?: { slug: string; name: string }[] };
   days: DayInfo[];
   stale: boolean;
   workOptions: WorkOption[];
@@ -127,7 +127,6 @@ export function ProfileBooking({ craftsman, days, stale, workOptions, initialDat
         <div ref={panel} className="scroll-mt-28" aria-live="polite">
           {selected && (
             <DayPanel
-              key={selected}
               date={selected}
               info={sel}
               firstName={firstName}
@@ -204,7 +203,7 @@ function DayPanel({
   const busy = !info || info.status === "busy";
 
   return (
-    <div className="unfold-down mt-4 rounded-[10px] border-[1.5px] border-ink bg-surface p-4 sm:p-5">
+    <div className="panel-in mt-4 rounded-[10px] border-[1.5px] border-ink bg-surface p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-xl font-extrabold first-letter:uppercase">{formatDate(date, true)}</h3>
@@ -231,10 +230,10 @@ function DayPanel({
                 style={{ left: `${pct(h * 60)}%` }}
               />
             ))}
-            {ranges.map((r) => (
+            {ranges.map((r, i) => (
               <span
-                key={r.start}
-                className="absolute bottom-1 h-3 rounded-[2px] bg-free"
+                key={i}
+                className="absolute bottom-1 h-3 rounded-[2px] bg-free transition-[left,width] duration-300 ease-out"
                 style={{ left: `${pct(minutes(r.start))}%`, width: `${pct(minutes(r.end)) - pct(minutes(r.start))}%` }}
               />
             ))}

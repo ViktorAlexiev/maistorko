@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Check, Circle } from "lucide-react";
 import { requireViewer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { daysSince, todayISO, timeAgo } from "@/lib/format";
+import { daysSince, formatDate, todayISO, timeAgo } from "@/lib/format";
 import { ConfirmCalendarBanner } from "@/components/confirm-calendar";
 import { ConversationItem, type ConversationSummary } from "@/components/conversation-list";
 import { RuleLegend, RuleStrip } from "@/components/rule-strip";
@@ -11,6 +11,9 @@ import { EmptyState, Rating, Stars } from "@/components/bits";
 import { CraftsmanRow, type CraftsmanCardData } from "@/components/craftsman-row";
 import { becomeCraftsman } from "@/app/actions/dashboard";
 import { UpcomingBookings } from "@/components/upcoming-bookings";
+import { BusyUntil, BUSY_UNTIL_NOTE } from "@/components/busy-until";
+import { DemoProButton } from "@/components/demo-pro-button";
+import { getMyPlan } from "@/lib/plan";
 
 export const metadata: Metadata = { title: "Моето табло", robots: { index: false } };
 
@@ -33,7 +36,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
   );
 
   if (viewer.craftsmanSlug) {
-    const [{ data: cp }, { data: strip }, cats, services, rules, photos] = await Promise.all([
+    const [{ data: cp }, { data: strip }, cats, services, rules, photos, { data: busyRows }, { data: dueClients }] = await Promise.all([
       supabase
         .from("craftsman_profiles")
         .select("id, bio, hourly_rate, last_confirmed_at, rating_avg, rating_count, is_verified, is_hidden")
@@ -44,7 +47,24 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
       supabase.from("services").select("id", { count: "exact", head: true }).eq("craftsman_id", viewer.id),
       supabase.from("availability_rules").select("id", { count: "exact", head: true }).eq("craftsman_id", viewer.id),
       supabase.from("work_photos").select("id", { count: "exact", head: true }).eq("craftsman_id", viewer.id),
+      supabase
+        .from("availability_exceptions")
+        .select("id, end_date")
+        .eq("craftsman_id", viewer.id)
+        .eq("note", BUSY_UNTIL_NOTE)
+        .lte("start_date", todayISO())
+        .gte("end_date", todayISO())
+        .order("end_date", { ascending: false })
+        .limit(1),
+      supabase
+        .from("craftsman_clients")
+        .select("id, name, remind_at, remind_note")
+        .eq("craftsman_id", viewer.id)
+        .lte("remind_at", todayISO())
+        .order("remind_at")
+        .limit(5),
     ]);
+    const myPlan = process.env.DEMO_PRO_BUTTON === "1" ? await getMyPlan() : null;
     const daysAgo = cp ? daysSince(cp.last_confirmed_at) : 0;
     const steps = [
       { done: (cats.count ?? 0) > 0, label: "Избери какво работиш", href: "/tabla/profil" },
@@ -67,6 +87,8 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
             </p>
           )}
         </div>
+
+        {myPlan && myPlan.plan !== "company" && <DemoProButton isPro={myPlan.plan === "pro"} />}
 
         {done < steps.length && (
           <section aria-labelledby="setup-heading" className="rounded-[10px] border border-line bg-surface p-5">
@@ -105,6 +127,30 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
         )}
 
         {(rules.count ?? 0) > 0 && daysAgo >= 7 && <ConfirmCalendarBanner daysAgo={daysAgo} />}
+
+        <BusyUntil userId={viewer.id} today={todayISO()} current={busyRows?.[0] ?? null} />
+
+        {dueClients && dueClients.length > 0 && (
+          <section aria-labelledby="due-heading" className="rounded-[10px] border border-ink bg-surface p-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 id="due-heading" className="text-xl font-extrabold">
+                За обаждане
+              </h2>
+              <Link href="/tabla/klienti" className="link text-sm font-bold">
+                Всички клиенти
+              </Link>
+            </div>
+            <ul className="mt-2 grid">
+              {dueClients.map((c) => (
+                <li key={c.id} className="flex flex-wrap items-baseline gap-x-3 border-b border-line py-2 last:border-b-0">
+                  <span className="font-bold">{c.name}</span>
+                  <span className="text-ink-2">{c.remind_note || "Обади се"}</span>
+                  <span className="ml-auto text-sm text-ink-3">{formatDate(c.remind_at!)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section aria-labelledby="next-heading">
           <div className="flex flex-wrap items-end justify-between gap-2">

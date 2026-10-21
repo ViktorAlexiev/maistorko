@@ -3,7 +3,8 @@ import Link from "next/link";
 import { Lock } from "lucide-react";
 import { requireCraftsman } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate } from "@/lib/format";
+import { addDaysISO, formatDate, todayISO } from "@/lib/format";
+import { getMyPlan, hasFeature } from "@/lib/plan";
 
 export const metadata: Metadata = { title: "Статистика", robots: { index: false } };
 
@@ -23,9 +24,17 @@ function duration(min: number) {
 }
 
 export default async function StatsPage() {
-  await requireCraftsman();
+  const viewer = await requireCraftsman();
   const supabase = await createClient();
+  const plan = await getMyPlan();
+  const partner = hasFeature(plan, "boost");
   const { data } = await supabase.rpc("my_stats", { p_weeks: 8 });
+  // Pro: how many of the search impressions carried the "Препоръчан партньор" mark
+  const partnerRows = partner
+    ? (await supabase.from("daily_stats").select("impressions, boosted_impressions").eq("craftsman_id", viewer.id).gte("day", addDaysISO(todayISO(), -30))).data ?? []
+    : [];
+  const partnerShown = partnerRows.reduce((n, d) => n + d.boosted_impressions, 0);
+  const allShown = partnerRows.reduce((n, d) => n + d.impressions, 0);
   const stats = data as Stats | null;
   if (!stats) return <p className="text-ink-2">Статистиката не се зареди. Опитай пак.</p>;
   const { totals: t, response: r, weeks } = stats;
@@ -69,6 +78,28 @@ export default async function StatsPage() {
           </p>
         )}
       </section>
+
+      {partner && (
+        <section aria-labelledby="partner" className="grid gap-3 rounded-[10px] border border-ink bg-surface p-5">
+          <h2 id="partner" className="display text-4xl">
+            Бонусът на Pro
+          </h2>
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-sm font-bold text-ink-2">Показвания в търсенето</dt>
+              <dd className="numerals text-4xl leading-none">{allShown}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-bold text-ink-2">От тях с отметка „Препоръчан партньор“</dt>
+              <dd className="numerals text-4xl leading-none">{partnerShown}</dd>
+            </div>
+          </dl>
+          <p className="text-sm text-ink-2">
+            За последните 30 дни. Бонусът те качва по-нагоре в „Препоръчани“, но не гарантира брой показвания: на страница най-много 3 от
+            10 места са на партньори. Колко от показванията стават запитвания виждаш в плочките по-горе.
+          </p>
+        </section>
+      )}
 
       <section aria-labelledby="speed" className="grid gap-3 rounded-[10px] bg-rule-soft p-5">
         <h2 id="speed" className="display text-4xl">

@@ -717,6 +717,11 @@ dialog.sheet::backdrop {
     animation: unfold-down 380ms var(--ease-hinge) both;
   }
 
+  /* The day panel opens with a short fade and a small drop; picking another day does not replay it */
+  .panel-in {
+    animation: panel-in 240ms var(--ease-out) both;
+  }
+
   /* The chat window rises from the corner */
   .dock-in {
     transform-origin: bottom right;
@@ -791,6 +796,12 @@ dialog.sheet::backdrop {
   from {
     opacity: 0;
     transform: perspective(900px) rotateX(-12deg) scaleY(0.96);
+  }
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
   }
 }
 @keyframes dock-in {

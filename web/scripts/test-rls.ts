@@ -486,26 +486,19 @@ async function main() {
     const { data: marked } = await alice.c.rpc("mark_notifications_read");
     ok("mark_notifications_read отбелязва само моите", typeof marked === "number" && marked >= 1);
 
-    // review by link
-    const { data: jobRow } = await craft.c.from("jobs").insert({ craftsman_id: craft.id, title: "За отзив", start_date: "2030-01-10", end_date: "2030-01-10", status: "done" }).select("id").single();
-    const { data: token, error: tokErr } = await craft.c.rpc("create_review_invite", { p_job: jobRow!.id });
-    ok("майсторът прави линк за отзив към поръчка", !tokErr && Boolean(token), tokErr);
-    const { data: again } = await craft.c.rpc("create_review_invite", { p_job: jobRow!.id });
-    ok("същата поръчка получава същия отворен линк", again === token);
-    const { error: foreignJob } = await other.c.rpc("create_review_invite", { p_job: jobRow!.id });
-    ok("чужд майстор не може да прави линк за моя поръчка", Boolean(foreignJob));
-    const { data: info } = await anon.rpc("review_invite_info", { p_token: token });
-    ok("анонимен вижда само името и състоянието на линка", info?.[0]?.state === "open" && !JSON.stringify(info).includes(craft.id), info);
-    const { error: selfRev } = await craft.c.rpc("submit_review_by_token", { p_token: token, p_rating: 5, p_body: "аз" });
-    ok("майсторът не може да се оцени сам", Boolean(selfRev));
-    const { error: anonRev } = await anon.rpc("submit_review_by_token", { p_token: token, p_rating: 5 });
-    ok("отзив по линк изисква вход", Boolean(anonRev));
-    const { data: revSlug, error: revErr } = await bob.c.rpc("submit_review_by_token", { p_token: token, p_rating: 5, p_body: "Много добра работа" });
-    ok("клиент без чат оставя отзив по линк", !revErr && Boolean(revSlug), revErr);
-    const { data: rv } = await admin.from("reviews").select("rating, body").eq("craftsman_id", craft.id).eq("client_id", bob.id).single();
-    ok("отзивът е записан", rv?.rating === 5 && rv?.body === "Много добра работа", rv);
-    const { error: reuse } = await bob.c.rpc("submit_review_by_token", { p_token: token, p_rating: 1 });
-    ok("линкът е за еднократна употреба", /използван/.test(reuse?.message ?? ""), reuse?.message);
+    // review request in the chat: the craftsman marks the work done, the client gets a message with the review button
+    const { error: askErr } = await craft.c.rpc("request_review_in_chat", { p_conversation: convId });
+    ok("майсторът праща покана за отзив в разговора", !askErr, askErr);
+    const { data: askMsg } = await alice.c.from("messages").select("id").eq("conversation_id", convId).eq("meta->>event", "review_request");
+    ok("клиентът вижда поканата за отзив в чата", (askMsg?.length ?? 0) === 1, askMsg);
+    const { error: askAgain } = await craft.c.rpc("request_review_in_chat", { p_conversation: convId });
+    ok("втора покана в рамките на 30 дни се отказва", Boolean(askAgain));
+    const { error: askClient } = await alice.c.rpc("request_review_in_chat", { p_conversation: convId });
+    ok("клиентът не може да праща покана за отзив", Boolean(askClient));
+    const { error: askOther } = await other.c.rpc("request_review_in_chat", { p_conversation: convId });
+    ok("чужд майстор не може да праща покана в чужд разговор", Boolean(askOther));
+    const { error: askAnon } = await anon.rpc("request_review_in_chat", { p_conversation: convId });
+    ok("анонимен не може да праща покана за отзив", Boolean(askAnon));
     const { data: revNotif } = await craft.c.from("notifications").select("title").eq("kind", "review");
     ok("майсторът получава известие за отзива", (revNotif?.length ?? 0) >= 1);
 
@@ -966,6 +959,88 @@ async function main() {
     if (files?.length) await admin.storage.from("chat-photos").remove(files.map((f) => `${conv}/${f.name}`));
     for (const id of [boss.id, ownerU.id, mgrU.id, empU.id, clientU.id]) await admin.auth.admin.deleteUser(id);
     await admin.from("organizations").delete().eq("id", org.id);
+  }
+
+  console.log("\nОферти, тетрадка с клиенти, бързи отговори");
+  {
+    const boss = await user("client", "boss4");
+    await admin.from("profiles").update({ role: "admin" }).eq("id", boss.id);
+    const lines = [{ name: "Смяна на сифон", amount: "40.00", kind: "service" }, { name: "Сифон", amount: "12.50", kind: "material" }];
+    const { error: freeOffer } = await craft.c.from("offers").insert({ craftsman_id: craft.id, title: "Оферта", lines });
+    ok("безплатен план не може да прави оферти", Boolean(freeOffer));
+    await boss.c.rpc("admin_set_plan", { p_craftsman: craft.id, p_plan: "pro" });
+
+    const { data: offer, error: offerErr } = await craft.c.from("offers").insert({ craftsman_id: craft.id, title: "Оферта: баня", lines, start_date: "2030-02-01", end_date: "2030-02-02" }).select("id, token, total").single();
+    ok("Pro прави оферта", !offerErr && Boolean(offer), offerErr);
+    ok("общата сума се смята в базата", Number(offer?.total) === 52.5, offer);
+    const { error: badLine } = await craft.c.from("offers").insert({ craftsman_id: craft.id, title: "Лоша", lines: [{ name: "", amount: "-5", kind: "service" }] });
+    ok("ред без име или с отрицателна сума се отказва", Boolean(badLine));
+    const { error: asOtherOffer } = await other.c.from("offers").insert({ craftsman_id: craft.id, title: "Чужда", lines });
+    ok("друг майстор не прави оферти от мое име", Boolean(asOtherOffer));
+    const { data: seenByOther } = await other.c.from("offers").select("id").eq("id", offer!.id);
+    ok("чужд майстор не вижда моите оферти", (seenByOther?.length ?? 0) === 0);
+    const { data: anonDirect } = await anon.from("offers").select("id");
+    ok("анонимен не чете таблицата с оферти", !anonDirect || anonDirect.length === 0);
+
+    const { data: pub } = await anon.rpc("offer_by_token", { p_token: offer!.token });
+    ok("клиентът вижда офертата по линка без вход", pub?.[0]?.title === "Оферта: баня" && pub[0].status === "sent", pub);
+    ok("публичната оферта не издава идентификатор на майстора", !JSON.stringify(pub).includes(craft.id));
+    const { error: noName } = await anon.rpc("respond_offer", { p_token: offer!.token, p_accept: true });
+    ok("приемане изисква име", Boolean(noName));
+    const { error: acceptErr } = await anon.rpc("respond_offer", { p_token: offer!.token, p_accept: true, p_name: "Иван Клиент" });
+    ok("клиентът приема офертата с един клик", !acceptErr, acceptErr);
+    const { data: accepted } = await craft.c.from("offers").select("status, job_id").eq("id", offer!.id).single();
+    ok("приетата оферта е отбелязана и пази поръчка", accepted?.status === "accepted" && Boolean(accepted.job_id), accepted);
+    const { error: twice } = await anon.rpc("respond_offer", { p_token: offer!.token, p_accept: false });
+    ok("на оферта се отговаря само веднъж", Boolean(twice));
+    const { data: offerNotif } = await craft.c.from("notifications").select("id").eq("kind", "system").like("title", "Офертата е приета%");
+    ok("майсторът получава известие за приета оферта", (offerNotif?.length ?? 0) >= 1);
+
+    // client notebook
+    const { data: cl, error: clErr } = await craft.c.from("craftsman_clients").insert({ craftsman_id: craft.id, name: "Петър", yearly_check: true }).select("id, status").single();
+    ok("клиентът започва като нова заявка", !clErr && cl?.status === "new", clErr);
+    const { error: noteErr } = await craft.c.from("client_notes").insert({ client_id: cl!.id, craftsman_id: craft.id, body: "Домофон 12" });
+    ok("Pro записва бележка към клиент", !noteErr, noteErr);
+    const { error: foreignNote } = await other.c.from("client_notes").insert({ client_id: cl!.id, craftsman_id: other.id, body: "чужда" });
+    ok("чужд майстор не пише бележки към моя клиент", Boolean(foreignNote));
+    const { data: foreignRead } = await other.c.from("client_notes").select("id");
+    ok("чужд майстор не чете моите бележки", (foreignRead?.length ?? 0) === 0);
+    await craft.c.from("jobs").insert({ craftsman_id: craft.id, client_id: cl!.id, title: "Бойлер", start_date: "2030-03-01", end_date: "2030-03-01", status: "done" });
+    const { data: clAfter } = await craft.c.from("craftsman_clients").select("status, remind_at, remind_note").eq("id", cl!.id).single();
+    ok("свършена работа слага годишно напомняне след година", clAfter?.status === "done" && clAfter.remind_at === "2031-03-01" && clAfter.remind_note === "Годишен преглед", clAfter);
+
+    // quick replies
+    const { error: qrErr } = await craft.c.from("quick_replies").insert({ craftsman_id: craft.id, body: "Идвам след работа" });
+    ok("майсторът запазва свой бърз отговор", !qrErr, qrErr);
+    const { data: qrOther } = await other.c.from("quick_replies").select("id");
+    ok("чужд майстор не вижда моите бързи отговори", (qrOther?.length ?? 0) === 0);
+    const { error: qrAnon } = await anon.from("quick_replies").insert({ craftsman_id: craft.id, body: "x" });
+    ok("анонимен не пише бързи отговори", Boolean(qrAnon));
+
+    // photos on a client card
+    const { error: phErr } = await craft.c.from("client_photos").insert({ client_id: cl!.id, craftsman_id: craft.id, path: `${craft.id}/${cl!.id}/test.jpg` });
+    ok("Pro добавя снимка към клиент", !phErr, phErr);
+    const { data: phOther } = await other.c.from("client_photos").select("id");
+    ok("чужд майстор не вижда снимките към моите клиенти", (phOther?.length ?? 0) === 0);
+    const { error: phForeign } = await other.c.from("client_photos").insert({ client_id: cl!.id, craftsman_id: other.id, path: `${other.id}/${cl!.id}/x.jpg` });
+    ok("чужд майстор не добавя снимка към мой клиент", Boolean(phForeign));
+    const { data: phAnon } = await anon.from("client_photos").select("id");
+    ok("анонимен не чете снимките към клиенти", !phAnon || phAnon.length === 0);
+
+    // Pro boost and the partner mark in search
+    const { data: proRow } = await anon.rpc("search_craftsmen", { p_ids: [craft.id] });
+    ok("Pro профилът е отбелязан като партньор в търсенето", proRow?.[0]?.is_pro === true, proRow);
+
+    // price hints are Pro only and need enough data (the fixtures have fewer than 5 prices)
+    const { data: hint } = await craft.c.rpc("category_price_hint", { p_category: 1 });
+    ok("ценови подсказки не се показват при малко данни", Array.isArray(hint) && hint.length === 0);
+
+    await boss.c.rpc("admin_set_plan", { p_craftsman: craft.id, p_plan: "free" });
+    const { data: freeRow } = await anon.rpc("search_craftsmen", { p_ids: [craft.id] });
+    ok("безплатният профил няма значка партньор", freeRow?.[0]?.is_pro === false, freeRow);
+    const { error: freeNote } = await craft.c.from("client_notes").insert({ client_id: cl!.id, craftsman_id: craft.id, body: "нова" });
+    ok("безплатен план не пише нови бележки към клиент", Boolean(freeNote));
+    await admin.auth.admin.deleteUser(boss.id);
   }
 
   console.log("\nМодерация");

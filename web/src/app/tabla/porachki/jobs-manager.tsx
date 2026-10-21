@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { Check, Copy, Lock, Pencil, Plus, Send, Star, Trash2, Undo2, X } from "lucide-react";
+import { Check, Lock, Pencil, Plus, Trash2, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatEur } from "@/lib/format";
@@ -51,7 +51,6 @@ export function JobsManager({
   today,
   proDetails,
   proClients,
-  canRequestReview = true,
 }: {
   userId: string;
   initialJobs: Job[];
@@ -59,8 +58,6 @@ export function JobsManager({
   today: string;
   proDetails: boolean;
   proClients: boolean;
-  /** review links are created by the craftsman himself, not by a manager */
-  canRequestReview?: boolean;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -69,26 +66,6 @@ export function JobsManager({
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [pending, start] = useTransition();
   const clientName = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
-  // review links already created in this session, by job
-  const [reviewLinks, setReviewLinks] = useState<Record<string, string>>({});
-
-  function requestReview(j: Job) {
-    start(async () => {
-      const { data, error: e } = await supabase.rpc("create_review_invite", { p_job: j.id });
-      if (e || !data) return void toast.error(e?.message || "Не успяхме да направим линк.");
-      setReviewLinks((m) => ({ ...m, [j.id]: `${window.location.origin}/otzyv/${data}` }));
-    });
-  }
-
-  async function copy(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success("Линкът е копиран.");
-    } catch {
-      toast.error("Не успяхме да копираме. Маркирай линка и го копирай ръчно.");
-    }
-  }
-
   const blank = (): Form => ({
     title: "",
     source: "phone",
@@ -285,33 +262,6 @@ export function JobsManager({
         </p>
       </div>
       {hasMoney(j) && <p className="numerals text-2xl">{formatEur(jobTotal(j))}</p>}
-      {reviewLinks[j.id] && (
-        <div className="basis-full rounded-[8px] bg-rule-soft p-3">
-          <p className="text-sm font-bold">Изпрати този линк на клиента. Отзивът се публикува в профила ти.</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <input readOnly className="field min-w-0 flex-1 text-sm" value={reviewLinks[j.id]} aria-label="Линк за отзив" onFocus={(e) => e.currentTarget.select()} />
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => copy(reviewLinks[j.id])}>
-              <Copy className="size-4" aria-hidden /> Копирай
-            </button>
-            <a
-              className="btn btn-outline btn-sm"
-              target="_blank"
-              rel="noopener noreferrer"
-              href={`viber://forward?text=${encodeURIComponent(`Здравейте! Благодаря за доверието. Ще ми помогнете ли с кратък отзив: ${reviewLinks[j.id]}`)}`}
-            >
-              <Send className="size-4" aria-hidden /> Viber
-            </a>
-            <a
-              className="btn btn-outline btn-sm"
-              target="_blank"
-              rel="noopener noreferrer"
-              href={`https://wa.me/?text=${encodeURIComponent(`Здравейте! Благодаря за доверието. Ще ми помогнете ли с кратък отзив: ${reviewLinks[j.id]}`)}`}
-            >
-              <Send className="size-4" aria-hidden /> WhatsApp
-            </a>
-          </div>
-        </div>
-      )}
       <div className="flex flex-wrap gap-1">
         {j.status === "planned" ? (
           <>
@@ -324,11 +274,6 @@ export function JobsManager({
           </>
         ) : (
           <>
-            {j.status === "done" && canRequestReview && (
-              <button type="button" className="btn btn-outline btn-sm" disabled={pending} onClick={() => requestReview(j)}>
-                <Star className="size-4" aria-hidden /> Поискай отзив
-              </button>
-            )}
             <button type="button" className="btn btn-ghost btn-sm" disabled={pending} onClick={() => setStatus(j, "planned")}>
               <Undo2 className="size-4" aria-hidden /> Върни
             </button>

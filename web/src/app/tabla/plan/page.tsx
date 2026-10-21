@@ -1,3 +1,4 @@
+import { DemoProButton } from "@/components/demo-pro-button";
 import type { Metadata } from "next";
 import { Check, Minus } from "lucide-react";
 import { requireCraftsman } from "@/lib/auth";
@@ -18,7 +19,12 @@ const ROWS: { label: string; free: Cell; pro: Cell; company: Cell }[] = [
   { label: "Клиентска карта, материали и цени към поръчка", free: false, pro: true, company: true },
   { label: "Отчет за месеца", free: false, pro: true, company: true },
   { label: "Подробна статистика по седмици", free: false, pro: true, company: true },
-  { label: "Готови отговори в чата", free: false, pro: true, company: true },
+  { label: "Готови отговори в чата (и свои)", free: true, pro: true, company: true },
+  { label: "„Заето до …“ с един бутон", free: true, pro: true, company: true },
+  { label: "Тетрадка с клиенти: етапи, напомняния, бележки", free: false, pro: true, company: true },
+  { label: "Оферта по линк, която клиентът приема с клик", free: false, pro: true, company: true },
+  { label: "Ценови подсказки от колегите в града", free: false, pro: true, company: true },
+  { label: "Бонус в „Препоръчани“ и значка „Препоръчан партньор“", free: false, pro: true, company: false },
   { label: "Фирмен профил и екип", free: false, pro: false, company: true },
 ];
 
@@ -45,6 +51,8 @@ export default async function PlanPage() {
           Профилът, календарът и чатът са безплатни завинаги. Pro е за майстори, които искат повече инструменти за работата си.
         </p>
       </div>
+
+      {process.env.DEMO_PRO_BUTTON === "1" && plan.plan !== "company" && <DemoProButton isPro={plan.plan === "pro"} />}
 
       <section aria-labelledby="current-heading" className="rounded-[10px] border-[1.5px] border-ink bg-surface p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">

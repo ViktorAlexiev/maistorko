@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MapPin, Zap } from "lucide-react";
+import { Handshake, MapPin, Zap } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { Rating, VerifiedBadge } from "@/components/bits";
 import { RuleStrip } from "@/components/rule-strip";
@@ -26,6 +26,11 @@ export type CraftsmanCardData = {
   strip: string | null;
   freshness: string;
   created_at?: string;
+  /** paid Pro profile: marked "Препоръчан партньор" and lifted a little in the recommended order */
+  is_pro?: boolean | null;
+  /** period search: free days out of the days asked for */
+  free_days?: number | null;
+  span_days?: number | null;
 };
 
 /** A catalog row: who, what, how much, and the folding rule of the next 14 days. */
@@ -44,7 +49,11 @@ export function CraftsmanRow({
   const cats = (c.category_names ?? []).slice(0, 3);
 
   return (
-    <article className="group relative rounded-[10px] border border-line bg-surface transition-[border-color,box-shadow] duration-200 hover:border-ink/40 hover:shadow-[var(--shadow-md)]">
+    <article
+      className={`group relative rounded-[10px] border bg-surface transition-[border-color,box-shadow] duration-200 hover:border-ink/40 hover:shadow-[var(--shadow-md)] ${
+        c.is_pro ? "border-ink shadow-[inset_0_3px_0_var(--rule)]" : "border-line"
+      }`}
+    >
       <div className={`grid gap-x-5 gap-y-4 p-4 sm:p-5 ${compact ? "" : "xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]"}`}>
         <div className="flex min-w-0 gap-4">
           <Avatar name={c.display_name} url={c.avatar_url} size={compact ? 52 : 64} square />
@@ -55,6 +64,11 @@ export function CraftsmanRow({
               </Link>
               {c.is_verified && <VerifiedBadge />}
             </h3>
+            {c.is_pro && (
+              <p className="mt-0.5 inline-flex items-center gap-1 rounded bg-rule px-1.5 py-0.5 text-xs font-bold">
+                <Handshake className="size-3.5" aria-hidden /> Препоръчан партньор
+              </p>
+            )}
             {c.business_name && <p className="truncate text-sm text-ink-3">{c.business_name}</p>}
             <p className="mt-1 line-clamp-1 text-[0.95rem] text-ink-2">{cats.join(" · ")}</p>
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-2">
@@ -91,6 +105,7 @@ export function CraftsmanRow({
                     {!c.strip.includes("F") && !c.strip.includes("P") && !c.matched_date
                       ? `Зает 2 седмици. Свободен от ${formatDate(free)}`
                       : `Свободен ${relativeDay(free)}${c.matched_date ? " (търсената дата)" : ""}`}
+                    {c.span_days && c.span_days > 1 && c.free_days != null ? `, ${c.free_days} от ${c.span_days} дни свободен` : ""}
                   </span>
                 ) : (
                   <span className="font-semibold text-ink-3">Няма свободни дни скоро</span>

@@ -12,6 +12,8 @@ export default async function DashboardLayout({ children }: LayoutProps<"/tabla"
         { href: "/tabla", label: "Преглед" },
         { href: "/tabla/kalendar", label: "Календар" },
         { href: "/tabla/porachki", label: "Поръчки" },
+        { href: "/tabla/klienti", label: "Клиенти" },
+        { href: "/tabla/oferti", label: "Оферти" },
         { href: "/tabla/tseni", label: "Цени и услуги" },
         { href: "/tabla/snimki", label: "Снимки" },
         { href: "/tabla/statistika", label: "Статистика" },

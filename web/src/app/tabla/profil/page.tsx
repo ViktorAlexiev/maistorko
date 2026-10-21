@@ -6,6 +6,7 @@ import { AvatarUpload } from "@/components/avatar-upload";
 import { getMyPlan } from "@/lib/plan";
 import { ClientProfileForm, CraftsmanProfileForm } from "./profile-forms";
 import { NotificationPrefs, type Prefs } from "./notification-prefs";
+import { MyData } from "./my-data";
 
 export const metadata: Metadata = { title: "Профил", robots: { index: false } };
 
@@ -56,6 +57,7 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
           }}
         />
         <NotificationPrefs userId={viewer.id} initial={prefs} isCraftsman={false} />
+        <MyData />
       </div>
     );
   }
@@ -95,6 +97,7 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
         }}
       />
       <NotificationPrefs userId={viewer.id} initial={prefs} isCraftsman />
+      <MyData />
     </div>
   );
 }

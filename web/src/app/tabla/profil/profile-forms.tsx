@@ -122,6 +122,24 @@ export function CraftsmanProfileForm({
   const [state, action] = useActionState<FormState, FormData>(updateCraftsmanProfile, {});
   const v = { ...initial, ...state.values } as CraftInitial;
   const [picked, setPicked] = useState(new Set(initial.categories));
+  // Which category boxes are open. On a wide screen the boxes sit two in a row, and the neighbour opens and closes
+  // together with the one you touched, so the row never has one box open and an empty gap beside it.
+  const [openIds, setOpenIds] = useState<Set<number>>(
+    () => new Set(tree.filter((t) => t.children.some((c) => initial.categories.includes(String(c.id))) || initial.categories.includes(String(t.id))).map((t) => t.id)),
+  );
+  function toggleBox(index: number, open: boolean) {
+    const twoColumns = typeof window !== "undefined" && window.matchMedia("(min-width: 640px)").matches;
+    const mate = twoColumns ? tree[index ^ 1] : undefined;
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      for (const t of [tree[index], mate]) {
+        if (!t) continue;
+        if (open) next.add(t.id);
+        else next.delete(t.id);
+      }
+      return next;
+    });
+  }
   const [bioLen, setBioLen] = useState(initial.bio.length);
   const [areaChecked, setAreaChecked] = useState(() => new Set(initial.areas));
   const areaCount = areaChecked.size;
@@ -222,10 +240,18 @@ export function CraftsmanProfileForm({
           <FieldError id="categories-err" message={state.errors?.categories} />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          {tree.map((top) => {
+          {tree.map((top, index) => {
             const count = top.children.filter((c) => picked.has(String(c.id))).length + (picked.has(String(top.id)) ? 1 : 0);
             return (
-              <details key={top.id} className="group rounded-[10px] border border-line bg-surface open:border-ink" open={count > 0}>
+              <details
+                key={top.id}
+                className="group rounded-[10px] border border-line bg-surface open:border-ink"
+                open={openIds.has(top.id)}
+                onToggle={(e) => {
+                  const now = e.currentTarget.open;
+                  if (now !== openIds.has(top.id)) toggleBox(index, now);
+                }}
+              >
                 <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
                   <span className="grid size-9 place-items-center rounded-[8px] bg-paper ring-1 ring-inset ring-line group-open:bg-rule">
                     <CategoryIcon name={top.icon} />
