@@ -3,6 +3,8 @@
   "main": ".open-next/worker.js",
   "name": "maistorko",
   "compatibility_date": "2025-12-01",
+  // Variables and secrets are set in the Cloudflare dashboard; a deploy must not remove them.
+  "keep_vars": true,
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
     "directory": ".open-next/assets",
