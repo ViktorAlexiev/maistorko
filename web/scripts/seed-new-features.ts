@@ -46,7 +46,7 @@ async function main() {
       .select("id, name"),
     "clients",
   );
-  const byName = Object.fromEntries(clients.map((c) => [c.name, c.id]));
+  const byName = Object.fromEntries((clients ?? []).map((c) => [c.name, c.id]));
 
   await must(
     db.from("client_notes").insert([
@@ -86,7 +86,7 @@ async function main() {
   // a short "busy" example is left out on purpose: the "Заето до …" button on the dashboard is for trying it live
   const offers = await must(db.from("offers").select("token, title"), "offers read");
   console.log("✓ Демо данни за новите функции са готови.");
-  for (const o of offers) console.log(`  оферта „${o.title}“: /oferta/${o.token}`);
+  for (const o of offers ?? []) console.log(`  оферта „${o.title}“: /oferta/${o.token}`);
 }
 
 main().catch((e) => {

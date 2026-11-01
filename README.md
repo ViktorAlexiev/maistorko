@@ -145,6 +145,17 @@ Client notebook (Pro): `/tabla/klienti`. Stages, a call reminder, a yearly-check
 
 Other: "Заето до …" (busy period in one tap, stored as a busy exception with the note "Заето до"), quick replies in the chat (own ones in `quick_replies`), questions by kind of work in the first message (`src/lib/inquiry-questions.ts`), price hints for Pro (`category_price_hint`, needs 5 prices), a small ranking boost and the "Препоръчан партньор" mark for Pro, period search that shows "free N of M days", and GDPR: download all data (`/tabla/profil/eksport`) and delete the account (server action with the service role key).
 
+## Hosting on Cloudflare Workers (demo)
+
+The app runs on Cloudflare Workers through the OpenNext adapter (`web/wrangler.jsonc`, `web/open-next.config.ts`). The database, sign-in and files stay in a hosted Supabase project (Cloudflare cannot host them).
+
+1. Supabase: create a project, then from the repo root `npx supabase login`, `npx supabase link --project-ref <ref>`, `npx supabase db push`. In Authentication → Email turn off "Confirm email" for the demo.
+2. Cloudflare: Workers & Pages → Create → Import a repository. Root directory `web`, build command `npx opennextjs-cloudflare build`, deploy command `npx opennextjs-cloudflare deploy`.
+3. Variables, in BOTH "Build variables and secrets" and Settings → "Variables & Secrets": `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (legacy `anon` key), `SUPABASE_SERVICE_ROLE_KEY` (legacy `service_role` key, secret), `NEXT_PUBLIC_SITE_URL` (the worker's https address), `DEMO_PRO_BUTTON=1` (demo only: shows "Активирай Pro" to every craftsman).
+4. After the first deploy put the worker's address into `NEXT_PUBLIC_SITE_URL` and into Supabase → Authentication → URL Configuration (Site URL and Redirect URLs), then redeploy.
+
+The adapter needs Next.js 16.4.1 or newer. The bundle is about 2.1 MiB compressed, under the 3 MiB limit of the free Workers plan. The background worker (e-mails, nightly cleanup) does not run on Cloudflare. Seeded demo accounts share a public password: delete or re-password `admin@maistorko.test` on a public site.
+
 ## How it works
 
 ### Data model (`supabase/migrations`)

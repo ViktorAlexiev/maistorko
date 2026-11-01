@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
     "test:rls": "tsx scripts/test-rls.ts",
@@ -15,10 +17,11 @@
     "worker:once": "tsx scripts/worker.ts --once"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.15",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "lucide-react": "^1.48.0",
-    "next": "16.3.6",
+    "next": "^16.4.3",
     "nodemailer": "^10.0.16",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
@@ -36,9 +39,10 @@
     "@types/react-dom": "^19",
     "dotenv": "^18.0.4",
     "eslint": "^9",
-    "eslint-config-next": "16.3.6",
+    "eslint-config-next": "^16.4.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.156.0"
   }
 }
