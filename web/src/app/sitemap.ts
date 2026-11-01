@@ -2,7 +2,9 @@ import type { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 
-export const revalidate = 3600;
+// Built per request: it reads the database, which is not available while the site is being built (and on Cloudflare
+// there is no incremental cache to refresh a prerendered copy).
+export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
