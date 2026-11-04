@@ -46,12 +46,12 @@ const getCraftsman = cache(async (slug: string) => {
       `id, slug, display_name, business_name, bio, years_experience, languages, avatar_url,
        hourly_rate, callout_fee, travel_fee, materials_included, quote_on_inspection,
        inspection_policy, inspection_fee, terms_note, other_services,
-       price_from, price_from_unit, short_notice, last_confirmed_at, contact_hours,
+       price_from, price_from_unit, short_notice, last_confirmed_at, contact_hours, reply_within_hours,
        is_verified, rating_avg, rating_count, created_at,
        city:city_id(name, slug),
        areas:craftsman_service_areas(city:cities(name, slug, sort)),
        cats:craftsman_categories(category:categories(id, name, slug, sort, parent:parent_id(id, name, slug, sort))),
-       services(id, name, description, price_kind, price, unit, sort, category_id),
+       services(id, name, description, price_kind, price, unit, sort, category_id, template_id, template:job_templates(typical_hours)),
        photos:work_photos(id, path, caption, sort)`,
     )
     .eq("slug", slug)
@@ -158,6 +158,12 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
     .map((a) => a.city)
     .filter((a): a is NonNullable<typeof a> => Boolean(a))
     .sort((a, b) => a.sort - b.sort);
+  // Usual price ranges (indicative) for the jobs that come from the ready-made list
+  const templateIds = [...new Set(services.map((s) => s.template_id).filter((x): x is number => x != null))];
+  const { data: rangeRows } = templateIds.length
+    ? await supabase.rpc("template_price_ranges", { p_templates: templateIds, p_city: c.city?.slug ?? undefined })
+    : { data: [] };
+  const rangeOf = new Map((rangeRows ?? []).map((r) => [r.template_id, r]));
   const myReview = reviews?.find((r) => r.is_mine);
   const dayInfo = (days ?? []).map((d) => ({ day: d.day, status: d.status, ranges: d.ranges })) as DayInfo[];
   const initialDate = typeof sp.data === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.data) ? sp.data : undefined;
@@ -267,6 +273,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
             craftsman={{ id: c.id, name: c.display_name, firstName, avatar: c.avatar_url, slug: c.slug, categories: catList.map((x) => ({ slug: x.slug, name: x.name })) }}
             days={expired ? [] : dayInfo}
             stale={stale && !expired}
+            confirmedLabel={confirmedDaysAgo < 1 ? "График, потвърден днес" : `График, потвърден ${timeAgo(c.last_confirmed_at)}`}
             workOptions={workOptions}
             initialDate={initialDate}
             me={viewer?.id ?? null}
@@ -302,19 +309,37 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
                       <td className="numerals whitespace-nowrap py-3 text-right text-2xl">{formatEur(c.hourly_rate)}/ч</td>
                     </tr>
                   )}
-                  {services.map((s) => (
-                    <tr key={s.id} className="border-b border-line">
-                      <th scope="row" className="py-3 pr-4 font-semibold">
-                        {s.name}
-                        {s.description && <span className="block text-sm font-normal text-ink-3">{s.description}</span>}
-                      </th>
-                      <td
-                        className={`whitespace-nowrap py-3 text-right ${s.price_kind === "quote" ? "font-semibold text-ink-2" : "numerals text-2xl"}`}
-                      >
-                        {servicePrice(s.price_kind as PriceKind, s.price, s.unit as PriceUnit)}
-                      </td>
-                    </tr>
-                  ))}
+                  {services.map((s) => {
+                    const range = s.template_id != null ? rangeOf.get(s.template_id) : undefined;
+                    const tpl = one(s.template);
+                    // a job left "по оглед" still gets an indicative price: hourly rate x the usual time
+                    const estimate =
+                      s.price_kind === "quote" && c.hourly_rate && tpl?.typical_hours
+                        ? Math.round((Number(c.hourly_rate) * Number(tpl.typical_hours)) / 5) * 5
+                        : null;
+                    const unitSuffix = s.unit === "m2" ? "/м²" : s.unit === "hour" ? "/ч" : "";
+                    return (
+                      <tr key={s.id} className="border-b border-line">
+                        <th scope="row" className="py-3 pr-4 font-semibold">
+                          {s.name}
+                          {s.description && <span className="block text-sm font-normal text-ink-3">{s.description}</span>}
+                          {range && (
+                            <span className="block text-sm font-normal text-ink-3">
+                              Обикновено {range.scope === "city" && c.city ? `в ${c.city.name}` : "в България"}: {range.p25}–{range.p75} €{unitSuffix} (ориентировъчно)
+                            </span>
+                          )}
+                        </th>
+                        <td
+                          className={`whitespace-nowrap py-3 text-right ${s.price_kind === "quote" ? "font-semibold text-ink-2" : "numerals text-2xl"}`}
+                        >
+                          {servicePrice(s.price_kind as PriceKind, s.price, s.unit as PriceUnit)}
+                          {estimate != null && estimate > 0 && (
+                            <span className="block text-sm font-normal text-ink-3">≈ {estimate} €{unitSuffix}, ориентировъчно</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (
@@ -427,7 +452,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
 
         {/* Side facts */}
         <aside className="order-first lg:order-none">
-          <div className="grid gap-5 rounded-[10px] border border-line bg-surface p-5 lg:sticky lg:top-24">
+          <div className="grid gap-5 rounded-[10px] border border-line bg-surface p-5 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain">
             <section aria-labelledby="contacts-heading" className="grid gap-3 border-b border-line pb-5">
               <h2 id="contacts-heading" className="text-lg font-extrabold">
                 Контакти
@@ -454,6 +479,12 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
                   signedIn={Boolean(viewer)}
                   loginHref={`/vhod?next=${encodeURIComponent(`/maistori/${c.slug}`)}`}
                 />
+              )}
+              {c.reply_within_hours != null && (
+                <p className="flex gap-2 text-[0.95rem] font-semibold">
+                  <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  Обикновено отговаря {c.reply_within_hours >= 48 ? "до 2 дни" : c.reply_within_hours === 24 ? "до 24 часа" : c.reply_within_hours === 1 ? "до 1 час" : `до ${c.reply_within_hours} часа`}
+                </p>
               )}
               {c.contact_hours && (
                 <p className="flex gap-2 text-[0.95rem]">

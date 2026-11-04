@@ -1,1233 +1,2392 @@
-
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
-  
-  "graphql_public": {
-          Tables: {
-            [_ in never]: never
-          }
-          Views: {
-            [_ in never]: never
-          }
-          Functions: {
-            "graphql":
-{ Args: { "extensions"?: Json,"operationName"?: string,"query"?: string,"variables"?: Json }; Returns: Json
-                           }
-          }
-          Enums: {
-            [_ in never]: never
-          }
-          CompositeTypes: {
-            [_ in never]: never
-          }
-        },"public": {
-          Tables: {
-            "admin_log": {
-                  Row: {
-                    "action": string,"admin_id": string | null,"created_at": string,"details": NonNullable<Json>,"id": number,"target_id": string | null,"target_type": string | null
-                  }
-                  Insert: {
-                    "action": string,"admin_id"?: string | null,"created_at"?: string,"details"?: NonNullable<Json>,"id"?: never,"target_id"?: string | null,"target_type"?: string | null
-                  }
-                  Update: {
-                    "action"?: string,"admin_id"?: string | null,"created_at"?: string,"details"?: NonNullable<Json>,"id"?: never,"target_id"?: string | null,"target_type"?: string | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "admin_log_admin_id_fkey"
-      columns: ["admin_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.18"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
     }
-                  ]
-                },"availability_exceptions": {
-                  Row: {
-                    "craftsman_id": string,"created_at": string,"end_date": string,"end_time": string | null,"id": string,"kind": Database["public"]['Enums']["exception_kind"],"note": string | null,"start_date": string,"start_time": string | null
-                  }
-                  Insert: {
-                    "craftsman_id": string,"created_at"?: string,"end_date": string,"end_time"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["exception_kind"],"note"?: string | null,"start_date": string,"start_time"?: string | null
-                  }
-                  Update: {
-                    "craftsman_id"?: string,"created_at"?: string,"end_date"?: string,"end_time"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["exception_kind"],"note"?: string | null,"start_date"?: string,"start_time"?: string | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "availability_exceptions_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
+    Views: {
+      [_ in never]: never
     }
-                  ]
-                },"availability_rules": {
-                  Row: {
-                    "craftsman_id": string,"end_time": string,"id": string,"start_time": string,"weekday": number
-                  }
-                  Insert: {
-                    "craftsman_id": string,"end_time": string,"id"?: string,"start_time": string,"weekday": number
-                  }
-                  Update: {
-                    "craftsman_id"?: string,"end_time"?: string,"id"?: string,"start_time"?: string,"weekday"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "availability_rules_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"bookings": {
-                  Row: {
-                    "booking_date": string,"client_id": string,"conversation_id": string,"craftsman_id": string,"created_at": string,"end_date": string | null,"end_time": string | null,"id": string,"kind": string,"note": string | null,"proposed_by": string,"responded_by": string | null,"start_time": string | null,"status": string,"updated_at": string,"booking_label": string | null,"booking_overlaps": boolean | null
-                  }
-                  Insert: {
-                    "booking_date": string,"client_id": string,"conversation_id": string,"craftsman_id": string,"created_at"?: string,"end_date"?: string | null,"end_time"?: string | null,"id"?: string,"kind": string,"note"?: string | null,"proposed_by": string,"responded_by"?: string | null,"start_time"?: string | null,"status"?: string,"updated_at"?: string
-                  }
-                  Update: {
-                    "booking_date"?: string,"client_id"?: string,"conversation_id"?: string,"craftsman_id"?: string,"created_at"?: string,"end_date"?: string | null,"end_time"?: string | null,"id"?: string,"kind"?: string,"note"?: string | null,"proposed_by"?: string,"responded_by"?: string | null,"start_time"?: string | null,"status"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "bookings_client_id_fkey"
-      columns: ["client_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "bookings_conversation_id_fkey"
-      columns: ["conversation_id"]
-isOneToOne: false
-      referencedRelation: "conversations"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "bookings_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "bookings_proposed_by_fkey"
-      columns: ["proposed_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "bookings_responded_by_fkey"
-      columns: ["responded_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"categories": {
-                  Row: {
-                    "created_at": string,"description": string | null,"icon": string | null,"id": number,"is_active": boolean,"keywords": (string)[],"name": string,"parent_id": number | null,"slug": string,"sort": number
-                  }
-                  Insert: {
-                    "created_at"?: string,"description"?: string | null,"icon"?: string | null,"id"?: never,"is_active"?: boolean,"keywords"?: (string)[],"name": string,"parent_id"?: number | null,"slug": string,"sort"?: number
-                  }
-                  Update: {
-                    "created_at"?: string,"description"?: string | null,"icon"?: string | null,"id"?: never,"is_active"?: boolean,"keywords"?: (string)[],"name"?: string,"parent_id"?: number | null,"slug"?: string,"sort"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "categories_parent_id_fkey"
-      columns: ["parent_id"]
-isOneToOne: false
-      referencedRelation: "categories"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"chat_photo_purge_queue": {
-                  Row: {
-                    "conversation_id": string,"created_at": string
-                  }
-                  Insert: {
-                    "conversation_id": string,"created_at"?: string
-                  }
-                  Update: {
-                    "conversation_id"?: string,"created_at"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"cities": {
-                  Row: {
-                    "id": number,"is_major": boolean,"name": string,"region": string,"slug": string,"sort": number
-                  }
-                  Insert: {
-                    "id"?: never,"is_major"?: boolean,"name": string,"region": string,"slug": string,"sort"?: number
-                  }
-                  Update: {
-                    "id"?: never,"is_major"?: boolean,"name"?: string,"region"?: string,"slug"?: string,"sort"?: number
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"client_notes": {
-                  Row: {
-                    "body": string,"client_id": string,"craftsman_id": string,"created_at": string,"id": string
-                  }
-                  Insert: {
-                    "body": string,"client_id": string,"craftsman_id": string,"created_at"?: string,"id"?: string
-                  }
-                  Update: {
-                    "body"?: string,"client_id"?: string,"craftsman_id"?: string,"created_at"?: string,"id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "client_notes_client_id_fkey"
-      columns: ["client_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_clients"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "client_notes_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"client_photos": {
-                  Row: {
-                    "caption": string | null,"client_id": string,"craftsman_id": string,"created_at": string,"id": string,"path": string
-                  }
-                  Insert: {
-                    "caption"?: string | null,"client_id": string,"craftsman_id": string,"created_at"?: string,"id"?: string,"path": string
-                  }
-                  Update: {
-                    "caption"?: string | null,"client_id"?: string,"craftsman_id"?: string,"created_at"?: string,"id"?: string,"path"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "client_photos_client_id_fkey"
-      columns: ["client_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_clients"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "client_photos_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"contact_requests": {
-                  Row: {
-                    "admin_note": string | null,"contact": string,"created_at": string,"id": string,"ip_hash": string | null,"kind": string,"message": string | null,"name": string,"payload": NonNullable<Json>,"status": string,"user_id": string | null
-                  }
-                  Insert: {
-                    "admin_note"?: string | null,"contact": string,"created_at"?: string,"id"?: string,"ip_hash"?: string | null,"kind": string,"message"?: string | null,"name": string,"payload"?: NonNullable<Json>,"status"?: string,"user_id"?: string | null
-                  }
-                  Update: {
-                    "admin_note"?: string | null,"contact"?: string,"created_at"?: string,"id"?: string,"ip_hash"?: string | null,"kind"?: string,"message"?: string | null,"name"?: string,"payload"?: NonNullable<Json>,"status"?: string,"user_id"?: string | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "contact_requests_user_id_fkey"
-      columns: ["user_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"conversations": {
-                  Row: {
-                    "assigned_to": string | null,"category_id": number | null,"client_id": string,"client_last_read_at": string,"craftsman_id": string | null,"craftsman_last_read_at": string,"craftsman_replied_at": string | null,"created_at": string,"id": string,"last_message_at": string,"last_message_preview": string,"last_sender_id": string | null,"messages_purged_at": string | null,"org_id": string | null,"requested_date": string | null
-                  }
-                  Insert: {
-                    "assigned_to"?: string | null,"category_id"?: number | null,"client_id": string,"client_last_read_at"?: string,"craftsman_id"?: string | null,"craftsman_last_read_at"?: string,"craftsman_replied_at"?: string | null,"created_at"?: string,"id"?: string,"last_message_at"?: string,"last_message_preview"?: string,"last_sender_id"?: string | null,"messages_purged_at"?: string | null,"org_id"?: string | null,"requested_date"?: string | null
-                  }
-                  Update: {
-                    "assigned_to"?: string | null,"category_id"?: number | null,"client_id"?: string,"client_last_read_at"?: string,"craftsman_id"?: string | null,"craftsman_last_read_at"?: string,"craftsman_replied_at"?: string | null,"created_at"?: string,"id"?: string,"last_message_at"?: string,"last_message_preview"?: string,"last_sender_id"?: string | null,"messages_purged_at"?: string | null,"org_id"?: string | null,"requested_date"?: string | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "conversations_assigned_to_fkey"
-      columns: ["assigned_to"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "conversations_category_id_fkey"
-      columns: ["category_id"]
-isOneToOne: false
-      referencedRelation: "categories"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "conversations_client_id_fkey"
-      columns: ["client_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "conversations_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "conversations_org_id_fkey"
-      columns: ["org_id"]
-isOneToOne: false
-      referencedRelation: "organizations"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"craftsman_categories": {
-                  Row: {
-                    "category_id": number,"craftsman_id": string
-                  }
-                  Insert: {
-                    "category_id": number,"craftsman_id": string
-                  }
-                  Update: {
-                    "category_id"?: number,"craftsman_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "craftsman_categories_category_id_fkey"
-      columns: ["category_id"]
-isOneToOne: false
-      referencedRelation: "categories"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "craftsman_categories_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"craftsman_clients": {
-                  Row: {
-                    "address": string | null,"craftsman_id": string,"created_at": string,"id": string,"name": string,"note": string | null,"phone": string | null,"remind_at": string | null,"remind_note": string | null,"status": string,"yearly_check": boolean
-                  }
-                  Insert: {
-                    "address"?: string | null,"craftsman_id": string,"created_at"?: string,"id"?: string,"name": string,"note"?: string | null,"phone"?: string | null,"remind_at"?: string | null,"remind_note"?: string | null,"status"?: string,"yearly_check"?: boolean
-                  }
-                  Update: {
-                    "address"?: string | null,"craftsman_id"?: string,"created_at"?: string,"id"?: string,"name"?: string,"note"?: string | null,"phone"?: string | null,"remind_at"?: string | null,"remind_note"?: string | null,"status"?: string,"yearly_check"?: boolean
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "craftsman_clients_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"craftsman_profiles": {
-                  Row: {
-                    "avatar_url": string | null,"bio": string,"business_name": string | null,"callout_fee": number | null,"city_id": number | null,"contact_hours": string | null,"created_at": string,"display_name": string,"hourly_rate": number | null,"id": string,"inspection_fee": number | null,"inspection_policy": string | null,"is_hidden": boolean,"is_verified": boolean,"languages": (string)[],"last_confirmed_at": string,"materials_included": boolean,"other_services": string | null,"phone_visibility": string,"price_from": number | null,"price_from_unit": Database["public"]['Enums']["price_unit"] | null,"quote_on_inspection": boolean,"rating_avg": number,"rating_count": number,"search_text": string,"search_vector": unknown,"short_notice": boolean,"slug": string,"terms_note": string | null,"travel_fee": number | null,"updated_at": string,"years_experience": number | null
-                  }
-                  Insert: {
-                    "avatar_url"?: string | null,"bio"?: string,"business_name"?: string | null,"callout_fee"?: number | null,"city_id"?: number | null,"contact_hours"?: string | null,"created_at"?: string,"display_name": string,"hourly_rate"?: number | null,"id": string,"inspection_fee"?: number | null,"inspection_policy"?: string | null,"is_hidden"?: boolean,"is_verified"?: boolean,"languages"?: (string)[],"last_confirmed_at"?: string,"materials_included"?: boolean,"other_services"?: string | null,"phone_visibility"?: string,"price_from"?: number | null,"price_from_unit"?: Database["public"]['Enums']["price_unit"] | null,"quote_on_inspection"?: boolean,"rating_avg"?: number,"rating_count"?: number,"search_text"?: string,"search_vector"?: unknown,"short_notice"?: boolean,"slug": string,"terms_note"?: string | null,"travel_fee"?: number | null,"updated_at"?: string,"years_experience"?: number | null
-                  }
-                  Update: {
-                    "avatar_url"?: string | null,"bio"?: string,"business_name"?: string | null,"callout_fee"?: number | null,"city_id"?: number | null,"contact_hours"?: string | null,"created_at"?: string,"display_name"?: string,"hourly_rate"?: number | null,"id"?: string,"inspection_fee"?: number | null,"inspection_policy"?: string | null,"is_hidden"?: boolean,"is_verified"?: boolean,"languages"?: (string)[],"last_confirmed_at"?: string,"materials_included"?: boolean,"other_services"?: string | null,"phone_visibility"?: string,"price_from"?: number | null,"price_from_unit"?: Database["public"]['Enums']["price_unit"] | null,"quote_on_inspection"?: boolean,"rating_avg"?: number,"rating_count"?: number,"search_text"?: string,"search_vector"?: unknown,"short_notice"?: boolean,"slug"?: string,"terms_note"?: string | null,"travel_fee"?: number | null,"updated_at"?: string,"years_experience"?: number | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "craftsman_profiles_city_id_fkey"
-      columns: ["city_id"]
-isOneToOne: false
-      referencedRelation: "cities"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "craftsman_profiles_id_fkey"
-      columns: ["id"]
-isOneToOne: true
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"craftsman_service_areas": {
-                  Row: {
-                    "city_id": number,"craftsman_id": string
-                  }
-                  Insert: {
-                    "city_id": number,"craftsman_id": string
-                  }
-                  Update: {
-                    "city_id"?: number,"craftsman_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "craftsman_service_areas_city_id_fkey"
-      columns: ["city_id"]
-isOneToOne: false
-      referencedRelation: "cities"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "craftsman_service_areas_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"craftsman_subscriptions": {
-                  Row: {
-                    "craftsman_id": string,"created_at": string,"note": string | null,"plan": string,"source": string,"status": string,"updated_at": string,"valid_until": string | null
-                  }
-                  Insert: {
-                    "craftsman_id": string,"created_at"?: string,"note"?: string | null,"plan": string,"source"?: string,"status"?: string,"updated_at"?: string,"valid_until"?: string | null
-                  }
-                  Update: {
-                    "craftsman_id"?: string,"created_at"?: string,"note"?: string | null,"plan"?: string,"source"?: string,"status"?: string,"updated_at"?: string,"valid_until"?: string | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "craftsman_subscriptions_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: true
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "craftsman_subscriptions_plan_fkey"
-      columns: ["plan"]
-isOneToOne: false
-      referencedRelation: "plans"
-      referencedColumns: ["key"]
-    }
-                  ]
-                },"daily_stats": {
-                  Row: {
-                    "boosted_impressions": number,"craftsman_id": string,"day": string,"exposure": number,"impressions": number,"phone_reveals": number,"views": number
-                  }
-                  Insert: {
-                    "boosted_impressions"?: number,"craftsman_id": string,"day"?: string,"exposure"?: number,"impressions"?: number,"phone_reveals"?: number,"views"?: number
-                  }
-                  Update: {
-                    "boosted_impressions"?: number,"craftsman_id"?: string,"day"?: string,"exposure"?: number,"impressions"?: number,"phone_reveals"?: number,"views"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "daily_stats_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"email_outbox": {
-                  Row: {
-                    "attempts": number,"body": string,"created_at": string,"error": string | null,"id": number,"link": string | null,"notification_id": number | null,"send_after": string,"sent_at": string | null,"subject": string,"to_email": string,"unsub_token": string | null,"user_id": string
-                  }
-                  Insert: {
-                    "attempts"?: number,"body": string,"created_at"?: string,"error"?: string | null,"id"?: never,"link"?: string | null,"notification_id"?: number | null,"send_after": string,"sent_at"?: string | null,"subject": string,"to_email": string,"unsub_token"?: string | null,"user_id": string
-                  }
-                  Update: {
-                    "attempts"?: number,"body"?: string,"created_at"?: string,"error"?: string | null,"id"?: never,"link"?: string | null,"notification_id"?: number | null,"send_after"?: string,"sent_at"?: string | null,"subject"?: string,"to_email"?: string,"unsub_token"?: string | null,"user_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "email_outbox_notification_id_fkey"
-      columns: ["notification_id"]
-isOneToOne: false
-      referencedRelation: "notifications"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "email_outbox_user_id_fkey"
-      columns: ["user_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"job_materials": {
-                  Row: {
-                    "amount": number,"craftsman_id": string,"created_at": string,"id": string,"job_id": string,"name": string,"qty": string | null
-                  }
-                  Insert: {
-                    "amount"?: number,"craftsman_id": string,"created_at"?: string,"id"?: string,"job_id": string,"name": string,"qty"?: string | null
-                  }
-                  Update: {
-                    "amount"?: number,"craftsman_id"?: string,"created_at"?: string,"id"?: string,"job_id"?: string,"name"?: string,"qty"?: string | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "job_materials_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "job_materials_job_id_fkey"
-      columns: ["job_id"]
-isOneToOne: false
-      referencedRelation: "jobs"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"jobs": {
-                  Row: {
-                    "client_id": string | null,"conversation_id": string | null,"craftsman_id": string,"created_at": string,"done_at": string | null,"end_date": string,"end_time": string | null,"id": string,"labor_price": number | null,"materials_by_client": boolean,"note": string | null,"source": string,"start_date": string,"start_time": string | null,"status": string,"title": string,"transport_price": number | null,"updated_at": string
-                  }
-                  Insert: {
-                    "client_id"?: string | null,"conversation_id"?: string | null,"craftsman_id": string,"created_at"?: string,"done_at"?: string | null,"end_date": string,"end_time"?: string | null,"id"?: string,"labor_price"?: number | null,"materials_by_client"?: boolean,"note"?: string | null,"source"?: string,"start_date": string,"start_time"?: string | null,"status"?: string,"title": string,"transport_price"?: number | null,"updated_at"?: string
-                  }
-                  Update: {
-                    "client_id"?: string | null,"conversation_id"?: string | null,"craftsman_id"?: string,"created_at"?: string,"done_at"?: string | null,"end_date"?: string,"end_time"?: string | null,"id"?: string,"labor_price"?: number | null,"materials_by_client"?: boolean,"note"?: string | null,"source"?: string,"start_date"?: string,"start_time"?: string | null,"status"?: string,"title"?: string,"transport_price"?: number | null,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "jobs_client_id_fkey"
-      columns: ["client_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_clients"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "jobs_conversation_id_fkey"
-      columns: ["conversation_id"]
-isOneToOne: false
-      referencedRelation: "conversations"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "jobs_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"link_visits": {
-                  Row: {
-                    "craftsman_id": string,"day": string,"source": string,"visits": number
-                  }
-                  Insert: {
-                    "craftsman_id": string,"day"?: string,"source": string,"visits"?: number
-                  }
-                  Update: {
-                    "craftsman_id"?: string,"day"?: string,"source"?: string,"visits"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "link_visits_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"messages": {
-                  Row: {
-                    "body": string,"conversation_id": string,"created_at": string,"id": number,"meta": NonNullable<Json>,"sender_id": string
-                  }
-                  Insert: {
-                    "body": string,"conversation_id": string,"created_at"?: string,"id"?: never,"meta"?: NonNullable<Json>,"sender_id": string
-                  }
-                  Update: {
-                    "body"?: string,"conversation_id"?: string,"created_at"?: string,"id"?: never,"meta"?: NonNullable<Json>,"sender_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "messages_conversation_id_fkey"
-      columns: ["conversation_id"]
-isOneToOne: false
-      referencedRelation: "conversations"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "messages_sender_id_fkey"
-      columns: ["sender_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"notification_prefs": {
-                  Row: {
-                    "email_bookings": boolean,"email_calendar": boolean,"email_messages": boolean,"email_reviews": boolean,"unsub_token": string,"user_id": string
-                  }
-                  Insert: {
-                    "email_bookings"?: boolean,"email_calendar"?: boolean,"email_messages"?: boolean,"email_reviews"?: boolean,"unsub_token"?: string,"user_id": string
-                  }
-                  Update: {
-                    "email_bookings"?: boolean,"email_calendar"?: boolean,"email_messages"?: boolean,"email_reviews"?: boolean,"unsub_token"?: string,"user_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "notification_prefs_user_id_fkey"
-      columns: ["user_id"]
-isOneToOne: true
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"notifications": {
-                  Row: {
-                    "body": string | null,"conversation_id": string | null,"count": number,"created_at": string,"id": number,"kind": string,"link": string | null,"read_at": string | null,"title": string,"user_id": string
-                  }
-                  Insert: {
-                    "body"?: string | null,"conversation_id"?: string | null,"count"?: number,"created_at"?: string,"id"?: never,"kind": string,"link"?: string | null,"read_at"?: string | null,"title": string,"user_id": string
-                  }
-                  Update: {
-                    "body"?: string | null,"conversation_id"?: string | null,"count"?: number,"created_at"?: string,"id"?: never,"kind"?: string,"link"?: string | null,"read_at"?: string | null,"title"?: string,"user_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "notifications_conversation_id_fkey"
-      columns: ["conversation_id"]
-isOneToOne: false
-      referencedRelation: "conversations"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "notifications_user_id_fkey"
-      columns: ["user_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"offers": {
-                  Row: {
-                    "accepted_by": string | null,"client_name": string | null,"craftsman_id": string,"created_at": string,"end_date": string | null,"id": string,"job_id": string | null,"lines": NonNullable<Json>,"note": string | null,"responded_at": string | null,"start_date": string | null,"status": string,"title": string,"token": string,"total": number,"valid_until": string,"viewed_at": string | null
-                  }
-                  Insert: {
-                    "accepted_by"?: string | null,"client_name"?: string | null,"craftsman_id": string,"created_at"?: string,"end_date"?: string | null,"id"?: string,"job_id"?: string | null,"lines"?: NonNullable<Json>,"note"?: string | null,"responded_at"?: string | null,"start_date"?: string | null,"status"?: string,"title": string,"token"?: string,"total"?: number,"valid_until"?: string,"viewed_at"?: string | null
-                  }
-                  Update: {
-                    "accepted_by"?: string | null,"client_name"?: string | null,"craftsman_id"?: string,"created_at"?: string,"end_date"?: string | null,"id"?: string,"job_id"?: string | null,"lines"?: NonNullable<Json>,"note"?: string | null,"responded_at"?: string | null,"start_date"?: string | null,"status"?: string,"title"?: string,"token"?: string,"total"?: number,"valid_until"?: string,"viewed_at"?: string | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "offers_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "offers_job_id_fkey"
-      columns: ["job_id"]
-isOneToOne: false
-      referencedRelation: "jobs"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"organization_invites": {
-                  Row: {
-                    "created_at": string,"created_by": string | null,"email": string | null,"expires_at": string,"full_name": string | null,"organization_id": string,"role": string,"token": string,"used_at": string | null,"used_by": string | null
-                  }
-                  Insert: {
-                    "created_at"?: string,"created_by"?: string | null,"email"?: string | null,"expires_at"?: string,"full_name"?: string | null,"organization_id": string,"role"?: string,"token"?: string,"used_at"?: string | null,"used_by"?: string | null
-                  }
-                  Update: {
-                    "created_at"?: string,"created_by"?: string | null,"email"?: string | null,"expires_at"?: string,"full_name"?: string | null,"organization_id"?: string,"role"?: string,"token"?: string,"used_at"?: string | null,"used_by"?: string | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "organization_invites_created_by_fkey"
-      columns: ["created_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "organization_invites_organization_id_fkey"
-      columns: ["organization_id"]
-isOneToOne: false
-      referencedRelation: "organizations"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "organization_invites_used_by_fkey"
-      columns: ["used_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"organization_members": {
-                  Row: {
-                    "joined_at": string,"organization_id": string,"role": string,"user_id": string
-                  }
-                  Insert: {
-                    "joined_at"?: string,"organization_id": string,"role": string,"user_id": string
-                  }
-                  Update: {
-                    "joined_at"?: string,"organization_id"?: string,"role"?: string,"user_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "organization_members_organization_id_fkey"
-      columns: ["organization_id"]
-isOneToOne: false
-      referencedRelation: "organizations"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "organization_members_user_id_fkey"
-      columns: ["user_id"]
-isOneToOne: true
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"organizations": {
-                  Row: {
-                    "city_id": number | null,"created_at": string,"description": string | null,"eik": string | null,"id": string,"is_hidden": boolean,"is_verified": boolean,"name": string,"phone": string | null,"plan_status": string,"plan_valid_until": string | null,"slug": string,"updated_at": string
-                  }
-                  Insert: {
-                    "city_id"?: number | null,"created_at"?: string,"description"?: string | null,"eik"?: string | null,"id"?: string,"is_hidden"?: boolean,"is_verified"?: boolean,"name": string,"phone"?: string | null,"plan_status"?: string,"plan_valid_until"?: string | null,"slug": string,"updated_at"?: string
-                  }
-                  Update: {
-                    "city_id"?: number | null,"created_at"?: string,"description"?: string | null,"eik"?: string | null,"id"?: string,"is_hidden"?: boolean,"is_verified"?: boolean,"name"?: string,"phone"?: string | null,"plan_status"?: string,"plan_valid_until"?: string | null,"slug"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "organizations_city_id_fkey"
-      columns: ["city_id"]
-isOneToOne: false
-      referencedRelation: "cities"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"photo_share_requests": {
-                  Row: {
-                    "conversation_id": string,"created_at": string,"id": string,"message_id": number,"path": string,"published_at": string | null,"requested_by": string,"status": string
-                  }
-                  Insert: {
-                    "conversation_id": string,"created_at"?: string,"id"?: string,"message_id": number,"path": string,"published_at"?: string | null,"requested_by": string,"status"?: string
-                  }
-                  Update: {
-                    "conversation_id"?: string,"created_at"?: string,"id"?: string,"message_id"?: number,"path"?: string,"published_at"?: string | null,"requested_by"?: string,"status"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "photo_share_requests_conversation_id_fkey"
-      columns: ["conversation_id"]
-isOneToOne: false
-      referencedRelation: "conversations"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "photo_share_requests_message_id_fkey"
-      columns: ["message_id"]
-isOneToOne: false
-      referencedRelation: "messages"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "photo_share_requests_requested_by_fkey"
-      columns: ["requested_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"plans": {
-                  Row: {
-                    "features": (string)[],"key": string,"limits": NonNullable<Json>,"name": string,"price_month": number,"sort": number
-                  }
-                  Insert: {
-                    "features"?: (string)[],"key": string,"limits"?: NonNullable<Json>,"name": string,"price_month"?: number,"sort"?: number
-                  }
-                  Update: {
-                    "features"?: (string)[],"key"?: string,"limits"?: NonNullable<Json>,"name"?: string,"price_month"?: number,"sort"?: number
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"profiles": {
-                  Row: {
-                    "avatar_url": string | null,"city_id": number | null,"created_at": string,"full_name": string,"id": string,"is_banned": boolean,"phone": string | null,"role": Database["public"]['Enums']["user_role"],"updated_at": string
-                  }
-                  Insert: {
-                    "avatar_url"?: string | null,"city_id"?: number | null,"created_at"?: string,"full_name"?: string,"id": string,"is_banned"?: boolean,"phone"?: string | null,"role"?: Database["public"]['Enums']["user_role"],"updated_at"?: string
-                  }
-                  Update: {
-                    "avatar_url"?: string | null,"city_id"?: number | null,"created_at"?: string,"full_name"?: string,"id"?: string,"is_banned"?: boolean,"phone"?: string | null,"role"?: Database["public"]['Enums']["user_role"],"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "profiles_city_id_fkey"
-      columns: ["city_id"]
-isOneToOne: false
-      referencedRelation: "cities"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"quick_replies": {
-                  Row: {
-                    "body": string,"craftsman_id": string,"created_at": string,"id": string
-                  }
-                  Insert: {
-                    "body": string,"craftsman_id": string,"created_at"?: string,"id"?: string
-                  }
-                  Update: {
-                    "body"?: string,"craftsman_id"?: string,"created_at"?: string,"id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "quick_replies_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"reports": {
-                  Row: {
-                    "created_at": string,"details": string | null,"handled_at": string | null,"handled_by": string | null,"id": string,"reason": string,"reporter_id": string | null,"status": string,"target_id": string,"target_type": string,"target_user": string | null
-                  }
-                  Insert: {
-                    "created_at"?: string,"details"?: string | null,"handled_at"?: string | null,"handled_by"?: string | null,"id"?: string,"reason": string,"reporter_id"?: string | null,"status"?: string,"target_id": string,"target_type": string,"target_user"?: string | null
-                  }
-                  Update: {
-                    "created_at"?: string,"details"?: string | null,"handled_at"?: string | null,"handled_by"?: string | null,"id"?: string,"reason"?: string,"reporter_id"?: string | null,"status"?: string,"target_id"?: string,"target_type"?: string,"target_user"?: string | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "reports_handled_by_fkey"
-      columns: ["handled_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "reports_reporter_id_fkey"
-      columns: ["reporter_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "reports_target_user_fkey"
-      columns: ["target_user"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"reviews": {
-                  Row: {
-                    "body": string,"client_id": string,"craftsman_id": string,"created_at": string,"id": string,"is_hidden": boolean,"rating": number,"updated_at": string
-                  }
-                  Insert: {
-                    "body"?: string,"client_id": string,"craftsman_id": string,"created_at"?: string,"id"?: string,"is_hidden"?: boolean,"rating": number,"updated_at"?: string
-                  }
-                  Update: {
-                    "body"?: string,"client_id"?: string,"craftsman_id"?: string,"created_at"?: string,"id"?: string,"is_hidden"?: boolean,"rating"?: number,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "reviews_client_id_fkey"
-      columns: ["client_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "reviews_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"saved_craftsmen": {
-                  Row: {
-                    "client_id": string,"craftsman_id": string,"created_at": string
-                  }
-                  Insert: {
-                    "client_id": string,"craftsman_id": string,"created_at"?: string
-                  }
-                  Update: {
-                    "client_id"?: string,"craftsman_id"?: string,"created_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "saved_craftsmen_client_id_fkey"
-      columns: ["client_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "saved_craftsmen_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"search_synonyms": {
-                  Row: {
-                    "expands_to": string,"term": string
-                  }
-                  Insert: {
-                    "expands_to": string,"term": string
-                  }
-                  Update: {
-                    "expands_to"?: string,"term"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"services": {
-                  Row: {
-                    "category_id": number | null,"craftsman_id": string,"created_at": string,"description": string | null,"id": string,"name": string,"price": number | null,"price_kind": Database["public"]['Enums']["price_kind"],"sort": number,"unit": Database["public"]['Enums']["price_unit"]
-                  }
-                  Insert: {
-                    "category_id"?: number | null,"craftsman_id": string,"created_at"?: string,"description"?: string | null,"id"?: string,"name": string,"price"?: number | null,"price_kind"?: Database["public"]['Enums']["price_kind"],"sort"?: number,"unit"?: Database["public"]['Enums']["price_unit"]
-                  }
-                  Update: {
-                    "category_id"?: number | null,"craftsman_id"?: string,"created_at"?: string,"description"?: string | null,"id"?: string,"name"?: string,"price"?: number | null,"price_kind"?: Database["public"]['Enums']["price_kind"],"sort"?: number,"unit"?: Database["public"]['Enums']["price_unit"]
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "services_category_id_fkey"
-      columns: ["category_id"]
-isOneToOne: false
-      referencedRelation: "categories"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "services_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"work_photos": {
-                  Row: {
-                    "caption": string | null,"craftsman_id": string,"created_at": string,"id": string,"path": string,"sort": number
-                  }
-                  Insert: {
-                    "caption"?: string | null,"craftsman_id": string,"created_at"?: string,"id"?: string,"path": string,"sort"?: number
-                  }
-                  Update: {
-                    "caption"?: string | null,"craftsman_id"?: string,"created_at"?: string,"id"?: string,"path"?: string,"sort"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "work_photos_craftsman_id_fkey"
-      columns: ["craftsman_id"]
-isOneToOne: false
-      referencedRelation: "craftsman_profiles"
-      referencedColumns: ["id"]
-    }
-                  ]
-                }
-          }
-          Views: {
-            [_ in never]: never
-          }
-          Functions: {
-            "admin_create_org":
-{ Args: { "p_city"?: string,"p_eik"?: string,"p_name": string }; Returns: Json
-                           },
-"admin_list_users":
-{ Args: { "p_limit"?: number,"p_offset"?: number,"p_q"?: string,"p_role"?: Database["public"]['Enums']["user_role"] }; Returns: {
-              "craftsman_slug": string,"created_at": string,"email": string,"full_name": string,"id": string,"is_banned": boolean,"is_hidden": boolean,"is_verified": boolean,"role": Database["public"]['Enums']["user_role"],"total_count": number
-            }[]
-                           },
-"admin_owner_invite":
-{ Args: { "p_org": string }; Returns: string
-                           },
-"admin_set_org_owner":
-{ Args: { "p_email": string,"p_org": string }; Returns: undefined
-                           },
-"admin_set_plan":
-{ Args: { "p_craftsman": string,"p_note"?: string,"p_plan": string,"p_valid_until"?: string }; Returns: undefined
-                           },
-"admin_update_org":
-{ Args: { "p_clear_until"?: boolean,"p_hidden"?: boolean,"p_org": string,"p_plan_status"?: string,"p_plan_until"?: string,"p_verified"?: boolean }; Returns: undefined
-                           },
-"assign_org_conversation":
-{ Args: { "p_conversation": string,"p_craftsman": string }; Returns: undefined
-                           },
-"availability_days":
-{ Args: { "p_craftsman": string,"p_days": number,"p_from": string }; Returns: {
-              "day": string,"free_hours": number,"ranges": Json,"status": string
-            }[]
-                           },
-"availability_strip":
-{ Args: { "p_craftsman": string,"p_days"?: number,"p_from": string }; Returns: string
-                           },
-"become_craftsman":
-{ Args: Record<PropertyKey, never>; Returns: string
-                           },
-"bg_translit":
-{ Args: { "input": string }; Returns: string
-                           },
-"booking_label":
-{ Args: { "b": Database["public"]['Tables']["bookings"]['Row'] }; Returns: string
-                           },
-"booking_overlaps":
-{ Args: { "b": Database["public"]['Tables']["bookings"]['Row'] }; Returns: boolean
-                           },
-"build_search_query":
-{ Args: { "p_any"?: boolean,"p_q": string }; Returns: unknown
-                           },
-"bump_stat":
-{ Args: { "p_by"?: number,"p_column": string,"p_craftsman": string }; Returns: undefined
-                           },
-"calendar_freshness":
-{ Args: { "p_confirmed": string }; Returns: string
-                           },
-"can_manage_craftsman":
-{ Args: { "p_craftsman": string }; Returns: boolean
-                           },
-"can_review":
-{ Args: { "p_craftsman": string }; Returns: boolean
-                           },
-"category_counts":
-{ Args: Record<PropertyKey, never>; Returns: {
-              "craftsmen": number,"slug": string
-            }[]
-                           },
-"category_price_guide":
-{ Args: { "p_category": number }; Returns: {
-              "hourly_count": number,"hourly_median": number,"hourly_p25": number,"hourly_p75": number,"job_count": number,"job_median": number,"job_p25": number,"job_p75": number
-            }[]
-                           },
-"category_price_hint":
-{ Args: { "p_category": number }; Returns: {
-              "hourly_count": number,"hourly_p25": number,"hourly_p75": number,"job_count": number,"job_p25": number,"job_p75": number,"scope": string
-            }[]
-                           },
-"claim_org_invite":
-{ Args: { "p_token": string }; Returns: string
-                           },
-"cleanup_old_chats":
-{ Args: { "p_days"?: number }; Returns: number
-                           },
-"confirm_calendar":
-{ Args: { "p_craftsman"?: string }; Returns: string
-                           },
-"conversation_partner_phone":
-{ Args: { "p_conversation": string }; Returns: string
-                           },
-"craftsman_contact_info":
-{ Args: { "p_craftsman": string }; Returns: {
-              "has_phone": boolean,"visibility": string
-            }[]
-                           },
-"craftsman_is_listed":
-{ Args: { "p_id": string }; Returns: boolean
-                           },
-"craftsman_is_public":
-{ Args: { "p_id": string }; Returns: boolean
-                           },
-"craftsman_phone":
-{ Args: { "p_craftsman": string }; Returns: string
-                           },
-"craftsman_plan":
-{ Args: { "p_craftsman": string }; Returns: string
-                           },
-"craftsman_reviews":
-{ Args: { "p_craftsman": string,"p_limit"?: number }; Returns: {
-              "author": string,"body": string,"created_at": string,"id": string,"is_mine": boolean,"rating": number
-            }[]
-                           },
-"create_org_invite":
-{ Args: { "p_email"?: string,"p_full_name"?: string,"p_role"?: string }; Returns: string
-                           },
-"day_free_ranges":
-{ Args: { "p_craftsman": string,"p_day": string }; Returns: unknown
-                           },
-"day_status":
-{ Args: { "ranges": unknown }; Returns: string
-                           },
-"free_hours":
-{ Args: { "ranges": unknown }; Returns: number
-                           },
-"has_feature":
-{ Args: { "p_craftsman": string,"p_feature": string }; Returns: boolean
-                           },
-"is_admin":
-{ Args: Record<PropertyKey, never>; Returns: boolean
-                           },
-"is_api_request":
-{ Args: Record<PropertyKey, never>; Returns: boolean
-                           },
-"is_banned":
-{ Args: Record<PropertyKey, never>; Returns: boolean
-                           },
-"is_conv_party":
-{ Args: { "p_conversation": string }; Returns: boolean
-                           },
-"is_conversation_member":
-{ Args: { "p_conversation": string }; Returns: boolean
-                           },
-"is_org_manager":
-{ Args: { "p_org": string }; Returns: boolean
-                           },
-"is_org_member":
-{ Args: { "p_org": string }; Returns: boolean
-                           },
-"job_report":
-{ Args: { "p_from": string,"p_to": string }; Returns: Json
-                           },
-"leave_org":
-{ Args: Record<PropertyKey, never>; Returns: undefined
-                           },
-"log_admin_action":
-{ Args: { "p_action": string,"p_details"?: Json,"p_target_id"?: string,"p_target_type"?: string }; Returns: undefined
-                           },
-"mark_conversation_read":
-{ Args: { "p_conversation": string }; Returns: undefined
-                           },
-"mark_notifications_read":
-{ Args: { "p_ids"?: (number)[] }; Returns: number
-                           },
-"mark_photo_share_published":
-{ Args: { "p_request": string }; Returns: undefined
-                           },
-"my_bookings":
-{ Args: { "p_from"?: string }; Returns: {
-              "booking_date": string,"conversation_id": string,"end_date": string,"end_time": string,"i_am": string,"id": string,"kind": string,"note": string,"partner_name": string,"partner_slug": string,"proposed_by_me": boolean,"start_time": string,"status": string
-            }[]
-                           },
-"my_conversations":
-{ Args: Record<PropertyKey, never>; Returns: {
-              "assigned_name": string,"assigned_to": string,"category_name": string,"i_am": string,"id": string,"last_from_me": boolean,"last_message_at": string,"last_message_preview": string,"org_id": string,"org_name": string,"org_slug": string,"partner_avatar": string,"partner_id": string,"partner_name": string,"partner_slug": string,"requested_date": string,"unread_count": number
-            }[]
-                           },
-"my_plan":
-{ Args: Record<PropertyKey, never>; Returns: Json
-                           },
-"my_stats":
-{ Args: { "p_weeks"?: number }; Returns: Json
-                           },
-"next_free_date":
-{ Args: { "p_craftsman": string,"p_from": string,"p_horizon"?: number,"p_slot"?: string }; Returns: string
-                           },
-"offer_by_token":
-{ Args: { "p_token": string }; Returns: {
-              "accepted_by": string,"avatar_url": string,"client_name": string,"craftsman_name": string,"craftsman_slug": string,"end_date": string,"lines": Json,"note": string,"responded_at": string,"start_date": string,"status": string,"title": string,"total": number,"valid_until": string
-            }[]
-                           },
-"org_invite_info":
-{ Args: { "p_token": string }; Returns: {
-              "full_name": string,"org_name": string,"org_slug": string,"role": string,"state": string
-            }[]
-                           },
-"org_plan_active":
-{ Args: { "p_org": string }; Returns: boolean
-                           },
-"org_role":
-{ Args: { "p_org": string }; Returns: string
-                           },
-"org_team":
-{ Args: Record<PropertyKey, never>; Returns: {
-              "avatar_url": string,"joined_at": string,"last_confirmed_at": string,"name": string,"next_free": string,"role": string,"slug": string,"user_id": string
-            }[]
-                           },
-"owns_craftsman":
-{ Args: { "p_id": string }; Returns: boolean
-                           },
-"plan_limit":
-{ Args: { "p_craftsman": string,"p_key": string }; Returns: number
-                           },
-"propose_booking":
-{ Args: { "p_conversation": string,"p_date": string,"p_end"?: string,"p_end_date"?: string,"p_kind"?: string,"p_note"?: string,"p_start"?: string }; Returns: string
-                           },
-"push_notification":
-{ Args: { "p_body": string,"p_conversation"?: string,"p_kind": string,"p_link": string,"p_title": string,"p_user": string }; Returns: number
-                           },
-"queue_calendar_reminders":
-{ Args: Record<PropertyKey, never>; Returns: number
-                           },
-"queue_email":
-{ Args: { "p_notification": number }; Returns: undefined
-                           },
-"rank_signals":
-{ Args: { "p_ids": (string)[] }; Returns: {
-              "craftsman_id": string,"e": number,"f": number,"n": number,"p": number,"q": number,"r": number
-            }[]
-                           },
-"record_impressions":
-{ Args: { "p_ids": (string)[],"p_offset"?: number }; Returns: undefined
-                           },
-"record_link_visit":
-{ Args: { "p_slug": string,"p_source": string }; Returns: undefined
-                           },
-"record_profile_view":
-{ Args: { "p_slug": string }; Returns: undefined
-                           },
-"refresh_craftsman_price":
-{ Args: { "p_id": string }; Returns: undefined
-                           },
-"refresh_craftsman_search":
-{ Args: { "p_id": string }; Returns: undefined
-                           },
-"remove_org_member":
-{ Args: { "p_user": string }; Returns: undefined
-                           },
-"report_content":
-{ Args: { "p_details"?: string,"p_reason": string,"p_target": string,"p_type": string }; Returns: undefined
-                           },
-"request_photo_share":
-{ Args: { "p_message": number,"p_path": string }; Returns: string
-                           },
-"request_review_in_chat":
-{ Args: { "p_conversation": string }; Returns: undefined
-                           },
-"respond_booking":
-{ Args: { "p_action": string,"p_booking": string }; Returns: string
-                           },
-"respond_offer":
-{ Args: { "p_accept": boolean,"p_name"?: string,"p_token": string }; Returns: undefined
-                           },
-"respond_photo_share":
-{ Args: { "p_accept": boolean,"p_request": string }; Returns: string
-                           },
-"reveal_phone":
-{ Args: { "p_craftsman": string }; Returns: string
-                           },
-"revoke_org_invite":
-{ Args: { "p_token": string }; Returns: undefined
-                           },
-"search_craftsmen":
-{ Args: { "p_any"?: boolean,"p_category"?: string,"p_city"?: string,"p_date_from"?: string,"p_date_to"?: string,"p_ids"?: (string)[],"p_limit"?: number,"p_min_rating"?: number,"p_offset"?: number,"p_price_max"?: number,"p_price_min"?: number,"p_q"?: string,"p_seed"?: string,"p_sort"?: string,"p_time"?: string,"p_verified"?: boolean }; Returns: {
-              "avatar_url": string,"business_name": string,"category_names": (string)[],"city_name": string,"city_slug": string,"created_at": string,"display_name": string,"free_days": number,"freshness": string,"id": string,"is_pro": boolean,"is_verified": boolean,"matched_date": string,"next_free": string,"price_from": number,"price_from_unit": Database["public"]['Enums']["price_unit"],"quote_on_inspection": boolean,"rating_avg": number,"rating_count": number,"short_notice": boolean,"slug": string,"span_days": number,"strip": string,"total_count": number,"years_experience": number
-            }[]
-                           },
-"search_stem":
-{ Args: { "token": string }; Returns: string
-                           },
-"set_member_role":
-{ Args: { "p_role": string,"p_user": string }; Returns: undefined
-                           },
-"slugify":
-{ Args: { "input": string }; Returns: string
-                           },
-"start_conversation":
-{ Args: { "p_body": string,"p_category"?: number,"p_craftsman": string,"p_date"?: string,"p_service"?: string,"p_slot"?: string }; Returns: string
-                           },
-"start_org_conversation":
-{ Args: { "p_body": string,"p_category"?: number,"p_date"?: string,"p_org": string }; Returns: string
-                           },
-"submit_contact_request":
-{ Args: { "p_contact": string,"p_kind": string,"p_message"?: string,"p_name": string,"p_payload"?: Json,"p_trap"?: string }; Returns: string
-                           },
-"time_window":
-{ Args: { "p_day": string,"p_slot": string }; Returns: unknown
-                           },
-"unique_craftsman_slug":
-{ Args: { "base": string,"self_id"?: string }; Returns: string
-                           },
-"unique_org_slug":
-{ Args: { "p_name": string }; Returns: string
-                           },
-"unread_total":
-{ Args: Record<PropertyKey, never>; Returns: number
-                           },
-"unsubscribe_emails":
-{ Args: { "p_token": string }; Returns: boolean
-                           }
-          }
-          Enums: {
-            "exception_kind": "free"|"busy","price_kind": "fixed"|"from"|"quote","price_unit": "job"|"hour"|"m2"|"piece"|"meter"|"day","user_role": "client"|"craftsman"|"admin"
-          }
-          CompositeTypes: {
-            [_ in never]: never
-          }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
         }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  public: {
+    Tables: {
+      admin_log: {
+        Row: {
+          action: string
+          admin_id: string | null
+          created_at: string
+          details: Json
+          id: number
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          admin_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: never
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: never
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      availability_exceptions: {
+        Row: {
+          craftsman_id: string
+          created_at: string
+          end_date: string
+          end_time: string | null
+          id: string
+          kind: Database["public"]["Enums"]["exception_kind"]
+          note: string | null
+          start_date: string
+          start_time: string | null
+        }
+        Insert: {
+          craftsman_id: string
+          created_at?: string
+          end_date: string
+          end_time?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["exception_kind"]
+          note?: string | null
+          start_date: string
+          start_time?: string | null
+        }
+        Update: {
+          craftsman_id?: string
+          created_at?: string
+          end_date?: string
+          end_time?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["exception_kind"]
+          note?: string | null
+          start_date?: string
+          start_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_exceptions_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      availability_rules: {
+        Row: {
+          craftsman_id: string
+          end_time: string
+          id: string
+          start_time: string
+          weekday: number
+        }
+        Insert: {
+          craftsman_id: string
+          end_time: string
+          id?: string
+          start_time: string
+          weekday: number
+        }
+        Update: {
+          craftsman_id?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_rules_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bookings: {
+        Row: {
+          booking_date: string
+          client_id: string
+          conversation_id: string
+          craftsman_id: string
+          created_at: string
+          end_date: string | null
+          end_time: string | null
+          id: string
+          kind: string
+          note: string | null
+          proposed_by: string
+          responded_by: string | null
+          start_time: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          booking_date: string
+          client_id: string
+          conversation_id: string
+          craftsman_id: string
+          created_at?: string
+          end_date?: string | null
+          end_time?: string | null
+          id?: string
+          kind: string
+          note?: string | null
+          proposed_by: string
+          responded_by?: string | null
+          start_time?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          booking_date?: string
+          client_id?: string
+          conversation_id?: string
+          craftsman_id?: string
+          created_at?: string
+          end_date?: string | null
+          end_time?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          proposed_by?: string
+          responded_by?: string | null
+          start_time?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_proposed_by_fkey"
+            columns: ["proposed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_responded_by_fkey"
+            columns: ["responded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: number
+          is_active: boolean
+          keywords: string[]
+          name: string
+          parent_id: number | null
+          slug: string
+          sort: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: never
+          is_active?: boolean
+          keywords?: string[]
+          name: string
+          parent_id?: number | null
+          slug: string
+          sort?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: never
+          is_active?: boolean
+          keywords?: string[]
+          name?: string
+          parent_id?: number | null
+          slug?: string
+          sort?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_photo_purge_queue: {
+        Row: {
+          conversation_id: string
+          created_at: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      cities: {
+        Row: {
+          id: number
+          is_major: boolean
+          name: string
+          region: string
+          slug: string
+          sort: number
+        }
+        Insert: {
+          id?: never
+          is_major?: boolean
+          name: string
+          region: string
+          slug: string
+          sort?: number
+        }
+        Update: {
+          id?: never
+          is_major?: boolean
+          name?: string
+          region?: string
+          slug?: string
+          sort?: number
+        }
+        Relationships: []
+      }
+      client_notes: {
+        Row: {
+          body: string
+          client_id: string
+          craftsman_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          body: string
+          client_id: string
+          craftsman_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          body?: string
+          client_id?: string
+          craftsman_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_notes_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_photos: {
+        Row: {
+          caption: string | null
+          client_id: string
+          craftsman_id: string
+          created_at: string
+          id: string
+          path: string
+        }
+        Insert: {
+          caption?: string | null
+          client_id: string
+          craftsman_id: string
+          created_at?: string
+          id?: string
+          path: string
+        }
+        Update: {
+          caption?: string | null
+          client_id?: string
+          craftsman_id?: string
+          created_at?: string
+          id?: string
+          path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_photos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_photos_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_requests: {
+        Row: {
+          admin_note: string | null
+          contact: string
+          created_at: string
+          id: string
+          ip_hash: string | null
+          kind: string
+          message: string | null
+          name: string
+          payload: Json
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          contact: string
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          kind: string
+          message?: string | null
+          name: string
+          payload?: Json
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          contact?: string
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          kind?: string
+          message?: string | null
+          name?: string
+          payload?: Json
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          assigned_to: string | null
+          category_id: number | null
+          client_id: string
+          client_last_read_at: string
+          craftsman_id: string | null
+          craftsman_last_read_at: string
+          craftsman_replied_at: string | null
+          created_at: string
+          id: string
+          last_message_at: string
+          last_message_preview: string
+          last_sender_id: string | null
+          messages_purged_at: string | null
+          org_id: string | null
+          requested_date: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          category_id?: number | null
+          client_id: string
+          client_last_read_at?: string
+          craftsman_id?: string | null
+          craftsman_last_read_at?: string
+          craftsman_replied_at?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string
+          last_sender_id?: string | null
+          messages_purged_at?: string | null
+          org_id?: string | null
+          requested_date?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          category_id?: number | null
+          client_id?: string
+          client_last_read_at?: string
+          craftsman_id?: string | null
+          craftsman_last_read_at?: string
+          craftsman_replied_at?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string
+          last_sender_id?: string | null
+          messages_purged_at?: string | null
+          org_id?: string | null
+          requested_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      craftsman_categories: {
+        Row: {
+          category_id: number
+          craftsman_id: string
+        }
+        Insert: {
+          category_id: number
+          craftsman_id: string
+        }
+        Update: {
+          category_id?: number
+          craftsman_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "craftsman_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "craftsman_categories_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      craftsman_clients: {
+        Row: {
+          address: string | null
+          craftsman_id: string
+          created_at: string
+          id: string
+          name: string
+          note: string | null
+          phone: string | null
+          remind_at: string | null
+          remind_note: string | null
+          status: string
+          yearly_check: boolean
+        }
+        Insert: {
+          address?: string | null
+          craftsman_id: string
+          created_at?: string
+          id?: string
+          name: string
+          note?: string | null
+          phone?: string | null
+          remind_at?: string | null
+          remind_note?: string | null
+          status?: string
+          yearly_check?: boolean
+        }
+        Update: {
+          address?: string | null
+          craftsman_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          note?: string | null
+          phone?: string | null
+          remind_at?: string | null
+          remind_note?: string | null
+          status?: string
+          yearly_check?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "craftsman_clients_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      craftsman_profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string
+          business_name: string | null
+          callout_fee: number | null
+          city_id: number | null
+          contact_hours: string | null
+          created_at: string
+          display_name: string
+          hourly_rate: number | null
+          id: string
+          inspection_fee: number | null
+          inspection_policy: string | null
+          is_hidden: boolean
+          is_verified: boolean
+          languages: string[]
+          last_confirmed_at: string
+          materials_included: boolean
+          other_services: string | null
+          phone_visibility: string
+          price_from: number | null
+          price_from_unit: Database["public"]["Enums"]["price_unit"] | null
+          quote_on_inspection: boolean
+          rating_avg: number
+          rating_count: number
+          reply_within_hours: number | null
+          search_text: string
+          search_vector: unknown
+          short_notice: boolean
+          slug: string
+          terms_note: string | null
+          travel_fee: number | null
+          updated_at: string
+          years_experience: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string
+          business_name?: string | null
+          callout_fee?: number | null
+          city_id?: number | null
+          contact_hours?: string | null
+          created_at?: string
+          display_name: string
+          hourly_rate?: number | null
+          id: string
+          inspection_fee?: number | null
+          inspection_policy?: string | null
+          is_hidden?: boolean
+          is_verified?: boolean
+          languages?: string[]
+          last_confirmed_at?: string
+          materials_included?: boolean
+          other_services?: string | null
+          phone_visibility?: string
+          price_from?: number | null
+          price_from_unit?: Database["public"]["Enums"]["price_unit"] | null
+          quote_on_inspection?: boolean
+          rating_avg?: number
+          rating_count?: number
+          reply_within_hours?: number | null
+          search_text?: string
+          search_vector?: unknown
+          short_notice?: boolean
+          slug: string
+          terms_note?: string | null
+          travel_fee?: number | null
+          updated_at?: string
+          years_experience?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string
+          business_name?: string | null
+          callout_fee?: number | null
+          city_id?: number | null
+          contact_hours?: string | null
+          created_at?: string
+          display_name?: string
+          hourly_rate?: number | null
+          id?: string
+          inspection_fee?: number | null
+          inspection_policy?: string | null
+          is_hidden?: boolean
+          is_verified?: boolean
+          languages?: string[]
+          last_confirmed_at?: string
+          materials_included?: boolean
+          other_services?: string | null
+          phone_visibility?: string
+          price_from?: number | null
+          price_from_unit?: Database["public"]["Enums"]["price_unit"] | null
+          quote_on_inspection?: boolean
+          rating_avg?: number
+          rating_count?: number
+          reply_within_hours?: number | null
+          search_text?: string
+          search_vector?: unknown
+          short_notice?: boolean
+          slug?: string
+          terms_note?: string | null
+          travel_fee?: number | null
+          updated_at?: string
+          years_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "craftsman_profiles_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "craftsman_profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      craftsman_service_areas: {
+        Row: {
+          city_id: number
+          craftsman_id: string
+        }
+        Insert: {
+          city_id: number
+          craftsman_id: string
+        }
+        Update: {
+          city_id?: number
+          craftsman_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "craftsman_service_areas_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "craftsman_service_areas_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      craftsman_subscriptions: {
+        Row: {
+          craftsman_id: string
+          created_at: string
+          note: string | null
+          plan: string
+          source: string
+          status: string
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          craftsman_id: string
+          created_at?: string
+          note?: string | null
+          plan: string
+          source?: string
+          status?: string
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          craftsman_id?: string
+          created_at?: string
+          note?: string | null
+          plan?: string
+          source?: string
+          status?: string
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "craftsman_subscriptions_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: true
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "craftsman_subscriptions_plan_fkey"
+            columns: ["plan"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      daily_stats: {
+        Row: {
+          boosted_impressions: number
+          craftsman_id: string
+          day: string
+          exposure: number
+          impressions: number
+          phone_reveals: number
+          views: number
+        }
+        Insert: {
+          boosted_impressions?: number
+          craftsman_id: string
+          day?: string
+          exposure?: number
+          impressions?: number
+          phone_reveals?: number
+          views?: number
+        }
+        Update: {
+          boosted_impressions?: number
+          craftsman_id?: string
+          day?: string
+          exposure?: number
+          impressions?: number
+          phone_reveals?: number
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_stats_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_outbox: {
+        Row: {
+          attempts: number
+          body: string
+          created_at: string
+          error: string | null
+          id: number
+          link: string | null
+          notification_id: number | null
+          send_after: string
+          sent_at: string | null
+          subject: string
+          to_email: string
+          unsub_token: string | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          body: string
+          created_at?: string
+          error?: string | null
+          id?: never
+          link?: string | null
+          notification_id?: number | null
+          send_after: string
+          sent_at?: string | null
+          subject: string
+          to_email: string
+          unsub_token?: string | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          body?: string
+          created_at?: string
+          error?: string | null
+          id?: never
+          link?: string | null
+          notification_id?: number | null
+          send_after?: string
+          sent_at?: string | null
+          subject?: string
+          to_email?: string
+          unsub_token?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_outbox_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_outbox_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_materials: {
+        Row: {
+          amount: number
+          craftsman_id: string
+          created_at: string
+          id: string
+          job_id: string
+          name: string
+          qty: string | null
+        }
+        Insert: {
+          amount?: number
+          craftsman_id: string
+          created_at?: string
+          id?: string
+          job_id: string
+          name: string
+          qty?: string | null
+        }
+        Update: {
+          amount?: number
+          craftsman_id?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          name?: string
+          qty?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_materials_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_materials_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_templates: {
+        Row: {
+          category_slug: string
+          id: number
+          name: string
+          sort: number
+          typical_hours: number
+          unit: Database["public"]["Enums"]["price_unit"]
+        }
+        Insert: {
+          category_slug: string
+          id?: never
+          name: string
+          sort?: number
+          typical_hours: number
+          unit?: Database["public"]["Enums"]["price_unit"]
+        }
+        Update: {
+          category_slug?: string
+          id?: never
+          name?: string
+          sort?: number
+          typical_hours?: number
+          unit?: Database["public"]["Enums"]["price_unit"]
+        }
+        Relationships: []
+      }
+      jobs: {
+        Row: {
+          client_id: string | null
+          conversation_id: string | null
+          craftsman_id: string
+          created_at: string
+          done_at: string | null
+          end_date: string
+          end_time: string | null
+          id: string
+          labor_price: number | null
+          materials_by_client: boolean
+          note: string | null
+          source: string
+          start_date: string
+          start_time: string | null
+          status: string
+          title: string
+          transport_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          conversation_id?: string | null
+          craftsman_id: string
+          created_at?: string
+          done_at?: string | null
+          end_date: string
+          end_time?: string | null
+          id?: string
+          labor_price?: number | null
+          materials_by_client?: boolean
+          note?: string | null
+          source?: string
+          start_date: string
+          start_time?: string | null
+          status?: string
+          title: string
+          transport_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          conversation_id?: string | null
+          craftsman_id?: string
+          created_at?: string
+          done_at?: string | null
+          end_date?: string
+          end_time?: string | null
+          id?: string
+          labor_price?: number | null
+          materials_by_client?: boolean
+          note?: string | null
+          source?: string
+          start_date?: string
+          start_time?: string | null
+          status?: string
+          title?: string
+          transport_price?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      link_visits: {
+        Row: {
+          craftsman_id: string
+          day: string
+          source: string
+          visits: number
+        }
+        Insert: {
+          craftsman_id: string
+          day?: string
+          source: string
+          visits?: number
+        }
+        Update: {
+          craftsman_id?: string
+          day?: string
+          source?: string
+          visits?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "link_visits_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          id: number
+          meta: Json
+          sender_id: string
+        }
+        Insert: {
+          body: string
+          conversation_id: string
+          created_at?: string
+          id?: never
+          meta?: Json
+          sender_id: string
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          id?: never
+          meta?: Json
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_prefs: {
+        Row: {
+          email_bookings: boolean
+          email_calendar: boolean
+          email_messages: boolean
+          email_reviews: boolean
+          unsub_token: string
+          user_id: string
+        }
+        Insert: {
+          email_bookings?: boolean
+          email_calendar?: boolean
+          email_messages?: boolean
+          email_reviews?: boolean
+          unsub_token?: string
+          user_id: string
+        }
+        Update: {
+          email_bookings?: boolean
+          email_calendar?: boolean
+          email_messages?: boolean
+          email_reviews?: boolean
+          unsub_token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          conversation_id: string | null
+          count: number
+          created_at: string
+          id: number
+          kind: string
+          link: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          conversation_id?: string | null
+          count?: number
+          created_at?: string
+          id?: never
+          kind: string
+          link?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          conversation_id?: string | null
+          count?: number
+          created_at?: string
+          id?: never
+          kind?: string
+          link?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offers: {
+        Row: {
+          accepted_by: string | null
+          client_name: string | null
+          craftsman_id: string
+          created_at: string
+          end_date: string | null
+          id: string
+          job_id: string | null
+          lines: Json
+          note: string | null
+          responded_at: string | null
+          start_date: string | null
+          status: string
+          title: string
+          token: string
+          total: number
+          valid_until: string
+          viewed_at: string | null
+        }
+        Insert: {
+          accepted_by?: string | null
+          client_name?: string | null
+          craftsman_id: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          job_id?: string | null
+          lines?: Json
+          note?: string | null
+          responded_at?: string | null
+          start_date?: string | null
+          status?: string
+          title: string
+          token?: string
+          total?: number
+          valid_until?: string
+          viewed_at?: string | null
+        }
+        Update: {
+          accepted_by?: string | null
+          client_name?: string | null
+          craftsman_id?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          job_id?: string | null
+          lines?: Json
+          note?: string | null
+          responded_at?: string | null
+          start_date?: string | null
+          status?: string
+          title?: string
+          token?: string
+          total?: number
+          valid_until?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_invites: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string | null
+          expires_at: string
+          full_name: string | null
+          organization_id: string
+          role: string
+          token: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          expires_at?: string
+          full_name?: string | null
+          organization_id: string
+          role?: string
+          token?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          expires_at?: string
+          full_name?: string | null
+          organization_id?: string
+          role?: string
+          token?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_invites_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_invites_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_members: {
+        Row: {
+          joined_at: string
+          organization_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          joined_at?: string
+          organization_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          joined_at?: string
+          organization_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          city_id: number | null
+          created_at: string
+          description: string | null
+          eik: string | null
+          id: string
+          is_hidden: boolean
+          is_verified: boolean
+          name: string
+          phone: string | null
+          plan_status: string
+          plan_valid_until: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          city_id?: number | null
+          created_at?: string
+          description?: string | null
+          eik?: string | null
+          id?: string
+          is_hidden?: boolean
+          is_verified?: boolean
+          name: string
+          phone?: string | null
+          plan_status?: string
+          plan_valid_until?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          city_id?: number | null
+          created_at?: string
+          description?: string | null
+          eik?: string | null
+          id?: string
+          is_hidden?: boolean
+          is_verified?: boolean
+          name?: string
+          phone?: string | null
+          plan_status?: string
+          plan_valid_until?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizations_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photo_share_requests: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          message_id: number
+          path: string
+          published_at: string | null
+          requested_by: string
+          status: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          message_id: number
+          path: string
+          published_at?: string | null
+          requested_by: string
+          status?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          message_id?: number
+          path?: string
+          published_at?: string | null
+          requested_by?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_share_requests_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_share_requests_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_share_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          features: string[]
+          key: string
+          limits: Json
+          name: string
+          price_month: number
+          sort: number
+        }
+        Insert: {
+          features?: string[]
+          key: string
+          limits?: Json
+          name: string
+          price_month?: number
+          sort?: number
+        }
+        Update: {
+          features?: string[]
+          key?: string
+          limits?: Json
+          name?: string
+          price_month?: number
+          sort?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          city_id: number | null
+          created_at: string
+          full_name: string
+          id: string
+          is_banned: boolean
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          city_id?: number | null
+          created_at?: string
+          full_name?: string
+          id: string
+          is_banned?: boolean
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          city_id?: number | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_banned?: boolean
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_replies: {
+        Row: {
+          body: string
+          craftsman_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          body: string
+          craftsman_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          body?: string
+          craftsman_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_replies_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          reason: string
+          reporter_id: string | null
+          status: string
+          target_id: string
+          target_type: string
+          target_user: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          reason: string
+          reporter_id?: string | null
+          status?: string
+          target_id: string
+          target_type: string
+          target_user?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string | null
+          status?: string
+          target_id?: string
+          target_type?: string
+          target_user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_handled_by_fkey"
+            columns: ["handled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_target_user_fkey"
+            columns: ["target_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          body: string
+          client_id: string
+          craftsman_id: string
+          created_at: string
+          id: string
+          is_hidden: boolean
+          rating: number
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          client_id: string
+          craftsman_id: string
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          rating: number
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          client_id?: string
+          craftsman_id?: string
+          created_at?: string
+          id?: string
+          is_hidden?: boolean
+          rating?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_craftsmen: {
+        Row: {
+          client_id: string
+          craftsman_id: string
+          created_at: string
+        }
+        Insert: {
+          client_id: string
+          craftsman_id: string
+          created_at?: string
+        }
+        Update: {
+          client_id?: string
+          craftsman_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_craftsmen_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_craftsmen_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      search_synonyms: {
+        Row: {
+          expands_to: string
+          term: string
+        }
+        Insert: {
+          expands_to: string
+          term: string
+        }
+        Update: {
+          expands_to?: string
+          term?: string
+        }
+        Relationships: []
+      }
+      services: {
+        Row: {
+          category_id: number | null
+          craftsman_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          price: number | null
+          price_kind: Database["public"]["Enums"]["price_kind"]
+          sort: number
+          template_id: number | null
+          unit: Database["public"]["Enums"]["price_unit"]
+        }
+        Insert: {
+          category_id?: number | null
+          craftsman_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          price?: number | null
+          price_kind?: Database["public"]["Enums"]["price_kind"]
+          sort?: number
+          template_id?: number | null
+          unit?: Database["public"]["Enums"]["price_unit"]
+        }
+        Update: {
+          category_id?: number | null
+          craftsman_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          price?: number | null
+          price_kind?: Database["public"]["Enums"]["price_kind"]
+          sort?: number
+          template_id?: number | null
+          unit?: Database["public"]["Enums"]["price_unit"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "job_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_photos: {
+        Row: {
+          caption: string | null
+          craftsman_id: string
+          created_at: string
+          id: string
+          path: string
+          sort: number
+        }
+        Insert: {
+          caption?: string | null
+          craftsman_id: string
+          created_at?: string
+          id?: string
+          path: string
+          sort?: number
+        }
+        Update: {
+          caption?: string | null
+          craftsman_id?: string
+          created_at?: string
+          id?: string
+          path?: string
+          sort?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_photos_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      admin_create_org: {
+        Args: { p_city?: string; p_eik?: string; p_name: string }
+        Returns: Json
+      }
+      admin_list_users: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_q?: string
+          p_role?: Database["public"]["Enums"]["user_role"]
+        }
+        Returns: {
+          craftsman_slug: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          is_banned: boolean
+          is_hidden: boolean
+          is_verified: boolean
+          role: Database["public"]["Enums"]["user_role"]
+          total_count: number
+        }[]
+      }
+      admin_owner_invite: { Args: { p_org: string }; Returns: string }
+      admin_set_org_owner: {
+        Args: { p_email: string; p_org: string }
+        Returns: undefined
+      }
+      admin_set_plan: {
+        Args: {
+          p_craftsman: string
+          p_note?: string
+          p_plan: string
+          p_valid_until?: string
+        }
+        Returns: undefined
+      }
+      admin_update_org: {
+        Args: {
+          p_clear_until?: boolean
+          p_hidden?: boolean
+          p_org: string
+          p_plan_status?: string
+          p_plan_until?: string
+          p_verified?: boolean
+        }
+        Returns: undefined
+      }
+      assign_org_conversation: {
+        Args: { p_conversation: string; p_craftsman: string }
+        Returns: undefined
+      }
+      availability_days: {
+        Args: { p_craftsman: string; p_days: number; p_from: string }
+        Returns: {
+          day: string
+          free_hours: number
+          ranges: Json
+          status: string
+        }[]
+      }
+      availability_strip: {
+        Args: { p_craftsman: string; p_days?: number; p_from: string }
+        Returns: string
+      }
+      become_craftsman: { Args: never; Returns: string }
+      bg_translit: { Args: { input: string }; Returns: string }
+      booking_label: {
+        Args: { b: Database["public"]["Tables"]["bookings"]["Row"] }
+        Returns: string
+      }
+      booking_overlaps: {
+        Args: { b: Database["public"]["Tables"]["bookings"]["Row"] }
+        Returns: boolean
+      }
+      build_search_query: {
+        Args: { p_any?: boolean; p_q: string }
+        Returns: unknown
+      }
+      bump_stat: {
+        Args: { p_by?: number; p_column: string; p_craftsman: string }
+        Returns: undefined
+      }
+      calendar_freshness: { Args: { p_confirmed: string }; Returns: string }
+      can_manage_craftsman: { Args: { p_craftsman: string }; Returns: boolean }
+      can_review: { Args: { p_craftsman: string }; Returns: boolean }
+      category_counts: {
+        Args: never
+        Returns: {
+          craftsmen: number
+          slug: string
+        }[]
+      }
+      category_price_guide: {
+        Args: { p_category: number }
+        Returns: {
+          hourly_count: number
+          hourly_median: number
+          hourly_p25: number
+          hourly_p75: number
+          job_count: number
+          job_median: number
+          job_p25: number
+          job_p75: number
+        }[]
+      }
+      category_price_hint: {
+        Args: { p_category: number }
+        Returns: {
+          hourly_count: number
+          hourly_p25: number
+          hourly_p75: number
+          job_count: number
+          job_p25: number
+          job_p75: number
+          scope: string
+        }[]
+      }
+      claim_org_invite: { Args: { p_token: string }; Returns: string }
+      cleanup_old_chats: { Args: { p_days?: number }; Returns: number }
+      confirm_calendar: { Args: { p_craftsman?: string }; Returns: string }
+      conversation_partner_phone: {
+        Args: { p_conversation: string }
+        Returns: string
+      }
+      craftsman_contact_info: {
+        Args: { p_craftsman: string }
+        Returns: {
+          has_phone: boolean
+          visibility: string
+        }[]
+      }
+      craftsman_is_listed: { Args: { p_id: string }; Returns: boolean }
+      craftsman_is_public: { Args: { p_id: string }; Returns: boolean }
+      craftsman_phone: { Args: { p_craftsman: string }; Returns: string }
+      craftsman_plan: { Args: { p_craftsman: string }; Returns: string }
+      craftsman_reviews: {
+        Args: { p_craftsman: string; p_limit?: number }
+        Returns: {
+          author: string
+          body: string
+          created_at: string
+          id: string
+          is_mine: boolean
+          rating: number
+        }[]
+      }
+      create_org_invite: {
+        Args: { p_email?: string; p_full_name?: string; p_role?: string }
+        Returns: string
+      }
+      day_free_ranges: {
+        Args: { p_craftsman: string; p_day: string }
+        Returns: unknown
+      }
+      day_status: { Args: { ranges: unknown }; Returns: string }
+      free_hours: { Args: { ranges: unknown }; Returns: number }
+      has_feature: {
+        Args: { p_craftsman: string; p_feature: string }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
+      is_api_request: { Args: never; Returns: boolean }
+      is_banned: { Args: never; Returns: boolean }
+      is_conv_party: { Args: { p_conversation: string }; Returns: boolean }
+      is_conversation_member: {
+        Args: { p_conversation: string }
+        Returns: boolean
+      }
+      is_org_manager: { Args: { p_org: string }; Returns: boolean }
+      is_org_member: { Args: { p_org: string }; Returns: boolean }
+      job_report: { Args: { p_from: string; p_to: string }; Returns: Json }
+      leave_org: { Args: never; Returns: undefined }
+      log_admin_action: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_target_id?: string
+          p_target_type?: string
+        }
+        Returns: undefined
+      }
+      mark_conversation_read: {
+        Args: { p_conversation: string }
+        Returns: undefined
+      }
+      mark_notifications_read: { Args: { p_ids?: number[] }; Returns: number }
+      mark_photo_share_published: {
+        Args: { p_request: string }
+        Returns: undefined
+      }
+      my_bookings: {
+        Args: { p_from?: string }
+        Returns: {
+          booking_date: string
+          conversation_id: string
+          end_date: string
+          end_time: string
+          i_am: string
+          id: string
+          kind: string
+          note: string
+          partner_name: string
+          partner_slug: string
+          proposed_by_me: boolean
+          start_time: string
+          status: string
+        }[]
+      }
+      my_conversations: {
+        Args: never
+        Returns: {
+          assigned_name: string
+          assigned_to: string
+          category_name: string
+          i_am: string
+          id: string
+          last_from_me: boolean
+          last_message_at: string
+          last_message_preview: string
+          org_id: string
+          org_name: string
+          org_slug: string
+          partner_avatar: string
+          partner_id: string
+          partner_name: string
+          partner_slug: string
+          requested_date: string
+          unread_count: number
+        }[]
+      }
+      my_plan: { Args: never; Returns: Json }
+      my_stats: { Args: { p_weeks?: number }; Returns: Json }
+      next_free_date: {
+        Args: {
+          p_craftsman: string
+          p_from: string
+          p_horizon?: number
+          p_slot?: string
+        }
+        Returns: string
+      }
+      offer_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          accepted_by: string
+          avatar_url: string
+          client_name: string
+          craftsman_name: string
+          craftsman_slug: string
+          end_date: string
+          lines: Json
+          note: string
+          responded_at: string
+          start_date: string
+          status: string
+          title: string
+          total: number
+          valid_until: string
+        }[]
+      }
+      org_invite_info: {
+        Args: { p_token: string }
+        Returns: {
+          full_name: string
+          org_name: string
+          org_slug: string
+          role: string
+          state: string
+        }[]
+      }
+      org_plan_active: { Args: { p_org: string }; Returns: boolean }
+      org_role: { Args: { p_org: string }; Returns: string }
+      org_team: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          joined_at: string
+          last_confirmed_at: string
+          name: string
+          next_free: string
+          role: string
+          slug: string
+          user_id: string
+        }[]
+      }
+      owns_craftsman: { Args: { p_id: string }; Returns: boolean }
+      plan_limit: {
+        Args: { p_craftsman: string; p_key: string }
+        Returns: number
+      }
+      propose_booking: {
+        Args: {
+          p_conversation: string
+          p_date: string
+          p_end?: string
+          p_end_date?: string
+          p_kind?: string
+          p_note?: string
+          p_start?: string
+        }
+        Returns: string
+      }
+      push_notification: {
+        Args: {
+          p_body: string
+          p_conversation?: string
+          p_kind: string
+          p_link: string
+          p_title: string
+          p_user: string
+        }
+        Returns: number
+      }
+      queue_calendar_reminders: { Args: never; Returns: number }
+      queue_email: { Args: { p_notification: number }; Returns: undefined }
+      rank_signals: {
+        Args: { p_ids: string[] }
+        Returns: {
+          craftsman_id: string
+          e: number
+          f: number
+          n: number
+          p: number
+          q: number
+          r: number
+        }[]
+      }
+      record_impressions: {
+        Args: { p_ids: string[]; p_offset?: number }
+        Returns: undefined
+      }
+      record_link_visit: {
+        Args: { p_slug: string; p_source: string }
+        Returns: undefined
+      }
+      record_profile_view: { Args: { p_slug: string }; Returns: undefined }
+      refresh_craftsman_price: { Args: { p_id: string }; Returns: undefined }
+      refresh_craftsman_search: { Args: { p_id: string }; Returns: undefined }
+      remove_org_member: { Args: { p_user: string }; Returns: undefined }
+      report_content: {
+        Args: {
+          p_details?: string
+          p_reason: string
+          p_target: string
+          p_type: string
+        }
+        Returns: undefined
+      }
+      request_photo_share: {
+        Args: { p_message: number; p_path: string }
+        Returns: string
+      }
+      request_review_in_chat: {
+        Args: { p_conversation: string }
+        Returns: undefined
+      }
+      respond_booking: {
+        Args: { p_action: string; p_booking: string }
+        Returns: string
+      }
+      respond_offer: {
+        Args: { p_accept: boolean; p_name?: string; p_token: string }
+        Returns: undefined
+      }
+      respond_photo_share: {
+        Args: { p_accept: boolean; p_request: string }
+        Returns: string
+      }
+      reveal_phone: { Args: { p_craftsman: string }; Returns: string }
+      revoke_org_invite: { Args: { p_token: string }; Returns: undefined }
+      search_craftsmen: {
+        Args: {
+          p_any?: boolean
+          p_category?: string
+          p_city?: string
+          p_date_from?: string
+          p_date_to?: string
+          p_ids?: string[]
+          p_limit?: number
+          p_min_rating?: number
+          p_offset?: number
+          p_price_max?: number
+          p_price_min?: number
+          p_q?: string
+          p_seed?: string
+          p_sort?: string
+          p_time?: string
+          p_verified?: boolean
+        }
+        Returns: {
+          avatar_url: string
+          business_name: string
+          category_names: string[]
+          city_name: string
+          city_slug: string
+          created_at: string
+          display_name: string
+          free_days: number
+          freshness: string
+          id: string
+          is_pro: boolean
+          is_verified: boolean
+          matched_date: string
+          next_free: string
+          price_from: number
+          price_from_unit: Database["public"]["Enums"]["price_unit"]
+          quote_on_inspection: boolean
+          rating_avg: number
+          rating_count: number
+          short_notice: boolean
+          slug: string
+          span_days: number
+          strip: string
+          total_count: number
+          years_experience: number
+        }[]
+      }
+      search_stem: { Args: { token: string }; Returns: string }
+      set_member_role: {
+        Args: { p_role: string; p_user: string }
+        Returns: undefined
+      }
+      slugify: { Args: { input: string }; Returns: string }
+      start_conversation: {
+        Args: {
+          p_body: string
+          p_category?: number
+          p_craftsman: string
+          p_date?: string
+          p_service?: string
+          p_slot?: string
+        }
+        Returns: string
+      }
+      start_org_conversation: {
+        Args: {
+          p_body: string
+          p_category?: number
+          p_date?: string
+          p_org: string
+        }
+        Returns: string
+      }
+      submit_contact_request: {
+        Args: {
+          p_contact: string
+          p_kind: string
+          p_message?: string
+          p_name: string
+          p_payload?: Json
+          p_trap?: string
+        }
+        Returns: string
+      }
+      template_price_ranges: {
+        Args: { p_city?: string; p_templates: number[] }
+        Returns: {
+          n: number
+          p25: number
+          p75: number
+          scope: string
+          template_id: number
+        }[]
+      }
+      time_window: { Args: { p_day: string; p_slot: string }; Returns: unknown }
+      unique_craftsman_slug: {
+        Args: { base: string; self_id?: string }
+        Returns: string
+      }
+      unique_org_slug: { Args: { p_name: string }; Returns: string }
+      unread_total: { Args: never; Returns: number }
+      unsubscribe_emails: { Args: { p_token: string }; Returns: boolean }
+    }
+    Enums: {
+      exception_kind: "free" | "busy"
+      price_kind: "fixed" | "from" | "quote"
+      price_unit: "job" | "hour" | "m2" | "piece" | "meter" | "day"
+      user_role: "client" | "craftsman" | "admin"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
@@ -1235,112 +2394,125 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-    ? R
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
     : never
-  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Insert: infer I
-    }
-    ? I
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
     : never
-  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Update: infer U
-    }
-    ? U
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
     : never
-  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
-  "graphql_public": {
-          Enums: {
-            
-          }
-        },"public": {
-          Enums: {
-            "exception_kind": ["free", "busy"],"price_kind": ["fixed", "from", "quote"],"price_unit": ["job", "hour", "m2", "piece", "meter", "day"],"user_role": ["client", "craftsman", "admin"]
-          }
-        }
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {
+      exception_kind: ["free", "busy"],
+      price_kind: ["fixed", "from", "quote"],
+      price_unit: ["job", "hour", "m2", "piece", "meter", "day"],
+      user_role: ["client", "craftsman", "admin"],
+    },
+  },
 } as const
-

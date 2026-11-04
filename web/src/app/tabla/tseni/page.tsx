@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Lock } from "lucide-react";
 import { getMyPlan, hasFeature } from "@/lib/plan";
 import { ServicesEditor } from "./services-editor";
+import { TemplatePicker, type Range, type Template } from "./template-picker";
 
 export const metadata: Metadata = { title: "Цени и услуги", robots: { index: false } };
 
@@ -16,17 +17,17 @@ export default async function PricesPage() {
   const [{ data: cp }, { data: services }, { data: links }] = await Promise.all([
     supabase
       .from("craftsman_profiles")
-      .select("hourly_rate, callout_fee, travel_fee, materials_included, quote_on_inspection, inspection_policy, inspection_fee, terms_note")
+      .select("hourly_rate, callout_fee, travel_fee, materials_included, quote_on_inspection, inspection_policy, inspection_fee, terms_note, city:cities(slug)")
       .eq("id", viewer.id)
       .single(),
     supabase
       .from("services")
-      .select("id, name, description, price_kind, price, unit, category_id, sort")
+      .select("id, name, description, price_kind, price, unit, category_id, sort, template_id")
       .eq("craftsman_id", viewer.id)
       .order("sort"),
     supabase
       .from("craftsman_categories")
-      .select("category:categories(id, name, parent_id, parent:parent_id(id, name))")
+      .select("category:categories(id, name, slug, parent_id, parent:parent_id(id, name, slug))")
       .eq("craftsman_id", viewer.id),
   ]);
 
@@ -39,7 +40,25 @@ export default async function PricesPage() {
     const parent = Array.isArray(c.parent) ? c.parent[0] : c.parent;
     tops.set(parent?.id ?? c.id, parent?.name ?? c.name);
   }
+  // Ready-made typical jobs of the top-level categories he works in
+  const topSlugs = new Map<string, string>();
+  for (const c of cats) {
+    const parent = Array.isArray(c.parent) ? c.parent[0] : c.parent;
+    topSlugs.set(parent?.slug ?? c.slug, parent?.name ?? c.name);
+  }
+  const { data: tplRows } = topSlugs.size
+    ? await supabase.from("job_templates").select("id, name, unit, category_slug").in("category_slug", [...topSlugs.keys()]).order("category_slug").order("sort")
+    : { data: [] };
+  const templates = (tplRows ?? []) as Template[];
   const proHints = hasFeature(plan, "price_hints");
+  const city = Array.isArray(cp?.city) ? cp?.city[0] : cp?.city;
+  const { data: rangeRows } =
+    proHints && templates.length
+      ? await supabase.rpc("template_price_ranges", { p_templates: templates.map((t) => t.id), p_city: city?.slug ?? undefined })
+      : { data: [] };
+  const ranges: Record<number, Range> = Object.fromEntries(
+    (rangeRows ?? []).map((r) => [r.template_id, { p25: Number(r.p25), p75: Number(r.p75), scope: r.scope as Range["scope"] }]),
+  );
   const guides = proHints
     ? await Promise.all(
         [...tops.entries()].map(async ([id, name]) => {
@@ -111,6 +130,15 @@ export default async function PricesPage() {
           inspectionFee: cp?.inspection_fee != null ? String(cp.inspection_fee) : "",
           termsNote: cp?.terms_note ?? "",
         }}
+      />
+
+      <TemplatePicker
+        userId={viewer.id}
+        templates={templates}
+        categoryNames={Object.fromEntries(topSlugs)}
+        taken={(services ?? []).map((s) => s.template_id).filter((x): x is number => x != null)}
+        ranges={ranges}
+        isPro={proHints}
       />
 
       <ServicesEditor

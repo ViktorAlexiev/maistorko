@@ -1,4 +1,5 @@
 import { RuleMark } from "@/components/logo";
+import { RuleStrip } from "@/components/rule-strip";
 
 /** Two-column auth layout: form on paper, a yellow rule field beside it. */
 export function AuthShell({
@@ -19,10 +20,17 @@ export function AuthShell({
         {intro && <div className="mt-3 text-lg text-ink-2">{intro}</div>}
         <div className="mt-8">{children}</div>
       </div>
-      <aside aria-hidden={!aside} className="relative hidden overflow-hidden rounded-[14px] bg-rule p-10 lg:block">
+      <aside aria-hidden={!aside} className="relative hidden min-h-[28rem] overflow-hidden rounded-[14px] bg-rule p-10 lg:flex lg:flex-col lg:justify-between">
         <div className="graduations graduations-top absolute inset-x-0 top-0 h-4" />
-        <RuleMark className="h-10 w-20" />
-        {aside}
+        <div>
+          <RuleMark className="h-10 w-20" />
+          {aside}
+        </div>
+        {/* A sample of what a craftsman's free days look like, so the yellow field is never just empty */}
+        <div className="mt-10">
+          <RuleStrip strip="FFPFBBFFFPFFBB" size="lg" label="Пример: свободни дни" />
+          <p className="mt-3 max-w-sm text-sm font-semibold">Така клиентите виждат кога един майстор е свободен.</p>
+        </div>
       </aside>
     </div>
   );

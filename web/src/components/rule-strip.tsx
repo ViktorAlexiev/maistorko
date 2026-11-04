@@ -96,7 +96,11 @@ export function RuleStrip({
             const inner = (
               <>
                 {/* graduations */}
-                <span aria-hidden className="absolute left-0 top-0 h-[38%] w-px bg-ink" />
+                {/* the very first tick starts below the rounded corner so it never sticks out of the rule */}
+                <span
+                  aria-hidden
+                  className={`absolute left-0 w-px bg-ink ${di === 0 && si === 0 ? "top-[5px] h-[calc(38%-5px)]" : "top-0 h-[38%]"}`}
+                />
                 <span aria-hidden className="absolute left-1/2 top-0 h-[18%] w-px bg-ink/70" />
                 <span
                   aria-hidden

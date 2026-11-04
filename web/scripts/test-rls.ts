@@ -183,12 +183,14 @@ async function main() {
       p_conversation: convId as string, p_date: day, p_start: "13:00", p_end: "16:00", p_kind: "work",
     });
     const { data: b2row } = await alice.c.from("bookings").select("status").eq("id", b2 as string).single();
-    ok("уговорка от майстора се запазва веднага", !e3 && b2row?.status === "confirmed", e3 ?? b2row);
+    ok("уговорка от майстора чака съгласието на клиента", !e3 && b2row?.status === "proposed", e3 ?? b2row);
+    const { error: e3b } = await alice.c.rpc("respond_booking", { p_booking: b2 as string, p_action: "confirm" });
+    ok("клиентът се съгласява и уговорката се потвърждава", !e3b, e3b);
     const { error: e4 } = await alice.c.rpc("respond_booking", { p_booking: b1 as string, p_action: "cancel" });
     ok("клиентът може да отмени потвърдена уговорка", !e4, e4);
     ok("отменената уговорка освобождава часовете", (await freeAt()) === "08:00-13:00,16:00-17:00", await freeAt());
     const { data: bookingMsgs } = await alice.c.from("messages").select("meta").eq("conversation_id", convId as string);
-    ok("всяко действие оставя съобщение в чата", (bookingMsgs ?? []).filter((m) => (m.meta as { booking_id?: string })?.booking_id).length === 4);
+    ok("всяко действие оставя съобщение в чата", (bookingMsgs ?? []).filter((m) => (m.meta as { booking_id?: string })?.booking_id).length === 5);
   }
 
   console.log("\nStorage");

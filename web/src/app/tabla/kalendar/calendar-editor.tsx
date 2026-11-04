@@ -35,6 +35,7 @@ import {
   type Row,
 } from "@/lib/intervals";
 import { RowList, SlotChips } from "./interval-editor";
+import { DateField } from "@/components/date-time-fields";
 
 type Rule = { id: string; weekday: number; start_time: string; end_time: string };
 type Exception = {
@@ -660,23 +661,13 @@ function VacationDialog({
             <label htmlFor="v-from" className="label">
               От
             </label>
-            <input id="v-from" type="date" min={today} className="field" value={from} onChange={(e) => setFrom(e.target.value)} required />
+            <DateField id="v-from" min={today} value={from} onChange={setFrom} required />
           </div>
           <div>
             <label htmlFor="v-to" className="label">
               До (включително)
             </label>
-            <input
-              id="v-to"
-              type="date"
-              min={from}
-              max={addDaysISO(from, 366)}
-              className="field"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              aria-invalid={invalid}
-              required
-            />
+            <DateField id="v-to" min={from} max={addDaysISO(from, 366)} value={to} onChange={setTo} invalid={invalid} required />
           </div>
         </div>
         {invalid && <p className="error-text">Крайната дата е преди началната.</p>}

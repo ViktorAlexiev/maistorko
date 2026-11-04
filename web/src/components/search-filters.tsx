@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { addDaysISO, isoWeekday, todayISO } from "@/lib/format";
+import { DateField } from "@/components/date-time-fields";
 import { SORTS, TIME_SLOTS, toQueryString, type SearchState } from "@/lib/search-params";
 
 type Cat = { slug: string; name: string; children: { slug: string; name: string }[] };
@@ -174,28 +175,26 @@ export function SearchFilters({ state, categories, cities, fixedCategory, total,
             <label htmlFor="f-from" className="text-sm font-semibold text-ink-2">
               От дата
             </label>
-            <input
+            <DateField
               id="f-from"
-              type="date"
               min={today}
               className="field mt-1"
               value={s.date}
-              onChange={(e) => update({ date: e.target.value, dateTo: s.dateTo && s.dateTo < e.target.value ? "" : s.dateTo })}
+              onChange={(v) => update({ date: v, dateTo: s.dateTo && s.dateTo < v ? "" : s.dateTo })}
             />
           </div>
           <div>
             <label htmlFor="f-to" className="text-sm font-semibold text-ink-2">
               До дата
             </label>
-            <input
+            <DateField
               id="f-to"
-              type="date"
               min={s.date || today}
               max={s.date ? addDaysISO(s.date, 30) : undefined}
               disabled={!s.date}
               className="field mt-1"
               value={s.dateTo}
-              onChange={(e) => update({ dateTo: e.target.value })}
+              onChange={(v) => update({ dateTo: v })}
             />
           </div>
         </div>

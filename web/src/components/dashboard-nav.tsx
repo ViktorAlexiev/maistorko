@@ -14,7 +14,7 @@ export function DashboardNav({
   const pathname = usePathname();
   return (
     <nav aria-label="Табло" className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:overflow-visible lg:px-0">
-      <ul className="flex gap-1 border-b border-line pb-px lg:sticky lg:top-24 lg:flex-col lg:border-b-0 lg:border-l-[1.5px] lg:border-ink lg:pb-0">
+      <ul className="flex gap-1 border-b border-line pb-px lg:sticky lg:top-24 lg:flex-col lg:border-b-0 lg:border-l lg:border-line-strong lg:pb-0">
         {items.map((it) => {
           const active = it.href === "/tabla" ? pathname === "/tabla" : pathname.startsWith(it.href);
           return (
@@ -29,7 +29,7 @@ export function DashboardNav({
                 {active && (
                   <span
                     aria-hidden
-                    className="absolute inset-x-2 -bottom-px h-[3px] rounded-t bg-red lg:inset-x-auto lg:-left-[2.5px] lg:bottom-1 lg:top-1 lg:h-auto lg:w-[3.5px] lg:rounded"
+                    className="absolute inset-x-2 -bottom-px h-[3px] rounded-t bg-red lg:inset-x-auto lg:-left-[2px] lg:bottom-1.5 lg:top-1.5 lg:h-auto lg:w-[3px] lg:rounded-full"
                   />
                 )}
                 {it.label}

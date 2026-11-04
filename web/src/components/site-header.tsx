@@ -58,9 +58,12 @@ export async function SiteHeader() {
                 className="btn btn-ghost btn-sm relative"
                 aria-label={unread ? `Съобщения, ${unread} непрочетени` : "Съобщения"}
               >
-                <MessageCircle className="size-5" aria-hidden />
+                {/* the badge sits on the icon, not on the last letter of the word */}
+                <span className="relative">
+                  <MessageCircle className="size-5" aria-hidden />
+                  <UnreadBadge userId={viewer.id} initial={unread} />
+                </span>
                 <span className="hidden sm:inline">Съобщения</span>
-                <UnreadBadge userId={viewer.id} initial={unread} />
               </Link>
               <UserMenu
                 name={displayName}

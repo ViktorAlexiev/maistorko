@@ -6,6 +6,7 @@ import { PauseCircle } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { addDaysISO, formatDate } from "@/lib/format";
+import { DateField } from "@/components/date-time-fields";
 
 /** Marker note: the calendar treats this as an ordinary busy period, the profile and dashboard recognise it by it. */
 export const BUSY_UNTIL_NOTE = "Заето до";
@@ -73,7 +74,7 @@ export function BusyUntil({ userId, today, current }: { userId: string; today: s
             {label}
           </button>
         ))}
-        <input type="date" className="field min-h-9 w-auto py-1 text-sm" min={addDaysISO(today, 1)} max={addDaysISO(today, 180)} value={custom} onChange={(e) => setCustom(e.target.value)} aria-label="Заето до дата" />
+        <DateField className="field min-h-9 w-auto py-1 text-sm" min={addDaysISO(today, 1)} max={addDaysISO(today, 180)} value={custom} onChange={setCustom} ariaLabel="Заето до дата" />
         <button type="button" className="btn btn-primary btn-sm" disabled={pending || !custom} onClick={() => set(custom)}>
           Запази
         </button>

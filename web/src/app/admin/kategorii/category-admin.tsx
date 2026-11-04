@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-dialog";
 import { deleteCategory, saveCategory } from "@/app/actions/admin";
 import type { FormState } from "@/app/actions/auth";
 import { CategoryIcon } from "@/components/category-icon";
@@ -39,9 +40,10 @@ export function CategoryAdmin({ categories, usage }: { categories: Cat[]; usage:
   const [editing, setEditing] = useState<Cat | "new" | null>(null);
   const [pending, start] = useTransition();
   const tops = categories.filter((c) => c.parent_id === null);
+  const { confirm, dialog } = useConfirm();
 
-  function remove(c: Cat) {
-    if (!window.confirm(`Да изтрия ли „${c.name}“?`)) return;
+  async function remove(c: Cat) {
+    if (!(await confirm({ title: `Да изтрия ли „${c.name}“?`, confirmLabel: "Изтрий", danger: true }))) return;
     start(async () => {
       const r = await deleteCategory(c.id);
       if (r.ok) toast.success(r.message);
@@ -103,6 +105,7 @@ export function CategoryAdmin({ categories, usage }: { categories: Cat[]; usage:
           onDone={() => setEditing(null)}
         />
       )}
+      {dialog}
     </div>
   );
 }

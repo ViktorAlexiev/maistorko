@@ -63,6 +63,7 @@ export const craftsmanProfileSchema = z.object({
   categories: z.array(z.string()).min(1, "Изберете поне една категория.").max(20, "Най-много 20 категории."),
   languages: z.array(z.string()).min(1, "Изберете поне един език."),
   contactHours: z.string().trim().max(80).optional(),
+  replyHours: z.enum(["", "1", "2", "4", "24", "48"]).optional(),
   otherServices: z.string().trim().max(200, "Описанието на „Друго“ е до 200 символа.").optional(),
   phone,
   phoneVisibility: z.enum(["public", "login", "chat", "hidden"]),

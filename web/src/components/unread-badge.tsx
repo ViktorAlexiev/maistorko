@@ -37,7 +37,7 @@ export function UnreadBadge({ userId, initial }: { userId: string; initial: numb
 
   if (!count) return null;
   return (
-    <span className="numerals absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-red px-1 text-[0.8rem] leading-none text-white ring-2 ring-paper">
+    <span className="numerals absolute -right-2.5 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-red px-1 text-[0.8rem] leading-none text-white ring-2 ring-paper">
       {count > 99 ? "99+" : count}
     </span>
   );

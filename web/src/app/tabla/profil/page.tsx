@@ -66,7 +66,7 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
   const [{ data: cp }, { data: cats }, { data: areas }] = await Promise.all([
     supabase
       .from("craftsman_profiles")
-      .select("display_name, business_name, bio, years_experience, city_id, languages, contact_hours, phone_visibility, other_services")
+      .select("display_name, business_name, bio, years_experience, city_id, languages, contact_hours, reply_within_hours, phone_visibility, other_services")
       .eq("id", viewer.id)
       .single(),
     supabase.from("craftsman_categories").select("category_id").eq("craftsman_id", viewer.id),
@@ -91,6 +91,7 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
           categories: (cats ?? []).map((c) => String(c.category_id)),
           languages: cp?.languages ?? ["bg"],
           contactHours: cp?.contact_hours ?? "",
+          replyHours: cp?.reply_within_hours != null ? String(cp.reply_within_hours) : "",
           otherServices: cp?.other_services ?? "",
           phone: viewer.profile.phone ?? "",
           phoneVisibility: (cp?.phone_visibility ?? "login") as "public" | "login" | "chat" | "hidden",

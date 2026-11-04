@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/client";
 import { relativeDay } from "@/lib/format";
 import { slotLabel, type Slot } from "@/lib/slots";
 import { composeAnswers, questionsFor } from "@/lib/inquiry-questions";
+import { DateField } from "@/components/date-time-fields";
 
 export const OPEN_CHAT = "maistorko:open-chat";
 
@@ -251,18 +252,12 @@ function FirstMessage({
         <label htmlFor="dock-date" className="label text-white">
           Дата <span className="font-normal text-[#bdb8aa]">(по желание)</span>
         </label>
-        <input
-          id="dock-date"
-          type="date"
-          min={today}
-          className="field"
-          value={date ?? ""}
-          onChange={(e) => onDate(e.target.value || null)}
-        />
+        <DateField id="dock-date" min={today} value={date ?? ""} onChange={(v) => onDate(v || null)} />
         {date && (
           <p className="hint text-[#bdb8aa]">
             {slot ? `Предпочитано: ${slotLabel(slot)}. ` : ""}
             {busyDay ? "Отбелязан като зает: питайте дали може. " : ""}
+            Майсторът потвърждава деня в чата.{" "}
             <button type="button" className="underline" onClick={() => onDate(null)}>
               Без конкретна дата
             </button>

@@ -30,14 +30,9 @@ export function LoginForm({ next }: { next: string }) {
         <FieldError id="email-err" message={state.errors?.email} />
       </div>
       <div>
-        <div className="flex items-baseline justify-between">
-          <label htmlFor="password" className="label">
-            Парола
-          </label>
-          <Link href="/zabravena-parola" className="link text-sm font-semibold">
-            Забравена парола?
-          </Link>
-        </div>
+        <label htmlFor="password" className="label">
+          Парола
+        </label>
         <input
           id="password"
           name="password"
@@ -55,6 +50,11 @@ export function LoginForm({ next }: { next: string }) {
       <SubmitButton className="btn btn-primary btn-lg w-full" pendingText="Влизаме…">
         Вход
       </SubmitButton>
+      <p className="text-center">
+        <Link href="/zabravena-parola" className="link text-sm font-semibold">
+          Забравена парола?
+        </Link>
+      </p>
       <p className="text-center text-ink-2">
         Нямате профил?{" "}
         <Link href={`/registratsia?next=${encodeURIComponent(next)}`} className="link font-bold text-ink">

@@ -22,10 +22,24 @@ const PHONE_OPTIONS: { value: PhoneVisibility; label: string; hint: string }[] =
 
 const OTHER_SLUGS = new Set(["drugo", "drugi-uslugi"]);
 
-function CitySelect({ id, name, value, cities, invalid }: { id: string; name: string; value: string; cities: City[]; invalid?: boolean }) {
+function CitySelect({
+  id,
+  name,
+  value,
+  cities,
+  invalid,
+  onChange,
+}: {
+  id: string;
+  name: string;
+  value: string;
+  cities: City[];
+  invalid?: boolean;
+  onChange?: (slug: string) => void;
+}) {
   const regions = Array.from(new Set(cities.map((c) => c.region)));
   return (
-    <select id={id} name={name} className="field" defaultValue={value} aria-invalid={invalid}>
+    <select id={id} name={name} className="field" defaultValue={value} aria-invalid={invalid} onChange={(e) => onChange?.(e.target.value)}>
       <option value="">Изберете град</option>
       {regions.map((r) => (
         <optgroup key={r} label={`Област ${r}`}>
@@ -100,6 +114,7 @@ type CraftInitial = {
   categories: string[];
   languages: string[];
   contactHours: string;
+  replyHours: string;
   otherServices: string;
   phone: string;
   phoneVisibility: PhoneVisibility;
@@ -142,7 +157,9 @@ export function CraftsmanProfileForm({
   }
   const [bioLen, setBioLen] = useState(initial.bio.length);
   const [areaChecked, setAreaChecked] = useState(() => new Set(initial.areas));
-  const areaCount = areaChecked.size;
+  // The main city is not offered again under "Пътувам и до"; it already counts as one of the cities
+  const [mainCity, setMainCity] = useState(v.city);
+  const areaCount = [...areaChecked].filter((s) => s !== mainCity).length;
   const regions = Array.from(new Set(cities.map((c) => c.region)));
   const otherIds = new Set(
     tree.flatMap((t) => [t, ...t.children]).filter((c) => OTHER_SLUGS.has(c.slug)).map((c) => String(c.id)),
@@ -212,6 +229,20 @@ export function CraftsmanProfileForm({
               Кога отговаряш <span className="font-normal text-ink-3">(по желание)</span>
             </label>
             <input id="contactHours" name="contactHours" className="field" maxLength={80} defaultValue={v.contactHours} placeholder="напр. вечер след 18 ч." />
+          </div>
+          <div>
+            <label htmlFor="replyHours" className="label">
+              Обикновено отговарям за <span className="font-normal text-ink-3">(по желание)</span>
+            </label>
+            <select id="replyHours" name="replyHours" className="field" defaultValue={v.replyHours}>
+              <option value="">Не показвай</option>
+              <option value="1">до 1 час</option>
+              <option value="2">до 2 часа</option>
+              <option value="4">до 4 часа</option>
+              <option value="24">до 24 часа</option>
+              <option value="48">до 2 дни</option>
+            </select>
+            <p className="hint">Клиентите го виждат в профила ти. Бързият отговор е това, което печели работа.</p>
           </div>
         </div>
         <fieldset>
@@ -318,7 +349,7 @@ export function CraftsmanProfileForm({
           <label htmlFor="city" className="label">
             Основен град
           </label>
-          <CitySelect id="city" name="city" value={v.city} cities={cities} invalid={Boolean(state.errors?.city)} />
+          <CitySelect id="city" name="city" value={v.city} cities={cities} invalid={Boolean(state.errors?.city)} onChange={setMainCity} />
           <FieldError id="city-err" message={state.errors?.city} />
         </div>
         <fieldset>
@@ -334,7 +365,7 @@ export function CraftsmanProfileForm({
                 <p className="mb-1 text-sm font-bold text-ink-3">Област {r}</p>
                 <div className="grid gap-1.5">
                   {cities
-                    .filter((c) => c.region === r)
+                    .filter((c) => c.region === r && c.slug !== mainCity)
                     .map((c) => (
                       <label key={c.slug} className="flex cursor-pointer items-center gap-2.5">
                         <input

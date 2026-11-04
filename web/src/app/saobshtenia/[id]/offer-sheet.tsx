@@ -5,6 +5,7 @@ import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatEur, todayISO } from "@/lib/format";
+import { DateField } from "@/components/date-time-fields";
 
 type Line = { key: number; name: string; amount: string; kind: "service" | "material" };
 let lineKey = 0;
@@ -140,13 +141,13 @@ export function OfferSheet({
             <label htmlFor="os-from" className="label">
               От ден <span className="font-normal text-ink-3">(по желание)</span>
             </label>
-            <input id="os-from" type="date" className="field" min={today} value={from} onChange={(e) => setFrom(e.target.value)} />
+            <DateField id="os-from" min={today} value={from} onChange={setFrom} />
           </div>
           <div>
             <label htmlFor="os-to" className="label">
               До ден
             </label>
-            <input id="os-to" type="date" className="field" min={from || today} value={to} onChange={(e) => setTo(e.target.value)} disabled={!from} />
+            <DateField id="os-to" min={from || today} value={to} onChange={setTo} disabled={!from} />
           </div>
         </div>
 

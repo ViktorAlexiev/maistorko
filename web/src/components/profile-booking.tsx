@@ -24,6 +24,8 @@ type Props = {
   craftsman: { id: string; name: string; firstName: string; avatar: string | null; slug: string; categories?: { slug: string; name: string }[] };
   days: DayInfo[];
   stale: boolean;
+  /** "График, потвърден преди 3 дни": how fresh the calendar is */
+  confirmedLabel?: string;
   workOptions: WorkOption[];
   initialDate?: string;
   me: string | null;
@@ -32,7 +34,7 @@ type Props = {
   conversationId: string | null;
 };
 
-export function ProfileBooking({ craftsman, days, stale, workOptions, initialDate, me, banned, isSelf, conversationId }: Props) {
+export function ProfileBooking({ craftsman, days, stale, confirmedLabel, workOptions, initialDate, me, banned, isSelf, conversationId }: Props) {
   const firstName = craftsman.firstName;
   const [today] = useState(todayISO);
   const byDay = useMemo(() => new Map(days.map((d) => [d.day, d])), [days]);
@@ -95,6 +97,13 @@ export function ProfileBooking({ craftsman, days, stale, workOptions, initialDat
           </p>
         )}
         <p className="mt-2 text-ink-2">Изберете ден, за да видите свободните часове.</p>
+        <p className="mt-1 flex items-start gap-2 text-sm text-ink-2">
+          <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>
+            Календарът показва кога {firstName} обикновено е свободен и е само ориентировъчен. Точния ден и час {firstName} потвърждава с вас в чата.
+            {confirmedLabel ? ` ${confirmedLabel}.` : ""}
+          </span>
+        </p>
         <div className="mt-4 overflow-x-auto pb-1">
           <RuleStrip
             strip={strip}

@@ -1,7 +1,21 @@
 import Link from "next/link";
 import { RuleMark } from "@/components/logo";
+import { getViewer } from "@/lib/auth";
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  // Links to the craftsman's own tools only make sense for a craftsman; everyone else is sent to sign up
+  const viewer = await getViewer();
+  const craftsmanLinks: [string, string][] = viewer?.craftsmanSlug
+    ? [
+        ["/tabla/kalendar", "Моят календар"],
+        ["/tabla/tseni", "Моите цени"],
+        ["/tabla/porachki", "Моите поръчки"],
+        ["/firmi", "За фирми"],
+      ]
+    : [
+        ["/registratsia?rolya=maistor", "Стани майстор"],
+        ["/firmi", "За фирми"],
+      ];
   return (
     <footer className="on-dark mt-24 bg-graphite text-[#e9e6dc]">
       <div aria-hidden className="graduations graduations-top h-3.5 bg-rule" />
@@ -26,12 +40,7 @@ export function SiteFooter() {
         />
         <FooterCol
           title="За майстори"
-          links={[
-            ["/registratsia?rolya=maistor", "Стани майстор"],
-            ["/tabla/kalendar", "Моят календар"],
-            ["/tabla/tseni", "Моите цени"],
-            ["/firmi", "За фирми"],
-          ]}
+          links={craftsmanLinks}
         />
         <FooterCol
           title="Градове"
