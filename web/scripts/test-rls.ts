@@ -348,8 +348,10 @@ async function main() {
     await craft.c.from("jobs").update({ status: "planned" }).eq("id", j1!.id);
     const { error: clash } = await craft.c.rpc("propose_booking", { p_conversation: convId, p_date: m1, p_kind: "work" });
     ok("уговорка върху зает от поръчка ден е отказана", /Вече имате/.test(clash?.message ?? ""), clash?.message);
-    const { error: multiBook } = await craft.c.rpc("propose_booking", { p_conversation: convId, p_date: m2, p_end_date: m3, p_kind: "work", p_note: "ремонт" });
+    const { data: multiId, error: multiBook } = await craft.c.rpc("propose_booking", { p_conversation: convId, p_date: m2, p_end_date: m3, p_kind: "work", p_note: "ремонт" });
     ok("уговорка за няколко дни", !multiBook, multiBook);
+    const { error: multiOk } = await alice.c.rpc("respond_booking", { p_booking: multiId as string, p_action: "confirm" });
+    ok("клиентът се съгласява с уговорката за няколко дни", !multiOk, multiOk);
     ok("потвърдена уговорка за няколко дни заема всички дни", (await statusOf(m2)) === "busy" && (await statusOf(m3)) === "busy");
     const { error: badInspect } = await craft.c.rpc("propose_booking", { p_conversation: convId, p_date: addIso(m3, 3), p_end_date: addIso(m3, 5), p_kind: "inspection" });
     ok("огледът не може да е за няколко дни", Boolean(badInspect));
@@ -672,9 +674,9 @@ async function main() {
     ok("бонусът за нов е само за нови с малко отзиви", Number(pick(sig, craft.id).n) > 0.1 && Number(pick(sig, other.id).n) === 0, sig.map((x) => x.n));
 
     // an old calendar scores 0 for freshness
-    await admin.from("craftsman_profiles").update({ last_confirmed_at: new Date(Date.now() - 40 * 86400_000).toISOString() }).eq("id", other.id);
+    await admin.from("craftsman_profiles").update({ last_confirmed_at: new Date(Date.now() - 70 * 86400_000).toISOString() }).eq("id", other.id);
     sig = await signals([craft.id, other.id]);
-    ok("календар без потвърждение 40 дни носи 0 точки, пресен календар около 1", Number(pick(sig, other.id).f) === 0 && Number(pick(sig, craft.id).f) > 0.9, sig.map((x) => x.f));
+    ok("календар без потвърждение 70 дни носи 0 точки, пресен календар около 1", Number(pick(sig, other.id).f) === 0 && Number(pick(sig, craft.id).f) > 0.9, sig.map((x) => x.f));
 
     // answering quickly beats having no history (prior 4 of 5)
     sig = await signals([craft.id, other.id]);
@@ -936,7 +938,7 @@ async function main() {
     const { data: bookId, error: bookErr } = await empU.c.rpc("propose_booking", { p_conversation: conv, p_date: addIso(new Date().toISOString().slice(0, 10), 10), p_kind: "inspection" });
     ok("възложеният майстор уговаря оглед", !bookErr && Boolean(bookId), bookErr);
     const { data: bk } = await admin.from("bookings").select("craftsman_id, status").eq("id", bookId).single();
-    ok("уговорката е на майстора, не на фирмата", bk?.craftsman_id === empU.id && bk?.status === "confirmed", bk);
+    ok("уговорката е на майстора, не на фирмата", bk?.craftsman_id === empU.id && bk?.status === "proposed", bk);
 
     // photos in a company conversation: staff and the client only
     const PNG = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
