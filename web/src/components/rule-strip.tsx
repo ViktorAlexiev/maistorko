@@ -9,6 +9,7 @@ import {
   todayISO,
   WEEKDAYS,
   WEEKDAYS_LETTER,
+  WEEKDAYS_SHORT,
 } from "@/lib/format";
 
 export type DayStatus = "F" | "P" | "B";
@@ -104,7 +105,9 @@ export function RuleStrip({
                 <span aria-hidden className="absolute left-1/2 top-0 h-[18%] w-px bg-ink/70" />
                 <span
                   aria-hidden
-                  className={`numerals relative mt-[22%] leading-none ${num} ${isToday ? "text-red" : "text-ink"}`}
+                  className={`numerals relative mt-[22%] leading-none ${num} ${isToday ? "text-red" : "text-ink"} ${
+                    d.status === "B" ? "opacity-50 line-through decoration-red decoration-2" : ""
+                  }`}
                 >
                   {date.getUTCDate()}
                 </span>
@@ -113,13 +116,19 @@ export function RuleStrip({
                     aria-hidden
                     className={`relative text-[0.68rem] font-bold uppercase leading-none ${weekend ? "text-ink/60" : "text-ink/80"}`}
                   >
-                    {WEEKDAYS_LETTER[weekday - 1]}
+                    {size === "lg" ? WEEKDAYS_SHORT[weekday - 1] : WEEKDAYS_LETTER[weekday - 1]}
+                  </span>
+                )}
+                {/* the month at the first day shown and whenever a new month starts, so the strip reads as a calendar */}
+                {size !== "sm" && (date.getUTCDate() === 1 || (di === 0 && si === 0)) && (
+                  <span aria-hidden className="absolute right-0.5 top-0.5 text-[0.55rem] font-bold uppercase leading-none text-ink/70">
+                    {MONTHS_SHORT[date.getUTCMonth()]}
                   </span>
                 )}
                 <span
                   aria-hidden
                   className={`absolute inset-x-[3px] bottom-[3px] ${ink} rounded-[2px] ${
-                    d.status === "F" ? "bg-free" : d.status === "P" ? "hatch" : ""
+                    d.status === "F" ? "bg-free" : d.status === "P" ? "hatch" : "bg-red"
                   }`}
                 />
                 {isSelected && (
@@ -162,7 +171,7 @@ export function RuleLegend({ className = "" }: { className?: string }) {
         <span aria-hidden className="hatch h-2.5 w-5 rounded-[2px] ring-1 ring-inset ring-free/40" /> частично
       </li>
       <li className="flex items-center gap-1.5">
-        <span aria-hidden className="h-2.5 w-5 rounded-[2px] bg-rule ring-1 ring-inset ring-ink/30" /> зает
+        <span aria-hidden className="h-2.5 w-5 rounded-[2px] bg-red" /> зает
       </li>
       <li className="flex items-center gap-1.5">
         <span aria-hidden className="numerals text-red">7</span> днес

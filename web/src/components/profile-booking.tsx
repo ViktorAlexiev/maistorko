@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Info, MessageCircle, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Info, MessageCircle, X } from "lucide-react";
 import { RuleLegend, RuleStrip, type DayStatus } from "@/components/rule-strip";
 import { ChatDock, OPEN_CHAT, type WorkOption } from "@/components/chat-dock";
 import { freeInSlot, minutes, SLOT_DEFS, type Slot } from "@/lib/slots";
@@ -96,7 +96,10 @@ export function ProfileBooking({ craftsman, days, stale, confirmedLabel, workOpt
             {firstName} не е потвърждавал графика си скоро. Питайте в чата дали датата е свободна.
           </p>
         )}
-        <p className="mt-2 text-ink-2">Изберете ден, за да видите свободните часове.</p>
+        <p className="mt-2 flex items-center gap-2 font-semibold">
+          <CalendarDays className="size-5" aria-hidden /> Календар за следващите 14 дни
+        </p>
+        <p className="mt-1 text-ink-2">Изберете ден, за да видите свободните часове.</p>
         <p className="mt-1 flex items-start gap-2 text-sm text-ink-2">
           <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span>
@@ -383,16 +386,22 @@ function MonthView({
                   : "hover:bg-rule-soft"
               } ${selected === iso ? "ring-2 ring-red ring-offset-1" : ""}`}
             >
-              <span className={`numerals text-lg leading-none ${iso === today ? "text-red" : ""}`}>{d}</span>
+              <span
+                className={`numerals text-lg leading-none ${iso === today ? "text-red" : ""} ${
+                  info && !past && status === "busy" ? "text-ink/45 line-through decoration-red decoration-[1.5px]" : ""
+                }`}
+              >
+                {d}
+              </span>
               {d === 1 && (
                 <span className="absolute left-1 top-0.5 text-[0.6rem] font-bold uppercase text-ink-3">
                   {MONTHS[parseISO(iso).getUTCMonth()].slice(0, 3)}
                 </span>
               )}
-              {info && !past && status !== "busy" && (
+              {info && !past && (
                 <span
                   aria-hidden
-                  className={`absolute inset-x-1.5 bottom-1.5 h-1.5 rounded-[2px] ${status === "free" ? "bg-free" : "hatch"}`}
+                  className={`absolute inset-x-1.5 bottom-1.5 h-1.5 rounded-[2px] ${status === "free" ? "bg-free" : status === "partial" ? "hatch" : "bg-red"}`}
                 />
               )}
             </button>
