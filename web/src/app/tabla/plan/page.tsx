@@ -1,5 +1,6 @@
 import { DemoProButton } from "@/components/demo-pro-button";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Check, Minus } from "lucide-react";
 import { requireCraftsman } from "@/lib/auth";
 import { getMyPlan } from "@/lib/plan";
@@ -24,7 +25,7 @@ const ROWS: { label: string; free: Cell; pro: Cell; company: Cell }[] = [
   { label: "Тетрадка с клиенти: етапи, напомняния, бележки", free: false, pro: true, company: true },
   { label: "Оферта по линк, която клиентът приема с клик", free: false, pro: true, company: true },
   { label: "Ценови подсказки от колегите в града", free: false, pro: true, company: true },
-  { label: "Бонус в „Препоръчани“ и значка „Препоръчан партньор“", free: false, pro: true, company: false },
+  { label: "Платен бонус в „Препоръчани“ (с етикет „Платен бонус в класирането“)", free: false, pro: true, company: false },
   { label: "Фирмен профил и екип", free: false, pro: false, company: true },
 ];
 
@@ -122,6 +123,22 @@ export default async function PlanPage() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section aria-labelledby="bonus-terms" className="max-w-3xl">
+        <h2 id="bonus-terms" className="text-xl font-extrabold">
+          Какво означава платеният бонус
+        </h2>
+        <p className="mt-2 text-ink-2">
+          Планът Pro (12 € на месец) включва платен бонус към оценката за класиране в „Препоръчани“. Бонусът може да подобри позицията
+          на профила спрямо профили без Pro, но не гарантира определена позиция, брой показвания или запитвания. Профилите с бонус са
+          обозначени „Платен бонус в класирането“, а платените места са най-много 3 от всеки 10 резултата. Бонусът не променя отзивите и
+          не скрива профили без Pro. Основните параметри на класирането и тяхната тежест са на страницата{" "}
+          <Link href="/kak-podrejdame" className="link font-semibold">
+            Как подреждаме
+          </Link>
+          .
+        </p>
       </section>
 
       {plan.plan === "free" && (

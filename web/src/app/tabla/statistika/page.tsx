@@ -90,7 +90,7 @@ export default async function StatsPage() {
               <dd className="numerals text-4xl leading-none">{allShown}</dd>
             </div>
             <div>
-              <dt className="text-sm font-bold text-ink-2">От тях с отметка „Препоръчан партньор“</dt>
+              <dt className="text-sm font-bold text-ink-2">От тях с етикет „Платен бонус в класирането“</dt>
               <dd className="numerals text-4xl leading-none">{partnerShown}</dd>
             </div>
           </dl>

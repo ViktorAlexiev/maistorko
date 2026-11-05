@@ -66,7 +66,7 @@ export function CraftsmanRow({
             </h3>
             {c.is_pro && (
               <p className="mt-0.5 inline-flex items-center gap-1 rounded bg-rule px-1.5 py-0.5 text-xs font-bold">
-                <Handshake className="size-3.5" aria-hidden /> Препоръчан партньор
+                <Handshake className="size-3.5" aria-hidden /> Платен бонус в класирането
               </p>
             )}
             {c.business_name && <p className="truncate text-sm text-ink-3">{c.business_name}</p>}
