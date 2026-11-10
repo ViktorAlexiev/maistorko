@@ -388,7 +388,7 @@ function MonthView({
             >
               <span
                 className={`numerals text-lg leading-none ${iso === today ? "text-red" : ""} ${
-                  info && !past && status === "busy" ? "text-ink/45 line-through decoration-red decoration-[1.5px]" : ""
+                  info && !past && status === "busy" ? "text-ink/45" : ""
                 }`}
               >
                 {d}

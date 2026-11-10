@@ -106,7 +106,7 @@ export function RuleStrip({
                 <span
                   aria-hidden
                   className={`numerals relative mt-[22%] leading-none ${num} ${isToday ? "text-red" : "text-ink"} ${
-                    d.status === "B" ? "opacity-50 line-through decoration-red decoration-2" : ""
+                    d.status === "B" ? "opacity-50" : ""
                   }`}
                 >
                   {date.getUTCDate()}
