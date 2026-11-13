@@ -10,15 +10,19 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10">
         <DashboardNav
-          items={[
-            { href: "/admin", label: "Потребители" },
-            { href: "/admin/dokladi", label: "Доклади" },
-            { href: "/admin/zapitvaniya", label: "Запитвания" },
-            { href: "/admin/firmi", label: "Фирми" },
-            { href: "/admin/kategorii", label: "Категории" },
-            { href: "/admin/dnevnik", label: "Дневник" },
+          groups={[
+            [
+              { href: "/admin", label: "Потребители" },
+              { href: "/admin/dokladi", label: "Доклади" },
+              { href: "/admin/zapitvaniya", label: "Запитвания" },
+              { href: "/admin/firmi", label: "Фирми" },
+              { href: "/admin/kategorii", label: "Категории" },
+              { href: "/admin/dnevnik", label: "Дневник" },
+            ],
           ]}
           publicHref={null}
+          unread={null}
+          phoneRow
         />
         <div className="min-w-0">{children}</div>
       </div>

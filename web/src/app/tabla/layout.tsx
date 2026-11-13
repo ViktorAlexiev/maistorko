@@ -1,37 +1,17 @@
 import { requireViewer } from "@/lib/auth";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { getMyOrg } from "@/lib/org";
+import { dashboardNav } from "@/lib/dashboard-nav";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({ children }: LayoutProps<"/tabla">) {
   const viewer = await requireViewer();
-  const craftsman = Boolean(viewer.craftsmanSlug);
   const org = await getMyOrg();
 
-  const baseItems = craftsman
-    ? [
-        { href: "/tabla", label: "Преглед" },
-        { href: "/tabla/kalendar", label: "Календар" },
-        { href: "/tabla/porachki", label: "Поръчки" },
-        { href: "/tabla/klienti", label: "Клиенти" },
-        { href: "/tabla/oferti", label: "Оферти" },
-        { href: "/tabla/tseni", label: "Цени и услуги" },
-        { href: "/tabla/snimki", label: "Снимки" },
-        { href: "/tabla/statistika", label: "Статистика" },
-        { href: "/tabla/link", label: "Моят линк" },
-        { href: "/tabla/plan", label: "План" },
-        { href: "/tabla/profil", label: "Профил" },
-        { href: "/saobshtenia", label: "Съобщения" },
-      ]
-    : [
-        { href: "/tabla", label: "Преглед" },
-        { href: "/tabla/zapazeni", label: "Запазени майстори" },
-        { href: "/saobshtenia", label: "Съобщения" },
-        { href: "/tabla/profil", label: "Профил" },
-      ];
-  // members of a company get "Фирма" before the profile entry
-  const items = org
-    ? baseItems.flatMap((it) => (it.href === "/tabla/profil" ? [{ href: "/tabla/firma", label: "Фирма" }, it] : [it]))
-    : baseItems;
+  const nav = dashboardNav({ craftsmanSlug: viewer.craftsmanSlug, inOrg: Boolean(org) });
+  const supabase = await createClient();
+  const { data: unreadTotal } = await supabase.rpc("unread_total");
+  const unread = { userId: viewer.id, initial: unreadTotal ?? 0 };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
@@ -41,7 +21,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/tabla"
         </p>
       )}
       <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10">
-        <DashboardNav items={items} publicHref={viewer.craftsmanSlug ? `/maistori/${viewer.craftsmanSlug}` : null} />
+        <DashboardNav groups={nav.groups} publicHref={nav.publicHref} unread={unread} phoneRow />
         <div className="min-w-0">{children}</div>
       </div>
     </div>

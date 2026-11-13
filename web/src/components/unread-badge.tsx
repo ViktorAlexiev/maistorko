@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 /** Live unread-message count. Listens to new messages and read-marker changes. */
-export function UnreadBadge({ userId, initial }: { userId: string; initial: number }) {
+export function UnreadBadge({ userId, initial, className }: { userId: string; initial: number; className?: string }) {
+  const id = useId();
   const [count, setCount] = useState(initial);
   const [prevInitial, setPrevInitial] = useState(initial);
   if (prevInitial !== initial) {
@@ -20,7 +21,7 @@ export function UnreadBadge({ userId, initial }: { userId: string; initial: numb
       if (alive && typeof data === "number") setCount(data);
     };
     const channel = supabase
-      .channel(`unread-${userId}`)
+      .channel(`unread-${userId}-${id}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, refresh)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversations" }, refresh)
       .subscribe();
@@ -33,11 +34,17 @@ export function UnreadBadge({ userId, initial }: { userId: string; initial: numb
       window.removeEventListener("maistorko:read", onFocus);
       supabase.removeChannel(channel);
     };
-  }, [userId]);
+  }, [userId, id]);
 
   if (!count) return null;
   return (
-    <span className="numerals absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-red px-1 text-[0.8rem] leading-none text-white ring-2 ring-paper">
+    <span
+      className={
+        className ??
+        "numerals absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-red px-1 text-[0.8rem] leading-none text-white ring-2 ring-paper"
+      }
+    >
+      {className && <span className="sr-only">непрочетени: </span>}
       {count > 99 ? "99+" : count}
     </span>
   );
