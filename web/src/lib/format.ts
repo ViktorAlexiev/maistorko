@@ -93,7 +93,6 @@ export function startOfWeekISO(iso: string): string {
 
 export const WEEKDAYS = ["понеделник", "вторник", "сряда", "четвъртък", "петък", "събота", "неделя"];
 export const WEEKDAYS_SHORT = ["пн", "вт", "ср", "чт", "пт", "сб", "нд"];
-export const WEEKDAYS_LETTER = ["П", "В", "С", "Ч", "П", "С", "Н"];
 export const MONTHS = [
   "януари", "февруари", "март", "април", "май", "юни",
   "юли", "август", "септември", "октомври", "ноември", "декември",

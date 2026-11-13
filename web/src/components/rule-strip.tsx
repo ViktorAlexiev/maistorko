@@ -8,7 +8,7 @@ import {
   parseISO,
   todayISO,
   WEEKDAYS,
-  WEEKDAYS_LETTER,
+  WEEKDAYS_SHORT,
 } from "@/lib/format";
 
 export type DayStatus = "F" | "P" | "B";
@@ -96,7 +96,9 @@ export function RuleStrip({
             const inner = (
               <>
                 {/* graduations */}
-                <span aria-hidden className="absolute left-0 top-0 h-[38%] w-px bg-ink" />
+                {!(si === 0 && di === 0) && (
+                  <span aria-hidden className="absolute left-0 top-0 h-[38%] w-px bg-ink" />
+                )}
                 <span aria-hidden className="absolute left-1/2 top-0 h-[18%] w-px bg-ink/70" />
                 <span
                   aria-hidden
@@ -109,7 +111,7 @@ export function RuleStrip({
                     aria-hidden
                     className={`relative text-[0.68rem] font-bold uppercase leading-none ${weekend ? "text-ink/60" : "text-ink/80"}`}
                   >
-                    {WEEKDAYS_LETTER[weekday - 1]}
+                    {WEEKDAYS_SHORT[weekday - 1].toLocaleUpperCase("bg")}
                   </span>
                 )}
                 <span
