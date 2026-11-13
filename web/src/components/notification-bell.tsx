@@ -83,7 +83,7 @@ export function NotificationBell({ userId, initial, initialUnread }: { userId: s
       >
         <Bell className="size-5" aria-hidden />
         {unread > 0 && (
-          <span className="numerals absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-red px-1 text-[0.8rem] leading-none text-white ring-2 ring-paper">
+          <span className="numerals absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-red px-1 text-[0.8rem] leading-none text-white ring-2 ring-surface">
             {unread > 99 ? "99+" : unread}
           </span>
         )}
@@ -93,7 +93,7 @@ export function NotificationBell({ userId, initial, initialUnread }: { userId: s
         <div
           role="region"
           aria-label="Известия"
-          className="unfold-down fixed inset-x-3 top-[4.25rem] z-50 max-h-[70dvh] overflow-y-auto rounded-[12px] bg-surface shadow-[var(--shadow-lg)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[24rem]"
+          className="unfold-down fixed inset-x-3 top-[4.25rem] z-50 max-h-[70dvh] overflow-y-auto rounded-[10px] bg-surface shadow-[var(--shadow-lg)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[24rem]"
         >
           <div className="flex items-center justify-between gap-3 px-4 py-3">
             <h2 className="font-extrabold">Известия</h2>
