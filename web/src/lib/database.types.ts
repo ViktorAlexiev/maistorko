@@ -157,13 +157,13 @@ isOneToOne: false
                   ]
                 },"cities": {
                   Row: {
-                    "id": number,"is_major": boolean,"name": string,"region": string,"slug": string,"sort": number
+                    "hub": string,"id": number,"is_major": boolean,"name": string,"region": string,"slug": string,"sort": number
                   }
                   Insert: {
-                    "id"?: never,"is_major"?: boolean,"name": string,"region": string,"slug": string,"sort"?: number
+                    "hub": string,"id"?: never,"is_major"?: boolean,"name": string,"region": string,"slug": string,"sort"?: number
                   }
                   Update: {
-                    "id"?: never,"is_major"?: boolean,"name"?: string,"region"?: string,"slug"?: string,"sort"?: number
+                    "hub"?: string,"id"?: never,"is_major"?: boolean,"name"?: string,"region"?: string,"slug"?: string,"sort"?: number
                   }
                   Relationships: [
                     

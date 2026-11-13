@@ -2,8 +2,9 @@ import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { storageBase } from "@/lib/supabase/config";
+import type { Hub } from "@/lib/hubs";
 
-export type City = { id: number; slug: string; name: string; region: string; is_major: boolean };
+export type City = { id: number; slug: string; name: string; region: string; is_major: boolean; hub: Hub };
 export type Category = {
   id: number;
   parent_id: number | null;
@@ -19,9 +20,9 @@ export const getCities = cache(async (): Promise<City[]> => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("cities")
-    .select("id, slug, name, region, is_major")
+    .select("id, slug, name, region, is_major, hub")
     .order("sort");
-  return data ?? [];
+  return (data ?? []).map((c) => ({ ...c, hub: c.hub as Hub }));
 });
 
 export const getCategoryTree = cache(async (): Promise<CategoryNode[]> => {
