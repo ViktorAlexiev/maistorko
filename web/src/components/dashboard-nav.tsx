@@ -24,7 +24,7 @@ export function DashboardNav({
       aria-label="Табло"
       className={`${
         phoneRow ? "-mx-4 overflow-x-auto px-4" : "hidden"
-      } lg:-mx-2 lg:block lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:px-2 lg:sticky lg:top-24`}
+      } lg:-mx-2 lg:block lg:max-h-[calc(100dvh-7rem)] lg:overflow-x-visible lg:overflow-y-auto lg:px-2 lg:sticky lg:top-24`}
     >
       <div className="flex items-center gap-1 lg:block">
         {groups.map((group, gi) => (
@@ -49,7 +49,7 @@ export function DashboardNav({
                       <UnreadBadge
                         userId={unread.userId}
                         initial={unread.initial}
-                        className="numerals grid h-5 min-w-5 place-items-center rounded-full bg-red px-1 text-[0.85rem] leading-none text-white"
+                        className="numerals text-[1.35rem] leading-none text-red"
                       />
                     )}
                   </Link>
