@@ -61,7 +61,7 @@ export function UserMenu({ name, role, avatarUrl, craftsmanSlug }: Props) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-2 w-60 overflow-hidden rounded-[10px] border border-line bg-surface p-1.5 shadow-[var(--shadow-lg)]"
+          className="absolute right-0 top-full mt-2 w-60 overflow-hidden rounded-[10px] bg-surface p-1.5 shadow-[var(--shadow-lg)]"
         >
           {links.map((l) => (
             <Link
@@ -74,7 +74,7 @@ export function UserMenu({ name, role, avatarUrl, craftsmanSlug }: Props) {
               {l.label}
             </Link>
           ))}
-          <form action={signOut} className="mt-1 border-t border-line pt-1">
+          <form action={signOut} className="mt-1.5">
             <button
               type="submit"
               role="menuitem"

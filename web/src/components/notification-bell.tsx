@@ -93,9 +93,9 @@ export function NotificationBell({ userId, initial, initialUnread }: { userId: s
         <div
           role="region"
           aria-label="Известия"
-          className="unfold-down fixed inset-x-3 top-[4.25rem] z-50 max-h-[70dvh] overflow-y-auto rounded-[12px] border-[1.5px] border-ink bg-surface shadow-[var(--shadow-lg)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[24rem]"
+          className="unfold-down fixed inset-x-3 top-[4.25rem] z-50 max-h-[70dvh] overflow-y-auto rounded-[12px] bg-surface shadow-[var(--shadow-lg)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[24rem]"
         >
-          <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
             <h2 className="font-extrabold">Известия</h2>
             {unread > 0 && (
               <button type="button" className="inline-flex items-center gap-1 text-sm font-bold underline underline-offset-4" onClick={() => read()}>
@@ -106,7 +106,7 @@ export function NotificationBell({ userId, initial, initialUnread }: { userId: s
           {items.length === 0 ? (
             <p className="px-4 py-6 text-ink-2">Още няма известия. Тук ще виждаш уговорки, отзиви и напомняния.</p>
           ) : (
-            <ul>
+            <ul className="grid gap-1 px-2 pb-2">
               {items.map((n) => {
                 const Icon = ICON[n.kind] ?? Bell;
                 const inner = (
@@ -120,7 +120,7 @@ export function NotificationBell({ userId, initial, initialUnread }: { userId: s
                     {!n.read_at && <span aria-label="непрочетено" className="mt-1.5 size-2.5 shrink-0 rounded-full bg-red" />}
                   </>
                 );
-                const cls = "flex gap-3 border-b border-line px-4 py-3 transition-colors last:border-0 hover:bg-rule-soft/50";
+                const cls = "flex gap-3 rounded-[6px] bg-paper px-4 py-3 transition-colors hover:bg-rule-soft/50";
                 return (
                   <li key={n.id}>
                     {n.link ? (

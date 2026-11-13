@@ -39,21 +39,21 @@ export function MobileMenu({ signedIn, nav }: { signedIn: boolean; nav: { href: 
               <X className="size-6" aria-hidden />
             </button>
           </div>
-          <nav className="grid">
+          <nav className="grid gap-1">
             {nav.map((n) => (
-              <Link key={n.href} href={n.href} onClick={close} className="border-b border-line py-3.5 text-lg font-bold">
+              <Link key={n.href} href={n.href} onClick={close} className="rounded-[6px] bg-paper px-4 py-3.5 text-lg font-bold">
                 {n.label}
               </Link>
             ))}
             {signedIn ? (
               <>
-                <Link href="/tabla" onClick={close} className="border-b border-line py-3.5 text-lg font-bold">
+                <Link href="/tabla" onClick={close} className="rounded-[6px] bg-paper px-4 py-3.5 text-lg font-bold">
                   Моето табло
                 </Link>
-                <Link href="/saobshtenia" onClick={close} className="border-b border-line py-3.5 text-lg font-bold">
+                <Link href="/saobshtenia" onClick={close} className="rounded-[6px] bg-paper px-4 py-3.5 text-lg font-bold">
                   Съобщения
                 </Link>
-                <Link href="/tabla/profil" onClick={close} className="border-b border-line py-3.5 text-lg font-bold">
+                <Link href="/tabla/profil" onClick={close} className="rounded-[6px] bg-paper px-4 py-3.5 text-lg font-bold">
                   Настройки на профила
                 </Link>
                 <form action={signOut} className="pt-4">
