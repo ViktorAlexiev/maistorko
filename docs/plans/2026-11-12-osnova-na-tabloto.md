@@ -1,6 +1,6 @@
 # Основа на таблото
 
-Status: design approved 2026-11-13
+Status: tasks ready 2026-11-13
 
 Първият от четири плана по записките на собственика от 12 ноември 2026 г. и прегледа в `docs/ui-pregled.md`. Ред на плановете (решение на собственика): 1) основата (този файл), 2) „Цени и услуги“ и сетъп след регистрация, 3) Календар, Снимки, Статистика, Съобщения, 4) „Без линии из сайта“ (добавен на 13 ноември 2026 г.).
 
@@ -32,13 +32,15 @@ Status: design approved 2026-11-13
 - **AC8** Изтриването на профила минава през попъп.
   Check (browser): `maistor@maistorko.test`, `/tabla/profil?chast=danni` → вградена форма за изтриване няма, има бутон „Изтрий профила“. Той отваря попъп (на 390×844 лист отдолу) със списък какво се трие, линк за сваляне на данните (`/tabla/profil/eksport`), поле за ИЗТРИЙ и червен бутон, който е сив и не се натиска, докато в полето не пише точно „ИЗТРИЙ“. Escape и „Отказ“ го затварят без промяна. Съвпада с `profil-desktop-iztrivane.png` и `profil-phone-iztrivane.png`. С нов клиент, регистриран само за проверката: „ИЗТРИЙ“ и бутона → пренасочване към `/?profil=iztrit`, а вход със същия имейл и парола вече не става.
 - **AC9** „Поръчки“ съвпада с одобрения вариант „Дни“.
+  Подготовка: на 13 ноември 2026 г. демо майсторът няма редове в `public.jobs`. Преди проверката вкарай с `docker exec supabase_db_maistori-mvp psql -U postgres` поръчки за него (`craftsman_id` = неговият `auth.users.id`; задължителни `title`, `start_date`, `end_date`; `source` от ключовете на `SOURCE_LABEL` в `web/src/lib/jobs.ts`, поне два различни; `labor_price` и `transport_price` за сумите): две `planned` в миналото (преди 3 и 6 дни), по една `planned` днес, утре, след 4 и след 20 дни, три `done` (`done_at = now()`, две с дати от този месец и една от миналия), една `cancelled`. След проверката ги изтрий по `id`. Чужди акаунти не се пипат.
   Check (browser): `maistor@maistorko.test`, `/tabla/porachki` на 1366×850 и 390×844 → уводът е новият текст от Constraints. Миналите неотбелязани поръчки са най-горе в бледожълто поле, с „Свършена“, „Отмени“ и молив на реда. Предстоящото е в групи Днес, Утре, До една седмица, По-късно, а празна група не се показва. Всеки ред започва с датата, днешната е в червено. Докосване отваря реда с бележката, парите и бутоните Свършена, Отмени, Редактирай, Изтрий, а предишният отворен ред се затваря. „Нова поръчка“ показва формата над списъка. „Свършени и отменени“ е сгънато с брой; разгънато е по месеци, със сбор до всеки месец. „Отчет за месеца“ е накрая, с „Откъде идва работата“ и „Най-чести работи“. Линии няма. Съвпада с `porachki-desktop.png`, `porachki-desktop-otvoren.png`, `porachki-desktop-forma.png` и същите с `porachki-phone-`. `ivan-dimitrov@maistorko.test` → съвпада с `porachki-desktop-bezplaten.png` и `porachki-phone-bezplaten.png`, заключените функции са същите като днес.
 - **AC10** Уговорките от чата са в „Поръчки“.
-  Check (browser): `maistor@maistorko.test` → всяка уговорка от „Уговорени посещения“ на `/tabla` е и в `/tabla/porachki`, в групата на своя ден, с етикет „от чата“ и същата дума за състояние („Уговорено“, „Отговори“ или „Чака отговор“). Редът няма бутони; докосването отваря `/saobshtenia/<conversation_id>` на същия разговор.
+  Подготовка: на 13 ноември 2026 г. демо майсторът няма предстоящи уговорки (единствената е от 13 октомври). Преди проверката вкарай с `docker exec supabase_db_maistori-mvp psql -U postgres` три реда в `public.bookings` в един от неговите разговори (`conversation_id`, `craftsman_id`, `client_id` от `public.conversations`; `kind` `work` или `inspection`): `confirmed` за утре, `proposed` с `proposed_by` = клиента след 3 дни, `proposed` с `proposed_by` = майстора след 10 дни. След проверката ги изтрий по `id`.
+  Check (browser): `maistor@maistorko.test` → всяка уговорка от „Уговорени посещения“ на `/tabla`, в която той е майсторът, е и в `/tabla/porachki`, в групата на своя ден, с етикет „от чата“ и същата дума за състояние („Уговорено“, „Отговори“ или „Чака отговор“). Редът няма бутони; докосването отваря `/saobshtenia/<conversation_id>` на същия разговор.
 - **AC11** Вход и регистрация съвпадат с одобрения „Метър“.
   Check (browser): без вход, `/vhod` на 1366×850 → до формата няма жълта кутия. Вдясно са „Добре дошли отново.“, изречението под него, метърът от две жълти ленти по седем дни с истинските дати от днес, легендата и „Това е пример, не истински майстор.“; колоната следва превъртането. На 390×844 същото стои под формата. `/registratsia` → текстовете за клиент; докосване на ден слага червена рамка и изречение под метъра. `/registratsia?rolya=maistor` → текстовете за майстор, събота и неделя са заети, докосване сменя деня и броя свободни дни. Съвпада с `vhod-desktop.png`, `vhod-desktop-klient.png`, `vhod-desktop-maistor.png` и същите с `vhod-phone`.
 - **AC12** Ролята, избрана във формата за регистрация, сменя заглавието и метъра.
-  Check (browser): `/registratsia` → заглавие „Регистрация“ и метърът на клиента. Избери „Майстор“ във формата → заглавието става „Профил на майстор“, уводът и метърът стават на майстора, без презареждане. Върни „Клиент“ → всичко се връща. Регистрация с „Майстор“ отива на `/tabla?nov=1` (или на имейла за потвърждение, когато няма сесия), както днес.
+  Check (browser): `/registratsia` → заглавие „Регистрация“ и метърът на клиента. Избери „Майстор“ във формата → заглавието става „Профил на майстор“, уводът и метърът стават на майстора, без презареждане. Върни „Клиент“ → всичко се връща. Регистрация с „Майстор“ отива на `/tabla?nov=1` (или на имейла за потвърждение, когато няма сесия), както днес. Локално се проверява само `/tabla?nov=1`, защото потвърждението на имейла е изключено.
 - **AC13** Горната лента, футърът и менютата от лентата съвпадат с „Светла лента“.
   Check (browser): на `/`, `/maistori` и `/tabla` горната лента има изчислени `background-color: rgb(255, 253, 248)`, `border-bottom-width: 0px` и `backdrop-filter: none`. Във футъра редът с авторските права е на `rgb(20, 18, 16)` и над него няма линия. С `maistor@maistorko.test` менюто на профила и известията нямат рамка, а редовете в известията и в менюто на телефон са отделни ленти. Съвпада с `gorna-lenta-desktop.png`, `gorna-lenta-phone.png`, `futar-desktop.png`, `futar-phone.png`, `gorna-lenta-menyu-desktop.png`, `gorna-lenta-izvestiya-desktop.png`, `gorna-lenta-menyu-phone.png`.
 - **AC14** Футърът показва линковете според ролята.
@@ -46,7 +48,7 @@ Status: design approved 2026-11-13
 - **AC15** Метърът няма черна чертичка в левия ъгъл и показва дните с две букви.
   Check (browser): на `/maistori` (малък метър), `/tabla/kalendar` (среден) и публичния профил на майстор (голям) първата клетка на метъра няма дълго черно деление в заобления ъгъл. На средния и големия метър под цифрата пише ПН, ВТ, СР, ЧТ, ПТ, СБ, НД; на малкия букви няма, както днес.
 - **AC16** В пипнатите части няма разделителни линии.
-  Check (browser): Playwright скрипт отваря при 1366×850 и 390×844 навигацията на `/tabla`, всяка част на `/tabla/profil` и попъпа за изтриване, `/tabla/porachki` с отворен ред, отворена форма и разгънати „Свършени и отменени“, `/vhod`, `/registratsia`, долната лента на `/saobshtenia`, горната лента с отворените ѝ менюта и футъра. В тези области изброява елементите с изчислена рамка над 0px от която и да е страна, без `input`, `select`, `textarea`, `button`, `.btn`, `.chip`, `label:has(input[type="radio"])` и `[aria-hidden="true"]` → списъкът е празен.
+  Check (browser): Playwright скрипт отваря при 1366×850 и 390×844 навигацията на `/tabla`, всяка част на `/tabla/profil` и попъпа за изтриване, `/tabla/porachki` с отворен ред, отворена форма и разгънати „Свършени и отменени“, `/vhod`, `/registratsia`, долната лента на `/saobshtenia`, горната лента с отворените ѝ менюта и футъра. Области (селектори): на `/tabla` само `nav[aria-label="Табло"]` и отвореният лист „Още“ (съдържанието на „Преглед“ е извън плана); на `/tabla/profil`, `/tabla/porachki`, `/vhod`, `/registratsia` `main#main` и отвореният `dialog`; на `/saobshtenia` само `.bottom-nav`; `header` с отворените му панели; `footer`. В тези области изброява елементите с изчислена рамка над 0px от която и да е страна, без `input`, `select`, `textarea`, `button`, `.btn`, `.chip`, `label:has(input[type="radio"])` и `[aria-hidden="true"]` → списъкът е празен.
 - **AC17** Правилата без линии са в `DESIGN.md`, а старите правила с линии ги няма.
   Check: `grep -c "Hairline-ruled lists\|1.5px ink rule opens\|red active tick\|horizontally scrolling tab row" DESIGN.md` → `0`; `grep -oE "The (No Hairline|Strip|Group Name|Yellow Band|Light Bar) Rule" DESIGN.md | sort -u | wc -l` → `5`.
 - **AC18** Пробните страници са изтрити и гейтът минава.
@@ -156,7 +158,7 @@ Status: design approved 2026-11-13
 
 ## Constraints
 
-**Проверки в браузър.** `http://localhost:3100`, пуснат с `npx next dev -p 3100` от `web/`. Не спирай `next start` на порт 3000 (собственикът го ползва). Компютър 1366×850, телефон 390×844. Сайтът има една тема (светлата). Демо профили, паролата на всички е `demo12345`: `maistor@maistorko.test` (Pro, София), `ivan-dimitrov@maistorko.test` (безплатен план), `stoyanov@maistorko.test` (собственик на фирма), `klient@maistorko.test`, `admin@maistorko.test`. Снимките за сравнение са в `docs/plans/2026-11-12-osnova-na-tabloto-designs/`. Снимки с headless Playwright от `C:/Users/User/node_modules/playwright`.
+**Проверки в браузър.** `http://localhost:3100`, пуснат с `npx next dev -p 3100` от `web/`. Не спирай `next start` на порт 3000 (собственикът го ползва). Компютър 1366×850, телефон 390×844. Сайтът има една тема (светлата). Демо профили, паролата на всички е `demo12345`: `maistor@maistorko.test` (Pro, София), `ivan-dimitrov@maistorko.test` (безплатен план), `stoyanov@maistorko.test` (собственик на фирма), `klient@maistorko.test`, `admin@maistorko.test`. Снимките за сравнение са в `docs/plans/2026-11-12-osnova-na-tabloto-designs/`. Снимки с headless Playwright от `C:/Users/User/node_modules/playwright`. „Съвпада със снимката“ значи същата подредба, ред, текстове, цветове, размери на шрифта и отстояния; данните (имена, дати, суми) се различават, защото пробите са с измислени данни (решение на планиращия). „Вижда се целият над лентата“ значи, след превъртане до долу, долният край на елемента (`getBoundingClientRect().bottom`) е не по-ниско от горния край на `.bottom-nav`. Локално потвърждението на имейла е изключено (`enable_confirmations = false` в `supabase/config.toml`) и Turnstile не се показва без ключ, затова нова регистрация влиза направо.
 
 **Одобрените проби са източникът.** Точните класове, размери и текстове на всяко парче са в пробата му (пътищата са в „Approved designs“). Вгражда се както е одобрено, без нов дизайн; данните идват от истинските таблици, не от `data.ts` на пробата.
 
@@ -183,6 +185,620 @@ Status: design approved 2026-11-13
 **Общи.** Без дълги тирета (`—`, `–`) във видимия текст. Пълна височина с `dvh`, не `vh`. Движението уважава `prefers-reduced-motion`. Ъгли само 4, 6, 8, 10 и 14px, и `rounded-full` за чипове и значки. Бутоните на телефон са поне 44px високи. Тази версия на Next има промени: задача, която ползва Next API, първо чете съответното ръководство в `web/node_modules/next/dist/docs/` (`web/AGENTS.md`).
 
 **Комити.** Всеки комит съдържа само файловете на задачата. Чуждите незаписани промени в работното копие (`PRODUCT.md`, `README.md`, `supabase/config.toml`, `web/next.config.ts`, `web/.env.example`, `demo/nginx.conf`, `package-lock.json`, `web/scripts/seed-new-features.ts`, `docs/ui-pregled.md`, `docs/ui-pregled/`, файловете в `.impeccable/`) не се пипат и не се комитват. Изключение е `DESIGN.md`: незаписаната промяна на реда за Graphite („the footer and the photo viewer“) остава и се комитва със задачата за `DESIGN.md` (собственикът го потвърди на 13 ноември 2026 г.: „Да, комитни я с правилата“).
+
+# Part 2: Tasks
+
+Gate: `npm run typecheck && npm run lint && npm run test:rls` (run from `web/`)
+Branch: `osnova-na-tabloto`
+
+На 13 ноември 2026 г. `typecheck` минава, `test:rls` минава (291), `lint` пада само на трите стари грешки, които оправя Task 1. `test:rls` иска локалната Supabase (`npm run db:start` от корена, ако е спряна).
+
+Общо за всички задачи с интерфейс:
+- Задача, която строи одобрен дизайн, го вгражда както е одобрен и не го преработва. Точните класове, размери и текстове са в пробата, чийто път е даден в задачата; снимките са в `docs/plans/2026-11-12-osnova-na-tabloto-designs/`. Данните идват от истинските таблици и props, никога от `data.ts` на пробата. Продуктовият код не внася нищо от `web/src/app/prototypes/`.
+- В пипнатите части не остава `border-t`, `border-b`, `border-l`, `border-r`, `divide-*` и черна линия; рамки пазят само полетата, чиповете, бутоните и картите за роля в регистрацията (стойностите са в Constraints, „Без линии в пипнатите части“).
+- Задача, която ползва API на Next (`usePathname`, `useSearchParams`, History API), първо чете съответното ръководство в `web/node_modules/next/dist/docs/` (`web/AGENTS.md`).
+- Не пипай и не комитвай чуждите незаписани файлове от Constraints, „Комити“.
+
+## Task 1: Трите стари грешки на lint
+
+Risk: normal
+Serves: AC18 (подготовка за гейта)
+Depends on: none
+
+**Delivers:** `npm run lint` минава без грешки. Поведението на двете страници не се сменя.
+
+**Files**
+- change `web/src/app/oferta/[token]/page.tsx` (около `:59` и `:60`, „Cannot create components during render“)
+- change `web/src/app/tabla/klienti/client-photos.tsx` (около `:33`, „Calling setState synchronously within an effect“)
+
+**Interfaces**
+Без промяна: износите и props на двата файла остават същите.
+
+**Test cases:** none; `npm run lint` → 0 грешки, `npm run typecheck` → минава.
+
+**Notes**
+- Компонент, създаден в тялото на друг компонент, се изнася като функция на ниво модул, а данните, които ползва, минават като props.
+- Синхронният `setState` в ефект се заменя с изчисление при рендер или с шаблона „сравни с предишния prop по време на рендер“ (`web/src/components/unread-badge.tsx:8-13`).
+- Не слагай `eslint-disable`.
+
+## Task 2: Правилата без линии в `DESIGN.md`
+
+Risk: mechanical
+Serves: AC17
+Depends on: none
+
+**Delivers:** `DESIGN.md` описва навигацията „Индекс“, горната лента „Светла лента“ и петте правила без линии; старите изречения с линии ги няма.
+
+**Files**
+- change `DESIGN.md`
+
+**Interfaces:** none.
+
+**Test cases**
+1. `grep -c "Hairline-ruled lists\|1.5px ink rule opens\|red active tick\|horizontally scrolling tab row" DESIGN.md` → `0`
+2. `grep -oE "The (No Hairline|Strip|Group Name|Yellow Band|Light Bar) Rule" DESIGN.md | sort -u | wc -l` → `5`
+
+**Notes**
+Файлът е на английски; текстовете по-долу се слагат дословно.
+- Незаписаната промяна на реда за Graphite („the footer and the photo viewer“) остава и влиза в комита на тази задача (собственикът го потвърди). Друг незаписан файл не се стейджва.
+- „Key Characteristics“: `- Hairline-ruled lists and indexes instead of card grids.` → `- Lists of separate strips and indexes instead of card grids. Nothing is divided by hairlines.`
+- „Tertiary“, Today Red: махни `the active-tab tick and ` от изброяването.
+- „Neutral“: редът за Hairline става `- **Hairline** (#d8d5cb) and **Hairline Strong** (#b4afa1): strokes of fields, chips and outline buttons only. They never divide content (see The No Hairline Rule).` След реда за Graphite добави `- **Graphite Deep** (#141210): the copyright strip at the foot of the footer, across the full width.` В YAML заглавката на файла добави `graphite-deep: "#141210"` веднага след `graphite: "#1d1b17"` (ред 20).
+- „The Measuring Mark Rule“: `("today", the chosen date, the active tab)` → `("today", the chosen date)`.
+- „Layout“: `Dashboards use a 224px left navigation rail that turns into a horizontally scrolling tab row on phones.` → `Dashboards use a 224px left index (see Navigation) that turns into a bottom bar on phones.`
+- „Shapes“: `Dividers are 1px hairlines; a 1.5px ink rule opens important lists and tables.` → `Nothing is divided by lines: rows are strips with 6px corners and 4px between them, and boxes are 10px fields (see Separation).`
+- „Folding Rule (signature)“, Anatomy: `an optional weekday letter` → `an optional two-letter weekday (ПН to НД)`, и в края на точката добави `The very first cell, where the strip's corner is rounded, has no long tick.`
+- „Cards / Rows“: Corner Style → `6px for rows, 10px for boxes.`; Background → `rows are strips (card surface, 6px corners, 4px apart, no border); boxes follow The Yellow Band Rule. Hover adds the Lift shadow.`
+- „Navigation“ става: `A sticky solid card-surface header (#fffdf8) with the rule-mark logo and ghost links: no bottom line, no translucency, no blur. Its dropdowns have no border, only the large shadow, and their rows are strips. On phones the menu is a bottom sheet. Dashboard navigation is the Index: a list in the condensed display face (1.7rem), other pages in Ink Tertiary and the current one on a yellow field with 4px corners, groups split by space only; unread messages are a red number beside „Съобщения“. On phones it becomes a bottom bar of words (the current one on a yellow field), and „Още“ opens a bottom sheet with the rest.`
+- Нов раздел `### Separation (no lines)` след „Chat“ и преди „## Do's and Don'ts“, с тези пет абзаца:
+  - `**The No Hairline Rule.** Nothing on a page is divided by a line: no hairline between rows, no ink rule above a list or under a heading, no border around a box. Space, a strip or a field does that job. Fields, chips, buttons and the role cards of the sign-up form keep their strokes, because they are controls, not dividers.`
+  - `**The Strip Rule.** Each row of a list is its own strip: Card Surface, 6px corners, 4px between strips. A checked row is Pale Rule Yellow, a row disabled by a limit is Panel Surface with Ink Tertiary text, and a cancelled job is Panel Surface. Inside a dialog or a bottom sheet the strips are Concrete Paper. A row that opens shows its content inside the same strip.`
+  - `**The Group Name Rule.** The name of a group above a list is set in the condensed display face at 1.7rem, 0.5rem above its strips, with 1.75rem between groups. Inside a part that has its own heading, the group name is 1.45rem. Headings of the parts of a page are display text-3xl or text-4xl, with no line under them and 2.5rem between parts.`
+  - `**The Yellow Band Rule.** A box is a Card Surface field with 10px corners and a yellow band across its top (Enamel Rule Yellow, 20px by 10px padding) that holds the box title in the display face (text-3xl) and its close button. The quiet part inside the box is one step back (Concrete Paper, 8px corners), and a total row inside it is Card Surface again (6px). A box without a title is only the quiet field. A field that asks for attention is Pale Rule Yellow with 10px corners, and its rows are Card Surface strips.`
+  - `**The Light Bar Rule.** The site header is a solid Card Surface bar over the paper ground: no bottom line, no translucency, no blur, no shadow. The footer has no line above the copyright; the copyright row sits on a full-width Graphite Deep strip. Dropdowns from the header have no border, only the large shadow.`
+- „Don't“: `Use ruled lists and indexes.` → `Use strip lists and indexes.`; добави ред `- **Don't** divide content with hairlines, ink rules or box borders (The No Hairline Rule).`
+- „Chat“ не се пипа (план 3).
+
+## Task 3: Колона `cities.hub`
+
+Risk: risky
+Serves: AC7
+Depends on: none
+
+**Delivers:** всеки град принадлежи на група около един от петте големи града; `getCities()` връща групата.
+
+**Files**
+- create `supabase/migrations/20261113000030_cities_hub.sql`
+- create `web/src/lib/hubs.ts`
+- change `web/src/lib/database.types.ts` (типовете на таблица `cities`)
+- change `web/src/lib/data.ts` (`City`, `getCities`)
+
+**Interfaces**
+```ts
+// web/src/lib/hubs.ts (без "server-only"; ползва се и от клиентски компоненти)
+export const HUBS = ["sofia", "plovdiv", "varna", "burgas", "ruse"] as const;
+export type Hub = (typeof HUBS)[number];
+export const HUB_LABEL: Record<Hub, string> = {
+  sofia: "София и околността",
+  plovdiv: "Пловдив и околността",
+  varna: "Варна и околността",
+  burgas: "Бургас и околността",
+  ruse: "Русе и околността",
+};
+
+// web/src/lib/data.ts
+export type City = { id: number; slug: string; name: string; region: string; is_major: boolean; hub: Hub };
+// getCities() избира "id, slug, name, region, is_major, hub", подредени по sort както днес
+```
+
+**Test cases**
+1. `docker exec supabase_db_maistori-mvp psql -U postgres -tAc "select hub, count(*) from public.cities group by hub order by hub"` → `burgas|7`, `plovdiv|7`, `ruse|6`, `sofia|8`, `varna|7`
+2. `docker exec supabase_db_maistori-mvp psql -U postgres -tAc "update public.cities set hub = 'lovech' where slug = 'sofia'"` → грешка, която назовава `cities_hub_check`
+3. `npm run test:rls` от `web/` → минава, със същия брой проверки като преди задачата
+
+**Notes**
+Миграцията (точно така; ако някой град остане без група, `set not null` пада и миграцията не минава, което е желаното):
+```sql
+-- Every city belongs to the group around one of the five big cities ("Къде работя" in the dashboard profile).
+alter table public.cities add column hub text;
+
+update public.cities set hub = case
+  when slug in ('sofia','bankya','novi-iskar','bozhurishte','kostinbrod','elin-pelin','samokov','pernik') then 'sofia'
+  when slug in ('plovdiv','asenovgrad','stamboliyski','rakovski','kuklen','karlovo','parvomay') then 'plovdiv'
+  when slug in ('varna','devnya','aksakovo','beloslav','provadiya','byala-varna','balchik') then 'varna'
+  when slug in ('burgas','nesebar','pomorie','sozopol','aytos','kameno','primorsko') then 'burgas'
+  when slug in ('ruse','byala-ruse','marten','dve-mogili','vetovo','slivo-pole') then 'ruse'
+end;
+
+alter table public.cities
+  alter column hub set not null,
+  add constraint cities_hub_check check (hub in ('sofia','plovdiv','varna','burgas','ruse'));
+```
+- Приложи я към локалната база с `npx supabase migration up` от корена на репото, с работното копие както е (незаписаната промяна в `supabase/config.toml` е на собственика: не я пипай и не я комитвай). Никога `supabase db reset` и `npm run db:reset`: трият демо данните.
+- Типовете: `npm run types` от `web/`. Ако диффът на `database.types.ts` пипа нещо извън `hub` на `cities`, върни файла и добави ръчно `hub: string` в `Row` и `Insert` и `hub?: string` в `Update` на `cities`.
+- В `getCities()` резултатът се свежда до `City` с `hub as Hub`.
+- Никой код не вкарва градове освен `20260928000004_reference_data.sql` (проверено на 13 ноември 2026 г.), затова `not null` не чупи вмъкване.
+
+## Task 4: Горната лента и менютата ѝ („Светла лента“)
+
+Risk: normal
+Serves: AC13, AC16
+Depends on: none
+
+**Delivers:** горната лента е плътно светло поле без линия, прозрачност и размазване; падащите менюта са без рамка, само със сянка; редовете в известията и в менюто на телефон са отделни ленти.
+
+**Files**
+- change `web/src/components/site-header.tsx` (`:41`)
+- change `web/src/components/user-menu.tsx` (`:64`, `:77`)
+- change `web/src/components/notification-bell.tsx` (`:96`, `:98`, `:123`)
+- change `web/src/components/mobile-menu.tsx` (`:44`, `:50`, `:53`, `:56`)
+
+**Interfaces:** без промяна на props и поведение.
+
+**Test cases:** none; verified by AC13, AC16.
+
+**Notes**
+- Проба: `web/src/app/prototypes/gorna-lenta/` (`proto.css` пребоядисва истинските компоненти отвън; пренеси тези стойности в класовете на самите компоненти). Снимки: `gorna-lenta-desktop.png`, `gorna-lenta-phone.png`, `gorna-lenta-menyu-desktop.png`, `gorna-lenta-izvestiya-desktop.png`, `gorna-lenta-menyu-phone.png`.
+- Горна лента: `bg-surface`, без `border-b`, без `bg-paper/92`, без `backdrop-blur-*` и `supports-[backdrop-filter]:*`, без сянка. Остава `sticky top-0 z-40`.
+- Падащите панели (меню на профила, известия): без рамка, `shadow-[var(--shadow-lg)]`. „Изход“ се отделя с `mt-1.5` (0.375rem), без линия.
+- Редовете в известията и в менюто на телефон: `bg-paper rounded-[6px]`, 4px между тях; в известията списъкът има 0.5rem отстъп отстрани и отдолу.
+- Провери изчислените стойности от AC13 (`background-color: rgb(255, 253, 248)`, `border-bottom-width: 0px`, `backdrop-filter: none`).
+
+## Task 5: Футърът според ролята, без линия
+
+Risk: normal
+Serves: AC13, AC14, AC16
+Depends on: none
+
+**Delivers:** футърът показва колоните според това кой гледа; над авторските права няма линия, а редът им е на тъмна ивица през цялата ширина.
+
+**Files**
+- change `web/src/components/site-footer.tsx`
+
+**Interfaces**
+```ts
+export async function SiteFooter(): Promise<React.JSX.Element> // без props; вика getViewer() от "@/lib/auth"
+```
+`getViewer()` е с `cache` за заявката, както в `site-header.tsx:18`. `web/src/app/layout.tsx:61` не се сменя.
+
+**Test cases:** none; verified by AC13, AC14.
+
+**Notes**
+- Роля: няма `viewer` → гост; `viewer.craftsmanSlug !== null` → майстор; иначе (клиент, админ) → клиент.
+- Колоните и линковете са в Constraints, „Текстове“, „Футър“. Колона, която няма линкове за ролята, не се рисува.
+- Махни `border-t border-white/10` (`:47`). Редът с авторските права е `bg-[#141210]` през цялата ширина на прозореца, затова стои извън контейнера с `max-w-*`, а текстът вътре е подравнен със същия контейнер.
+- Проба: `web/src/app/prototypes/gorna-lenta/proto.css`. Снимки: `futar-desktop.png`, `futar-phone.png`.
+
+## Task 6: Списъкът „Индекс“ на компютър
+
+Risk: normal
+Serves: AC1, AC3, AC4
+Depends on: none
+
+**Delivers:** разделите на таблото и на админа са списъкът „Индекс“ на компютър, с група, ред и червено число на непрочетените. На телефон остава редът от думи, който се превърта настрани (Task 7 го сменя с долна лента за таблото).
+
+**Files**
+- create `web/src/lib/dashboard-nav.ts`
+- change `web/src/components/dashboard-nav.tsx`
+- change `web/src/components/unread-badge.tsx`
+- change `web/src/app/tabla/layout.tsx`
+- change `web/src/app/admin/layout.tsx`
+
+**Interfaces**
+```ts
+// web/src/lib/dashboard-nav.ts (без "server-only", чисти функции)
+export type NavItem = { href: string; label: string };
+export type DashboardNavData = {
+  groups: NavItem[][]; // списъкът на компютър; групите се делят с разстояние
+  bar: NavItem[];      // долната лента на телефон, по ред
+  more: NavItem[][];   // листът „Още“: groups без елементите от bar (по href), празните групи махнати; [] = няма „Още“
+  publicHref: string | null;
+};
+export function dashboardNav(opts: { craftsmanSlug: string | null; inOrg: boolean }): DashboardNavData;
+/** "/tabla" и "/admin" са избрани само при точно съвпадение (иначе щяха да светят на всяка своя подстраница); другите при pathname.startsWith(href). */
+export function isActive(href: string, pathname: string): boolean;
+
+// web/src/components/dashboard-nav.tsx
+"use client";
+export function DashboardNav(props: {
+  groups: NavItem[][];
+  publicHref: string | null;
+  unread: { userId: string; initial: number } | null; // червеното число до елемента с href "/saobshtenia"
+  phoneRow: boolean; // под lg: true = ред от думи, който се превърта настрани; false = нищо не се показва
+}): React.JSX.Element;
+
+// web/src/components/unread-badge.tsx
+export function UnreadBadge(props: { userId: string; initial: number; className?: string }): React.JSX.Element | null;
+// className, когато е подаден, заменя днешните класове за място и вид; без него горната лента изглежда както днес
+```
+Съдържание на `dashboardNav`:
+- Майстор, групи: [Преглед `/tabla`, Календар `/tabla/kalendar`, Съобщения `/saobshtenia`, Поръчки `/tabla/porachki`, Клиенти `/tabla/klienti`, Оферти `/tabla/oferti`]; [Цени и услуги `/tabla/tseni`, Снимки `/tabla/snimki`, Статистика `/tabla/statistika`, Моят линк `/tabla/link`]; [План `/tabla/plan`, Фирма `/tabla/firma` (само при `inOrg`), Профил `/tabla/profil`]. `bar`: Преглед, Календар, Съобщения, Поръчки. `publicHref`: `/maistori/<craftsmanSlug>`.
+- Клиент, една група: [Преглед `/tabla`, Запазени майстори `/tabla/zapazeni`, Съобщения `/saobshtenia`, Фирма `/tabla/firma` (само при `inOrg`), Профил `/tabla/profil`]. `bar`: Преглед `/tabla`, Запазени `/tabla/zapazeni`, Съобщения `/saobshtenia`, Профил `/tabla/profil`. `publicHref`: `null`.
+
+**Test cases:** none; verified by AC1, AC3 (компютър), AC4 (админ).
+
+**Notes**
+- `tabla/layout.tsx`: `const nav = dashboardNav({ craftsmanSlug: viewer.craftsmanSlug, inOrg: Boolean(org) })`; непрочетените с `supabase.rpc("unread_total")` (както `site-header.tsx:25`, клиент от `@/lib/supabase/server`) → `{ userId: viewer.id, initial: data ?? 0 }`; `<DashboardNav groups={nav.groups} publicHref={nav.publicHref} unread={unread} phoneRow />`.
+- `admin/layout.tsx`: `groups={[[…днешните шест раздела…]]} publicHref={null} unread={null} phoneRow`.
+- `UnreadBadge` в списъка и в долната лента получава класовете на `Unread` от `web/src/app/prototypes/tablo-nav/shared.tsx:59` (число до думата, не в ъгъла).
+- `UnreadBadge`: името на realtime канала получава суфикс от `useId()` (`unread-${userId}-${id}`), защото на една страница вече има две значки и двете не трябва да делят канал.
+- Вид на компютър: `Index` от `web/src/app/prototypes/tablo-nav/variant-indeks.tsx` и `Unread` от `tablo-nav/shared.tsx`. В пробата разделите са бутони, в продукта са `<Link>` с `aria-current="page"` на избрания. Без `border-l`, без червения маркер. Списъкът е `lg:sticky lg:top-24` и при нисък прозорец се превърта в себе си (`lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto`).
+- Редът на телефон (`phoneRow`): днешният ред (`overflow-x-auto`, думи една до друга), без `border-b` и без червения маркер; избраната дума е с жълто поле (`bg-rule rounded-[4px]`), както на компютър. Решение на планиращия: админът е единственият, който ще го вижда след Task 7.
+- Снимка: `navigatsia-desktop.png`.
+
+## Task 7: Долната лента и листът „Още“
+
+Risk: normal
+Serves: AC2, AC3, AC4
+Depends on: Task 6
+
+**Delivers:** на телефон таблото и списъкът с разговори имат долна лента, а „Още“ отваря лист отдолу с останалите раздели; в отворен разговор лента няма; последното на страницата не остава под лентата.
+
+**Files**
+- create `web/src/components/dashboard-bottom-bar.tsx`
+- change `web/src/app/tabla/layout.tsx`
+- change `web/src/app/saobshtenia/layout.tsx`
+- change `web/src/app/saobshtenia/conversation-sidebar.tsx`
+- change `web/src/app/globals.css`
+
+**Interfaces**
+```ts
+// web/src/components/dashboard-bottom-bar.tsx
+"use client";
+export function DashboardBottomBar(props: {
+  bar: NavItem[];
+  more: NavItem[][];
+  publicHref: string | null;
+  unread: { userId: string; initial: number } | null;
+}): React.JSX.Element | null;
+```
+- Връща `null`, когато `usePathname()` започва с `/saobshtenia/` (отворен разговор).
+- Коренът е `<nav aria-label="Табло" className="bottom-nav fixed inset-x-0 bottom-0 z-40 lg:hidden …">`; класът `bottom-nav` се ползва от CSS правилото по-долу.
+- „Още“ се показва само при `more.length > 0` и е с жълто поле, когато текущата страница е в `more` (`isActive`).
+
+**Test cases:** none; verified by AC2, AC3, AC4.
+
+**Notes**
+- `tabla/layout.tsx`: рисува `<DashboardBottomBar bar={nav.bar} more={nav.more} publicHref={nav.publicHref} unread={unread} />` и подава `phoneRow={false}` на `DashboardNav`.
+- `saobshtenia/layout.tsx`: смята `nav` и `unread` по същия начин (`getMyOrg()` от `@/lib/org`, `unread_total`) и рисува лентата след решетката.
+- `globals.css`:
+  ```css
+  @media (width < 64rem) {
+    body:has(.bottom-nav) { padding-bottom: calc(3.5rem + env(safe-area-inset-bottom)); }
+  }
+  ```
+  3.5rem е височината на лентата в пробата (`min-h-14`); ако построената лента е с друга височина, ползвай нея.
+- `conversation-sidebar.tsx`: когато няма `activeId`, превъртащият се списък (`:47`) получава под `lg` долно отстояние `calc(3.5rem + env(safe-area-inset-bottom) + 0.375rem)` (с височината на построената лента, ако е друга), за да свършва над нея. Височината на решетката в `saobshtenia/layout.tsx` не се сменя. Другите линии в този файл не се пипат (план 3).
+- Решения на планиращия: админ, който отвори `/saobshtenia`, вижда лентата на клиента (за навигацията той е клиент, както в днешното табло); клиент, който е член на фирма, вижда „Още“ с „Фирма“, защото тя не е в лентата му.
+- Листът „Още“: естествен `<dialog className="sheet">`, отваря се с `showModal()`, затваря се с клик по фона (`e.target === ref.current`), с Escape, с бутон `aria-label="Затвори"` и при смяна на страницата. Образец: `DaySheet` в `web/src/app/tabla/kalendar/calendar-editor.tsx:559`. Вътре са групите от `more` в едрия шрифт (2rem) и накрая „Публичен профил“, ако има `publicHref`.
+- Вид: `Bar` от `web/src/app/prototypes/tablo-nav/variant-indeks.tsx` и `MoreSheet` от `tablo-nav/shared.tsx`. Снимки: `navigatsia-phone.png`, `navigatsia-phone-oshte.png`.
+
+## Task 8: Метърът: първото деление и дните с две букви
+
+Risk: normal
+Serves: AC15
+Depends on: none
+
+**Delivers:** левият заоблен край на метъра няма дълго деление; на средния и големия метър дните са с две главни букви.
+
+**Files**
+- change `web/src/components/rule-strip.tsx` (`:99`, `:107-112`)
+- change `web/src/lib/format.ts` (махни `WEEKDAYS_LETTER`, ако след промяната никой не го ползва; днес го ползва само `rule-strip.tsx:112`)
+
+**Interfaces:** props на `RuleStrip` не се сменят.
+
+**Test cases:** none; verified by AC15.
+
+**Notes**
+- Само първата клетка на първия сегмент губи дългото деление (`absolute left-0 top-0 h-[38%] w-px bg-ink`); всички други клетки, и тези до нита на сгъвката, го пазят.
+- Буквите: `WEEKDAYS_SHORT[i].toLocaleUpperCase("bg")` → ПН, ВТ, СР, ЧТ, ПТ, СБ, НД; само при `size !== "sm"`, както днес.
+- Провери `/tabla/kalendar` на 390×844 (среден метър): двете букви се побират в клетката. Ако не се побират, намали размера или разредката на буквите, не метъра.
+
+## Task 9: Едрият метър, рамката на вход и „Вход“
+
+Risk: normal
+Serves: AC11 (вход), AC16
+Depends on: none
+
+**Delivers:** жълтата кутия до формата я няма; на нейно място (на телефон под формата) е колоната с едрия метър. Страницата „Вход“ я показва с текстовете за вход.
+
+**Files**
+- create `web/src/components/auth-meter.tsx`
+- change `web/src/components/auth-shell.tsx`
+- change `web/src/app/vhod/page.tsx`
+
+**Interfaces**
+```ts
+// web/src/components/auth-meter.tsx
+"use client";
+export type AuthScreen = "vhod" | "klient" | "maistor";
+export function AuthMeter(props: { screen: AuthScreen; today: string /* YYYY-MM-DD, todayISO() от сървъра */ }): React.JSX.Element;
+
+// web/src/components/auth-shell.tsx (същите props като днес)
+export function AuthShell(props: { title: string; intro?: React.ReactNode; children: React.ReactNode; aside?: React.ReactNode }): React.JSX.Element;
+```
+
+**Test cases:** none; verified by AC11.
+
+**Notes**
+- Проба: `web/src/app/prototypes/vhod/variant-metar.tsx` (метърът и текстовете), рамката с двете колони е `Shell` в `vhod/shared.tsx`. Снимки: `vhod-desktop.png`, `vhod-phone.png` (и `vhod-*-klient.png`, `vhod-*-maistor.png` за Task 10).
+- `AuthMeter` рисува цялата колона: заглавие, изречение, метъра (две ленти по 7 дни от `today`), отговора, легендата и бележката за пример, по екрана. Текстовете са дословно в Part 1, „Approved designs“, „Вход и регистрация“. Вход: клетките не се докосват. Клиент: избран ден (`null` в началото), докоснатият е с червена рамка, под метъра е изречението за деня. Майстор: множество заети дни, в началото събота и неделя; докосване сменя деня; изречението с броя свободни дни. Шаблонът свободен, отчасти, зает за вход и клиент е константата `EXAMPLE = "FBFFPFBFFBBFPF"` от `variant-metar.tsx:14` (F свободен, P отчасти, B зает); копирай я в `auth-meter.tsx`, защото Task 16 трие пробата.
+- Датите се смятат само от prop `today`, никога с `new Date()` при рендер (иначе сървърът и браузърът се разминават).
+- Лентата на деня се появява с `transform` и `opacity` за 200ms; при `prefers-reduced-motion: reduce` без преход.
+- Решение на планиращия: едрият метър е отделен компонент, не нов размер на `RuleStrip`. Защо: други височини (148px, на телефон 100px), три вида докосване и примерен шаблон; `RuleStrip` се ползва на пет места с истински данни и не трябва да се рискува.
+- `AuthShell`: махат се жълтата кутия, `RuleMark` и деленията. `aside` е обикновена колона на фона на страницата: под формата на телефон, до нея от `lg` нагоре, `lg:sticky lg:top-24 lg:self-start`, и обгръща съдържанието си.
+- `vhod/page.tsx`: `aside={<AuthMeter screen="vhod" today={todayISO()} />}` (`todayISO` от `@/lib/format`); двете изречения на `:18-23` отпадат.
+
+## Task 10: Регистрацията следва избраната роля
+
+Risk: normal
+Serves: AC11 (регистрация), AC12, AC16
+Depends on: Task 9
+
+**Delivers:** на `/registratsia` заглавието, уводът и метърът следват ролята, избрана във формата, без презареждане.
+
+**Files**
+- create `web/src/app/registratsia/register-screen.tsx`
+- change `web/src/app/registratsia/page.tsx`
+- change `web/src/app/registratsia/register-form.tsx`
+
+**Interfaces**
+```ts
+// register-form.tsx: нов незадължителен prop
+export function RegisterForm(props: {
+  role: "client" | "craftsman";
+  cities: City[];
+  next: string;
+  onRoleChange?: (role: "client" | "craftsman") => void;
+}): React.JSX.Element;
+// вика onRoleChange в ефект при всяка смяна на вътрешното си role
+
+// register-screen.tsx
+"use client";
+export function RegisterScreen(props: {
+  initialRole: "client" | "craftsman";
+  cities: City[];    // type City от "@/lib/data"
+  next: string;
+  today: string;     // todayISO() от сървъра
+}): React.JSX.Element;
+```
+
+**Test cases:** none; verified by AC11, AC12.
+
+**Notes**
+- `RegisterScreen` държи `role` в `useState(initialRole)` и рисува `<AuthShell title intro aside={<AuthMeter key={screen} screen={screen} today={today} />}>`, където `screen` е `"maistor"` за майстор и `"klient"` за клиент, а вътре `<RegisterForm role={initialRole} cities={cities} next={next} onRoleChange={setRole} />`.
+- Заглавие: „Профил на майстор“ или „Регистрация“. Уводите се местят дословно от днешния `registratsia/page.tsx:23-27`.
+- Трите стъпки с `border-t-[1.5px] border-ink` (`page.tsx:28-47`) отпадат.
+- `page.tsx` пази `metadata`, пренасочването на влезлия, `getCities()`, ролята от `?rolya=maistor` и `next`, и рисува само `<RegisterScreen initialRole={role} cities={cities} next={next} today={todayISO()} />`.
+- `signUp` и пренасочването след регистрация (`/tabla?nov=1`) не се пипат. Картите за роля във формата пазят рамките си.
+
+## Task 11: „Профил“ на части с лентата „Запази“
+
+Risk: normal
+Serves: AC5, AC6, AC16
+Depends on: none
+
+**Delivers:** под „Профил“ има подменю от части; на екрана е само една част, адресът е `?chast=…`; лентата „Запази“ излиза само при незаписани промени, с точка до частта, която ги има.
+
+**Files**
+- create `web/src/app/tabla/profil/profile-parts.tsx`
+- change `web/src/app/tabla/profil/profile-forms.tsx`
+- change `web/src/app/tabla/profil/page.tsx`
+- change `web/src/app/tabla/profil/notification-prefs.tsx` (линията на `:34` и видът)
+
+**Interfaces**
+```ts
+// profile-parts.tsx
+"use client";
+export type PartId = "za-men" | "kakvo" | "kade" | "kontakti" | "danni";
+export const PART_LABEL: Record<PartId, string>; // "За мен", "Какво работя", "Къде работя", "Контакти", "Моите данни"
+export const CRAFTSMAN_PARTS: readonly PartId[];  // ["za-men", "kakvo", "kade", "kontakti", "danni"]
+export const CLIENT_PARTS: readonly PartId[];     // ["za-men", "kontakti", "danni"]
+/** Текущата част от ?chast= (липсваща или непозната → "za-men"); pick() слага ?chast=<id> с window.history.pushState, без заявка към сървъра. */
+export function useProfilePart(parts: readonly PartId[]): [PartId, (p: PartId) => void];
+export function PartTabs(props: { parts: readonly PartId[]; current: PartId; dirty: ReadonlySet<PartId>; onPick: (p: PartId) => void }): React.JSX.Element;
+/** Тъмната плаваща лента с „Отказ“ и „Запази“ (submit). Рисува се вътре във <form>, само докато има промени. */
+export function SaveBar(props: { state: FormState; onCancel: () => void }): React.JSX.Element;
+
+// profile-forms.tsx
+export function CraftsmanProfileForm(props: {
+  email: string; cities: City[]; tree: Tree; initial: CraftInitial; maxAreas: number | null;
+  avatar: React.ReactNode;        // най-горе в „За мен“, извън <form>
+  notifications: React.ReactNode; // в края на „Контакти“, извън <form>
+  myData: React.ReactNode;        // цялата част „Моите данни“, извън <form>
+}): React.JSX.Element;
+export function ClientProfileForm(props: {
+  email: string; cities: City[]; initial: { fullName: string; city: string; phone: string };
+  avatar: React.ReactNode; notifications: React.ReactNode; myData: React.ReactNode;
+}): React.JSX.Element;
+```
+
+**Test cases:** none; verified by AC5, AC6.
+
+**Notes**
+- Проба: `web/src/app/prototypes/tablo-profil/` (`variant-stranitsi.tsx` за подредбата, уводите на частите `LEAD` и лентата „Запази“; `shared.tsx` за полетата и класовете в обекта `st`). Адрес: `http://localhost:3100/prototypes/tablo-profil`. Снимки: `profil-desktop-za-men.png`, `profil-desktop-kakvo.png`, `profil-desktop-kontakti.png`, `profil-desktop-danni.png` и същите с `profil-phone-`.
+- Устройство (за да оцелеят промените при смяна на частта и за да има една форма, която записва всичко):
+  - Външният компонент държи `useActionState(updateCraftsmanProfile | updateClientProfile)`, текущата част, `formKey` и множеството части с промени. Рисува `PartTabs`, увода на частта, слотовете извън формата (`avatar` при „За мен“, `notifications` при „Контакти“, `myData` при „Моите данни“) и вътрешния компонент с `key={formKey}`.
+  - Вътрешният компонент е `<form action>` с всички части на формата монтирани; неизбраните са с атрибут `hidden`, затова `FormData` винаги съдържа всички полета. Тук стоят и днешните `useState` (категории, отворени кутии, отметнати градове).
+  - Промени: при монтиране вътрешният компонент запомня `new FormData(form)` по части; `onInput` и `onChange` на формата сменят брояч, а ефект след рендера сравнява текущите стойности със запомнените и съобщава нагоре множеството части с разлика. Полета по части, майстор: „За мен“ `displayName, businessName, bio, years, contactHours, languages`; „Какво работя“ `categories, otherServices`; „Къде работя“ `city, areas`; „Контакти“ `phone, phoneVisibility`. Клиент: „За мен“ `fullName, city, phone`.
+  - „Отказ“ → `formKey + 1` (всичко се връща на `initial`). Успешен запис (`state.ok`) → `toast.success(state.message)` от `sonner` (решение на планиращия: лентата с днешното съобщение изчезва при запис, затова потвърждението е тост) и `formKey + 1`; страницата е презаредена от `revalidatePath`, затова новият `initial` вече е новите стойности. При грешка ключът не се сменя и лентата остава с грешката (`FormMessage`).
+  - `NotificationPrefs` и `MyData` са извън `<form>`: `MyData` съдържа своя форма, а вложени форми не стават.
+  - `FormState` е типът от `@/app/actions/auth`. `SaveBar` показва `FormMessage` само при грешка (`!state.ok`); успехът е тостът, затова старото `ok` не се показва при нова промяна.
+- Какво има във всяка част. Майстор: „За мен“ `avatar` и днешните „Основни данни“; „Какво работя“ категориите и „Други услуги“; „Къде работя“ основният град и градовете; „Контакти“ имейлът само за четене (`email`, както в `ContactFields` на пробата), телефонът, кой го вижда, после `notifications`; „Моите данни“ само `myData`. Клиент: „За мен“ `avatar`, имейлът само за четене, име, град и телефон (днешната форма); „Контакти“ само `notifications`; „Моите данни“ само `myData`.
+- `page.tsx`: заглавието „Профил“, уводът и бележката за `?nov=1` остават горе; `AvatarUpload` се мести в слота `avatar`; `NotificationPrefs` и `MyData` минават като слотове. Ширина на частите `max-w-2xl`.
+- Решение на планиращия: клиентският „Профил“ има същата лента „Запази“, само при промени. Защо: решението на собственика за лентата е за „Профил“ изобщо.
+- Лентата „Запази“: `z-30`, на телефон над долната лента (`bottom-[calc(4.25rem+env(safe-area-inset-bottom))]`, т.е. височината на долната лента 3.5rem плюс 0.75rem; ако Task 7 е построил лентата с друга височина, смени 3.5rem с нея; точните класове са в `variant-stranitsi.tsx:67`), с влизане чрез `transform` и `opacity`, което уважава `prefers-reduced-motion`.
+- Категориите в „Какво работя“ са ленти, които се отварят (`<details>`), съдържанието се показва в самата лента. Днешното отваряне по двойки на широк екран (`toggleBox`) отпада, ако пробата е в една колона; следвай пробата.
+- „Къде работя“ в тази задача е днешният блок (основен град и „Пътувам и до“), само преместен и без линии; Task 12 го сменя.
+- В `?chast=` и History API: прочети ръководството за `useSearchParams` и за „native History API“ в `web/node_modules/next/dist/docs/`; ако Next иска `Suspense` около компонента с `useSearchParams`, сложи го в `page.tsx`.
+
+## Task 12: Градовете по групи в „Къде работя“
+
+Risk: normal
+Serves: AC7, AC16
+Depends on: Task 3, Task 11
+
+**Delivers:** в „Къде работя“ първо е групата на основния град, под „По-далече“ другите групи се отварят при докосване; броячът и бележката при лимит са както в одобрената проба.
+
+**Files**
+- create `web/src/app/tabla/profil/where-work.tsx`
+- change `web/src/app/tabla/profil/profile-forms.tsx` (частта „Къде работя“ рисува `WhereWork`; локалният тип `City` се сменя с `import type { City } from "@/lib/data"`)
+
+**Interfaces**
+```ts
+// where-work.tsx
+"use client";
+export function WhereWork(props: {
+  cities: City[];           // с hub, от getCities()
+  initialCity: string;      // slug или ""
+  initialAreas: string[];   // slug-ове
+  maxAreas: number | null;  // градове освен основния; null = без лимит
+  cityError?: string;
+}): React.JSX.Element;
+// рисува <select name="city"> и отметки name="areas" и сам държи състоянието им
+```
+`CraftsmanProfileForm` го вика вътре във формата с `initialCity={v.city}`, `initialAreas={v.areas}`, `maxAreas`, `cityError={state.errors?.city}`; затова „Отказ“ и записът го връщат в началото чрез `formKey` от Task 11.
+
+**Test cases:** none; verified by AC7.
+
+**Notes**
+- Проба: `web/src/app/prototypes/tablo-profil/where.tsx` и `st` в `tablo-profil/shared.tsx`. Снимки: `profil-desktop.png`, `profil-phone.png` (при достигнат лимит, с лентата „Запази“).
+- Правила: първата група са градовете с `hub` на избрания основен град, със заглавие `HUB_LABEL[hub]` (сбит шрифт, 1.45rem). Основният град не е отметка в списъка. Под „По-далече“ са другите четири групи в реда на `HUBS`, всяка `<details>`, затворена в началото, както в пробата. В група градовете са в реда на `getCities()` (`sort`).
+- Смяна на основния град веднага сменя първата група. Решения на планиращия: град, който стане основен, се маха от отметнатите (не може да е и двете); без основен град първа група няма и петте групи са под „По-далече“.
+- Броячът „N от M града с основния“: N = отметнатите + 1 за основния (ако е избран), M = `maxAreas + 1`. При `maxAreas === null` брояч и бележка няма, както днес.
+- При N = M неотметнатите редове са `disabled`, `bg-surface-2`, текст `text-ink-3`, а над списъка стои бледожълтата бележка от пробата, дословно.
+- Сървърната проверка на лимита в `updateCraftsmanProfile` (`dashboard.ts:99-102`) не се пипа.
+
+## Task 13: Изтриването на профила зад попъп
+
+Risk: risky
+Serves: AC8, AC16
+Depends on: Task 11
+
+**Delivers:** в „Моите данни“ вградената форма за изтриване я няма; бутонът „Изтрий профила“ отваря попъп (на телефон лист отдолу), който обяснява какво се трие и иска „ИЗТРИЙ“.
+
+**Files**
+- create `web/src/app/tabla/profil/delete-account-dialog.tsx`
+- change `web/src/app/tabla/profil/my-data.tsx`
+
+**Interfaces**
+```ts
+// delete-account-dialog.tsx
+"use client";
+export function DeleteAccount(): React.JSX.Element; // бутонът „Изтрий профила“ и попъпът му
+
+// my-data.tsx
+export function MyData(): React.JSX.Element; // без промяна на сигнатурата; рисува DeleteAccount
+```
+Действието е днешното `deleteAccount(_: FormState, formData: FormData): Promise<FormState>` от `web/src/app/actions/account.ts:25`, с поле `name="confirm"`. Не се сменя: проверката на думата на сървъра (`:30`) и `redirect("/?profil=iztrit")` остават.
+
+**Test cases**
+1. Отвори попъпа, полето е празно → червеният бутон е `disabled`, сив (`disabled:bg-surface-2 disabled:text-ink-3 disabled:opacity-100`), не розов.
+2. Напиши „изтрий“ (малки букви) → бутонът остава `disabled`; „ИЗТРИЙ“ → бутонът е активен.
+3. Escape или „Отказ“ → попъпът се затваря, полето се изчиства, нищо не се трие.
+4. Проверката с истинско изтриване (AC8) върви само с нов клиент, регистриран за нея, никога с демо профил.
+
+**Notes**
+- Проба: `DeleteDialog` и `DataFields` в `web/src/app/prototypes/tablo-profil/shared.tsx` (`:414`, `:445`). Снимки: `profil-desktop-iztrivane.png`, `profil-phone-iztrivane.png`, `profil-desktop-danni.png`.
+- Попъпът е естествен `<dialog className="sheet">` (`globals.css:529`: лист отдолу на телефон, в средата от 640px нагоре), с `showModal()`, клик по фона и бутон `aria-label="Затвори"`, както `DaySheet` в `calendar-editor.tsx:559`. Вътре: кутия „Жълта лента“ със заглавие, списък какво се трие (ленти `bg-paper`), линк `/tabla/profil/eksport`, полето и червения бутон. Грешка от `state.message` се показва в попъпа.
+- Бутонът е активен само когато стойността е точно „ИЗТРИЙ“.
+- `my-data.tsx`: линиите на `:13` и `:28` отпадат; частта е линкът за сваляне и бутонът.
+
+## Task 14: „Поръчки“ по дни, с уговорките от чата
+
+Risk: normal
+Serves: AC9, AC10, AC16
+Depends on: none
+
+**Delivers:** списъкът на „Поръчки“ е по дни, както в одобрения вариант „Дни“, и съдържа уговорките от чата като линкове към разговора.
+
+**Files**
+- change `web/src/lib/jobs.ts` (нов тип `OrderBooking`)
+- change `web/src/app/tabla/porachki/page.tsx` (чете уговорките и ги подава)
+- change `web/src/app/tabla/porachki/jobs-manager.tsx`
+
+**Interfaces**
+```ts
+// web/src/lib/jobs.ts
+export type OrderBooking = {
+  id: string;
+  conversation_id: string;
+  booking_date: string;
+  end_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  kind: "inspection" | "work";
+  status: "proposed" | "confirmed";
+  proposed_by_me: boolean;
+  partner_name: string;
+  note: string | null;
+};
+
+// jobs-manager.tsx: нов задължителен prop bookings
+export function JobsManager(props: {
+  userId: string; initialJobs: Job[]; initialClients: Client[]; today: string;
+  proDetails: boolean; proClients: boolean;
+  bookings: OrderBooking[];
+}): React.JSX.Element;
+```
+`page.tsx`: `supabase.rpc("my_bookings", {})` (може в днешния `Promise.all`), после само редовете с `i_am === "craftsman"`, сведени до `OrderBooking` (генерираният тип дава `kind`, `status` и датите като `string`, затова се привеждат).
+
+**Test cases:** none; verified by AC9, AC10.
+
+**Notes**
+- Проба: `web/src/app/prototypes/tablo-porachki/variant-dni.tsx` (подредбата, `look`, редовете `JobRow` и `ChatRow`) и `tablo-porachki/shared.tsx` (`useOrders`, `byMonth`, `DateBlock`, `ChatTag`, `BookingState`, `act`, формата). Адрес: `http://localhost:3100/prototypes/tablo-porachki` (`?plan=bezplaten`, `?forma=1`). Снимки: `porachki-desktop.png`, `porachki-desktop-otvoren.png`, `porachki-desktop-forma.png`, `porachki-desktop-bezplaten.png` и същите с `porachki-phone-`.
+- Правила (точно като `useOrders` и `bucket` в пробата):
+  - Минали неотбелязани: поръчки `status === "planned" && end_date < today`, най-старата първа, в бледожълто поле най-горе със заглавие „1 поръчка е минала и чака отметка“ или „N поръчки са минали и чакат отметка“ и бутони „Свършена“, „Отмени“ и молив на реда. Без такива полето го няма.
+  - Предстоящи: поръчки `planned && end_date >= today` с дата `max(start_date, today)` и уговорките с дата `booking_date` без промяна (многодневна уговорка, започнала преди днес, попада в „Днес“, но показва истинската си начална дата, както в пробата); подредени по дата, после по начален час. Група по `n` = дни от `today` до датата: `n <= 0` „Днес“, `n === 1` „Утре“, `2..7` „До една седмица“, `n > 7` „По-късно“. Празна група не се рисува. Под цифрата е денят от седмицата, в „По-късно“ месецът; днешната дата е червена.
+  - Отворен е най-много един ред; отварянето на друг затваря предишния.
+  - Ред от чата: `<Link href={`/saobshtenia/${conversation_id}`}>`, етикет „от чата“, състояние с думите и цветовете от `web/src/components/upcoming-bookings.tsx:53-59` (`confirmed` → „Уговорено“ `bg-free text-white`; `proposed` и не е предложено от мен → „Отговори“ `bg-red text-white`; иначе „Чака отговор“ `bg-rule-soft`), стрелка надясно, без бутони.
+  - „Нова поръчка“ показва формата над списъка на мястото на бутона; „Редактирай“ отваря същата форма над списъка за тази поръчка (`JobForm key={editing}` в пробата).
+  - „Свършени и отменени“: сгънато заглавие с брой; разгънато по месеци, най-новият първи, до името на месеца „N свършени · сума“ (сборът на `jobTotal` на свършените в месеца, `formatEur`). Свършеният ред: зелено „Свършена“ с отметка и бледа дата. Отмененият: `bg-surface-2`, блед текст, „Отменена“, без сума. Отворени и двата имат „Върни в предстоящи“ (статус `planned`).
+  - Редът с материали във формата е на два реда на телефон. Изтриването пази `window.confirm`.
+  - Безплатен план: заключените функции и бележката (`:386`) са както днес; бележката е тихото поле без заглавие (`bg-paper rounded-[8px]`).
+- Записът в базата (`jobs`, `craftsman_clients`, `job_materials` през браузърния клиент) и `reload`, `save`, `setStatus`, `remove` остават; сменя се само как се показват.
+- Бутоните на реда: `act` от пробата (36px с мишка, 44px на телефон).
+
+## Task 15: Уводът и „Отчет за месеца“ без линии
+
+Risk: normal
+Serves: AC9, AC16
+Depends on: Task 14
+
+**Delivers:** уводът на „Поръчки“ е новият текст, а „Отчет за месеца“ е в одобрения вид, с „Откъде идва работата“ и „Най-чести работи“, без линии.
+
+**Files**
+- change `web/src/app/tabla/porachki/page.tsx` (уводът `:67-70`, отчетът `:84-155`)
+
+**Interfaces:** без промяна; `job_report` и `hasFeature(plan, "reports")` остават.
+
+**Test cases:** none; verified by AC9.
+
+**Notes**
+- Уводът е дословно текстът от Constraints, „Текстове“.
+- Отчетът: заглавие „Отчет за месеца“ в `display text-4xl`, без линия, 2.5rem над него; превключвателят на месеца остава. Плочките са `bg-surface rounded-[10px]` без рамка, по две на ред на телефон и четири на компютър. „Откъде идва работата“ и „Най-чести работи“ са имена на група в сбития шрифт (1.7rem) с редове ленти (`bg-surface rounded-[6px]`, 4px между тях). Линиите на `:103` и `:121` отпадат. Заключеният отчет на безплатния план е тихото поле без заглавие.
+- Проба: частта с отчета в `web/src/app/prototypes/tablo-porachki/shared.tsx` (от `:600`). „Най-чести работи“ липсва в пробата; направи го в същия вид като „Откъде идва работата“.
+
+## Task 16: Пробните страници се махат
+
+Risk: mechanical
+Serves: AC18
+Depends on: Task 1 до Task 15
+
+**Delivers:** папката с пробите я няма и гейтът минава.
+
+**Files**
+- delete `web/src/app/prototypes/` (цялата, с `_harness`)
+
+**Interfaces:** none.
+
+**Test cases**
+1. `grep -rn "prototypes" web/src` → нищо (на 13 ноември 2026 г. нищо извън папката не я ползва)
+2. `test -e web/src/app/prototypes || echo gone` → `gone`
+3. Гейтът от `web/` → изход 0
+
+**Notes**
+- Снимките в `docs/plans/2026-11-12-osnova-na-tabloto-designs/` остават.
 
 # Приложение: факти за изпълнението
 
