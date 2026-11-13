@@ -18,6 +18,7 @@ colors:
   hairline: "#d8d5cb"
   hairline-strong: "#b4afa1"
   graphite: "#1d1b17"
+  graphite-deep: "#141210"
   danger: "#b42318"
   danger-soft: "#fbe4e1"
 typography:
@@ -124,7 +125,7 @@ The interface is practical, legible for older and less tech-savvy craftsmen, and
 - A 14-day folding rule on every craftsman (catalog rows, profile, dashboard, calendar editor).
 - Yellow is a field, not an accent. Red is reserved for "today" and the date marker.
 - Extra-condensed numerals for dates and prices; Sofia Sans for everything else.
-- Hairline-ruled lists and indexes instead of card grids.
+- Lists of separate strips and indexes instead of card grids. Nothing is divided by hairlines.
 - Flat surfaces with ambient shadows only on hover and overlays.
 
 ## Colors
@@ -138,7 +139,7 @@ A two-material palette, enamel yellow and printed ink, with one functional green
 - **Free-Day Ink Green** (#2f6b4f): availability only. Inked bars on free days, hatched on partial days, "Свободен днес" labels and success messages. Soft Free Green (#d9eadf) is the success-message ground.
 
 ### Tertiary
-- **Today Red** (#c8221a): the numeral of today on every rule, the sliding date marker in search, the active-tab tick and the unread badge. Nothing else.
+- **Today Red** (#c8221a): the numeral of today on every rule, the sliding date marker in search and the unread badge. Nothing else.
 - **Hinge Brass** (#a8843a): the rivet dot at each seven-day fold of the rule, and one monogram colour.
 
 ### Neutral
@@ -146,14 +147,15 @@ A two-material palette, enamel yellow and printed ink, with one functional green
 - **Card Surface** (#fffdf8): rows, panels, inputs and the category index band.
 - **Panel Surface** (#e9e7e0): skeletons, quiet info rows and past or disabled calendar days.
 - **Ink** (#16140f): all primary text, graduations, primary buttons and chat bubbles you sent. Ink Secondary (#47433a) for body copy. Ink Tertiary (#686356) for hints and meta (at least 4.5:1 on paper).
-- **Hairline** (#d8d5cb) and **Hairline Strong** (#b4afa1): dividers, card borders and field strokes.
-- **Graphite** (#1d1b17): the footer and the chat composer panel; the only dark fields.
+- **Hairline** (#d8d5cb) and **Hairline Strong** (#b4afa1): strokes of fields, chips and outline buttons only. They never divide content (see The No Hairline Rule).
+- **Graphite** (#1d1b17): the footer and the photo viewer; the only dark fields.
+- **Graphite Deep** (#141210): the copyright strip at the foot of the footer, across the full width.
 - **Danger** (#b42318) and **Danger Soft** (#fbe4e1): errors, destructive actions and ban notices.
 
 ### Named Rules
 **The Yellow Field Rule.** Yellow owns whole regions (a band, a strip, a rule), never a scatter of small accents. If yellow appears as a thin decoration, it should be ink instead.
 
-**The Measuring Mark Rule.** Red marks position in time ("today", the chosen date, the active tab), never emphasis or error. Errors use Danger, which is a separate token.
+**The Measuring Mark Rule.** Red marks position in time ("today", the chosen date), never emphasis or error. Errors use Danger, which is a separate token.
 
 **The Green Means Free Rule.** Green appears only when it says someone is available, or when an action succeeded.
 
@@ -181,7 +183,7 @@ A two-material palette, enamel yellow and printed ink, with one functional green
 
 Content sits in a 1280px max-width container with 16px side gutters (24px from 640px up). The page rhythm alternates a dense band with a quiet one: hero, then a hairline category index on the card surface, then a sparse "how it works" row on a rule line, then the yellow craftsman band.
 
-The catalog is a 288px sticky filter column beside a single column of full-width rows. It is not a card grid. Below 1024px the filters move into a bottom sheet behind a "Филтри" button. Dashboards use a 224px left navigation rail that turns into a horizontally scrolling tab row on phones.
+The catalog is a 288px sticky filter column beside a single column of full-width rows. It is not a card grid. Below 1024px the filters move into a bottom sheet behind a "Филтри" button. Dashboards use a 224px left index (see Navigation) that turns into a bottom bar on phones.
 
 Grid children may shrink below their content (`min-width: 0`). Wide rules scroll inside their own container and never widen the page. On phones the craftsman row stacks price under name, so the name never truncates.
 
@@ -200,12 +202,12 @@ The system is flat and tonal. Depth comes from paper, card surface and hairlines
 
 ## Shapes
 
-Corners are square-ish, like cut timber: 6px (md) on buttons, fields and rule ends, and 10px (lg) on rows, panels and cards. Chips are the only fully round shape. Sheets use 14px top corners on phones. Rules have a 1px inset ink outline, and each seven-day segment is joined by a brass rivet at the fold. Dividers are 1px hairlines; a 1.5px ink rule opens important lists and tables.
+Corners are square-ish, like cut timber: 6px (md) on buttons, fields and rule ends, and 10px (lg) on rows, panels and cards. Chips are the only fully round shape. Sheets use 14px top corners on phones. Rules have a 1px inset ink outline, and each seven-day segment is joined by a brass rivet at the fold. Nothing is divided by lines: rows are strips with 6px corners and 4px between them, and boxes are 10px fields (see Separation).
 
 ## Components
 
 ### Folding Rule (signature)
-- **Anatomy:** a yellow strip of 14 day cells, split into two seven-day segments hinged by a brass rivet. Each cell has graduation ticks, a condensed day numeral (today in red), an optional weekday letter, and a bottom bar: solid green for free, green hatching for partial, nothing for busy.
+- **Anatomy:** a yellow strip of 14 day cells, split into two seven-day segments hinged by a brass rivet. Each cell has graduation ticks, a condensed day numeral (today in red), an optional two-letter weekday (ПН to НД), and a bottom bar: solid green for free, green hatching for partial, nothing for busy. The very first cell, where the strip's corner is rounded, has no long tick.
 - **Sizes:** sm (44px, catalog), md (56px, calendar editor) and lg (76px, profile).
 - **Motion:** on the profile it unfolds on first paint. The first segment slides in (520ms), then the second swings open on its hinge from rotateY(-72deg) (640ms, hinge ease). It is pure CSS, so content is never hidden without it. With reduced motion it is flat.
 - **Interactive variant:** each day is a button. Selecting one draws a red inset ring and attaches the date to the chat composer.
@@ -225,8 +227,8 @@ The yellow field with fields for "what", "city" and "Търси", and a 14-day r
 - **State:** selected chips turn solid ink with white text (`aria-pressed`). Used for filters, time-of-day slots and schedule blocks.
 
 ### Cards / Rows
-- **Corner Style:** 10px.
-- **Background:** card surface with a hairline border. Hover moves the border toward ink and adds the Lift shadow.
+- **Corner Style:** 6px for rows, 10px for boxes.
+- **Background:** rows are strips (card surface, 6px corners, 4px apart, no border); boxes follow The Yellow Band Rule. Hover adds the Lift shadow.
 - **Internal Padding:** 16px (20px from 640px).
 
 ### Inputs / Fields
@@ -235,10 +237,21 @@ The yellow field with fields for "what", "city" and "Търси", and a 14-day r
 - **Error / Disabled:** a danger border with a message below; disabled fields use the panel surface.
 
 ### Navigation
-A sticky translucent paper header with the rule-mark logo and ghost links. On phones the menu is a bottom sheet. Dashboard navigation is a left ink rail with a red active tick.
+A sticky solid card-surface header (#fffdf8) with the rule-mark logo and ghost links: no bottom line, no translucency, no blur. Its dropdowns have no border, only the large shadow, and their rows are strips. On phones the menu is a bottom sheet. Dashboard navigation is the Index: a list in the condensed display face (1.7rem), other pages in Ink Tertiary and the current one on a yellow field with 4px corners, groups split by space only; unread messages are a red number beside „Съобщения“. On phones it becomes a bottom bar of words (the current one on a yellow field), and „Още“ opens a bottom sheet with the rest.
 
 ### Chat
 Your own bubbles are ink with white text and a 4px tail corner. The other side's bubbles are card surface with a hairline. An attached date renders as a yellow chip inside the bubble. The composer bar sits in a card-surface footer.
+
+### Separation (no lines)
+**The No Hairline Rule.** Nothing on a page is divided by a line: no hairline between rows, no ink rule above a list or under a heading, no border around a box. Space, a strip or a field does that job. Fields, chips, buttons and the role cards of the sign-up form keep their strokes, because they are controls, not dividers.
+
+**The Strip Rule.** Each row of a list is its own strip: Card Surface, 6px corners, 4px between strips. A checked row is Pale Rule Yellow, a row disabled by a limit is Panel Surface with Ink Tertiary text, and a cancelled job is Panel Surface. Inside a dialog or a bottom sheet the strips are Concrete Paper. A row that opens shows its content inside the same strip.
+
+**The Group Name Rule.** The name of a group above a list is set in the condensed display face at 1.7rem, 0.5rem above its strips, with 1.75rem between groups. Inside a part that has its own heading, the group name is 1.45rem. Headings of the parts of a page are display text-3xl or text-4xl, with no line under them and 2.5rem between parts.
+
+**The Yellow Band Rule.** A box is a Card Surface field with 10px corners and a yellow band across its top (Enamel Rule Yellow, 20px by 10px padding) that holds the box title in the display face (text-3xl) and its close button. The quiet part inside the box is one step back (Concrete Paper, 8px corners), and a total row inside it is Card Surface again (6px). A box without a title is only the quiet field. A field that asks for attention is Pale Rule Yellow with 10px corners, and its rows are Card Surface strips.
+
+**The Light Bar Rule.** The site header is a solid Card Surface bar over the paper ground: no bottom line, no translucency, no blur, no shadow. The footer has no line above the copyright; the copyright row sits on a full-width Graphite Deep strip. Dropdowns from the header have no border, only the large shadow.
 
 ## Do's and Don'ts
 
@@ -251,7 +264,8 @@ Your own bubbles are ink with white text and a 4px tail corner. The other side's
 
 ### Don't:
 - **Don't** use red for emphasis or errors. Red marks time only.
-- **Don't** build card grids of icon, heading and text. Use ruled lists and indexes.
+- **Don't** build card grids of icon, heading and text. Use strip lists and indexes.
+- **Don't** divide content with hairlines, ink rules or box borders (The No Hairline Rule).
 - **Don't** put eyebrows or kickers above headings.
 - **Don't** use a cream ground or a serif display. The ground is concrete paper, and the voice is Sofia Sans.
 - **Don't** use hard offset shadows, gradients as decoration, or glassmorphism.
