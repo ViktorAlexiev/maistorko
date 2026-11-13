@@ -18,20 +18,34 @@ export function ClientPhotos({ clientId, userId, craftsmanId }: { clientId: stri
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(async () => {
+  const fetchPhotos = useCallback(async () => {
     const { data } = await supabase.from("client_photos").select("id, path, caption").eq("client_id", clientId).order("created_at", { ascending: false });
     const list = (data ?? []) as Photo[];
-    setPhotos(list);
-    if (!list.length) return;
-    const { data: signed } = await supabase.storage.from("client-photos").createSignedUrls(list.map((p) => p.path), 3600);
     const next: Record<string, string> = {};
-    for (const s of signed ?? []) if (s.path && s.signedUrl) next[s.path] = s.signedUrl;
-    setUrls(next);
+    if (list.length) {
+      const { data: signed } = await supabase.storage.from("client-photos").createSignedUrls(list.map((p) => p.path), 3600);
+      for (const s of signed ?? []) if (s.path && s.signedUrl) next[s.path] = s.signedUrl;
+    }
+    return { list, next };
   }, [supabase, clientId]);
 
+  const load = useCallback(async () => {
+    const { list, next } = await fetchPhotos();
+    setPhotos(list);
+    if (list.length) setUrls(next);
+  }, [fetchPhotos]);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+    fetchPhotos().then(({ list, next }) => {
+      if (cancelled) return;
+      setPhotos(list);
+      if (list.length) setUrls(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchPhotos]);
 
   async function upload(files: File[]) {
     setBusy(true);

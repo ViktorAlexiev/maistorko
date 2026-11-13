@@ -9,6 +9,23 @@ export const metadata: Metadata = { title: "Оферта", robots: { index: fals
 
 type Line = { name: string; amount: string; kind: "service" | "material" };
 
+function Group({ title, items }: { title: string; items: Line[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <h2 className="text-sm font-bold uppercase tracking-wide text-ink-3">{title}</h2>
+      <ul className="mt-1 grid border-t border-line">
+        {items.map((l, i) => (
+          <li key={i} className="flex items-baseline justify-between gap-4 border-b border-line py-2">
+            <span>{l.name}</span>
+            <span className="numerals text-xl">{formatEur(Number(l.amount))}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default async function OfferPage({ params }: PageProps<"/oferta/[token]">) {
   const { token } = await params;
   const valid = /^[0-9a-f-]{36}$/.test(token);
@@ -27,20 +44,6 @@ export default async function OfferPage({ params }: PageProps<"/oferta/[token]">
   const lines = (o.lines as Line[]) ?? [];
   const work = lines.filter((l) => l.kind === "service");
   const materials = lines.filter((l) => l.kind === "material");
-  const Group = ({ title, items }: { title: string; items: Line[] }) =>
-    items.length === 0 ? null : (
-      <div>
-        <h2 className="text-sm font-bold uppercase tracking-wide text-ink-3">{title}</h2>
-        <ul className="mt-1 grid border-t border-line">
-          {items.map((l, i) => (
-            <li key={i} className="flex items-baseline justify-between gap-4 border-b border-line py-2">
-              <span>{l.name}</span>
-              <span className="numerals text-xl">{formatEur(Number(l.amount))}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
 
   return (
     <div className="mx-auto max-w-xl px-4 py-12 sm:px-6">
