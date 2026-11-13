@@ -113,6 +113,7 @@ export function DashboardBottomBar({
                       <Link
                         href={it.href}
                         aria-current={active ? "page" : undefined}
+                        onClick={() => setOpenPath(null)}
                         className="flex min-h-12 w-full items-center"
                       >
                         <span className={`display -mx-2 rounded-[4px] px-2 py-1 text-[2rem] ${active ? "bg-rule text-ink" : "text-ink"}`}>
@@ -125,7 +126,7 @@ export function DashboardBottomBar({
               </ul>
             ))}
             {publicHref && (
-              <Link href={publicHref} className="mt-[1.125rem] flex min-h-12 items-center gap-1.5 font-semibold text-ink-2">
+              <Link href={publicHref} onClick={() => setOpenPath(null)} className="mt-[1.125rem] flex min-h-12 items-center gap-1.5 font-semibold text-ink-2">
                 Публичен профил <ExternalLink className="size-4" aria-hidden />
               </Link>
             )}

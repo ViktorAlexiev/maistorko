@@ -13,9 +13,8 @@ export default async function MessagesLayout({ children }: LayoutProps<"/saobsht
   const viewer = await requireViewer("/saobshtenia");
   const supabase = await createClient();
   const { data } = await supabase.rpc("my_conversations");
-  const org = await getMyOrg();
+  const [org, { data: unreadTotal }] = await Promise.all([getMyOrg(), supabase.rpc("unread_total")]);
   const nav = dashboardNav({ craftsmanSlug: viewer.craftsmanSlug, inOrg: Boolean(org) });
-  const { data: unreadTotal } = await supabase.rpc("unread_total");
   const unread = { userId: viewer.id, initial: unreadTotal ?? 0 };
 
   return (
