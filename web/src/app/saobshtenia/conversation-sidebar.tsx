@@ -44,7 +44,11 @@ export function ConversationSidebar({ userId, initial }: { userId: string; initi
       <div className="border-b border-line px-4 py-4">
         <h1 className="display text-4xl">Съобщения</h1>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
+      <div
+        className={`min-h-0 flex-1 overflow-y-auto p-1.5 ${
+          activeId ? "" : "max-lg:pb-[calc(3.5rem+env(safe-area-inset-bottom)+0.375rem)]"
+        }`}
+      >
         {items.length ? (
           <ul className="grid gap-0.5">
             {items.map((c) => (

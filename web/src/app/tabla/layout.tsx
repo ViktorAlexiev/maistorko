@@ -1,5 +1,6 @@
 import { requireViewer } from "@/lib/auth";
 import { DashboardNav } from "@/components/dashboard-nav";
+import { DashboardBottomBar } from "@/components/dashboard-bottom-bar";
 import { getMyOrg } from "@/lib/org";
 import { dashboardNav } from "@/lib/dashboard-nav";
 import { createClient } from "@/lib/supabase/server";
@@ -21,9 +22,10 @@ export default async function DashboardLayout({ children }: LayoutProps<"/tabla"
         </p>
       )}
       <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10">
-        <DashboardNav groups={nav.groups} publicHref={nav.publicHref} unread={unread} phoneRow />
+        <DashboardNav groups={nav.groups} publicHref={nav.publicHref} unread={unread} phoneRow={false} />
         <div className="min-w-0">{children}</div>
       </div>
+      <DashboardBottomBar bar={nav.bar} more={nav.more} publicHref={nav.publicHref} unread={unread} />
     </div>
   );
 }

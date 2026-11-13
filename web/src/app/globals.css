@@ -564,6 +564,13 @@ dialog.sheet::backdrop {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
+/* Room for the phone bottom bar (.bottom-nav, min-h-14 = 3.5rem plus the home-indicator inset) so the last thing on a page is not under it. */
+@media (width < 64rem) {
+  body:has(.bottom-nav) {
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+  }
+}
+
 }
 
 /* --------------------------------------------------------------------------
