@@ -204,8 +204,8 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
             </div>
             <p className="mt-3 text-sm text-ink-2">
               {cp?.is_verified
-                ? "Профилът ти е проверен от екипа."
-                : "Значката „Проверен“ се дава от екипа след проверка на самоличност и опит."}
+                ? "Екипът е потвърдил телефонния ти номер. Значката „Проверен“ не е проверка на самоличност, умения или документи."
+                : "Значката „Проверен“ значи, че екипът е потвърдил телефонния ти номер. Не е проверка на самоличност, умения или документи."}
             </p>
             <Link href={`/maistori/${viewer.craftsmanSlug}#otzivi`} className="link mt-3 inline-block text-sm font-bold">
               Виж отзивите
