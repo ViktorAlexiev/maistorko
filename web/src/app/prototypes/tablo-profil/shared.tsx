@@ -29,7 +29,7 @@ export const st = {
   /** a tick row inside a fold */
   rowIn: "flex min-h-11 items-center gap-3",
   /** small name above a group of rows */
-  label: "mb-2 text-sm font-bold text-ink-3",
+  label: "display mb-2 text-[1.45rem]",
   /** wrapper of fold-out rows */
   folds: "grid gap-1",
   fold: "group rounded-[6px] bg-surface",

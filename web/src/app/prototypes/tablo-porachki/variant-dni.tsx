@@ -24,18 +24,23 @@ import {
   type Item,
 } from "./shared";
 
-/** Boxes without frames: a light panel on the paper, the quieter part inside it one step darker. */
+/**
+ * Boxes without frames (approved for the whole site): a light panel under a yellow band that carries the title in the condensed face;
+ * the quieter part inside it is one step back, on the paper.
+ */
 const look: Look = {
-  shell: "rounded-[10px] bg-surface",
-  head: "flex items-start justify-between gap-3 px-5 pt-5",
-  title: "text-xl font-extrabold",
+  shell: "overflow-hidden rounded-[10px] bg-surface",
+  head: "flex items-center justify-between gap-3 bg-rule px-5 py-2.5",
+  title: "display text-3xl",
   body: "grid gap-4 p-5",
   panel: "rounded-[8px] bg-paper p-4",
   sum: "flex items-baseline justify-between gap-3 rounded-[6px] bg-surface px-3 py-2.5",
 };
 
+/** A group without a line over it (approved for the whole site): its name in the condensed face, then the rows. */
+const group = "display mb-2 text-[1.7rem]";
+
 const NO_MARKER = "list-none [&::-webkit-details-marker]:hidden";
-const label = "mb-2 text-sm font-bold text-ink-3";
 
 const BUCKETS = ["Днес", "Утре", "До една седмица", "По-късно"] as const;
 const bucket = (iso: string, today: string) => {
@@ -44,8 +49,8 @@ const bucket = (iso: string, today: string) => {
 };
 
 /** „Дни“: the page is read by the day. Every row starts with its date, opens for the rest, and past work folds away. */
-export function VariantDni({ today, pro }: { today: string; pro: boolean }) {
-  const o = useOrders(today, pro);
+export function VariantDni({ today, pro, open = false }: { today: string; pro: boolean; open?: boolean }) {
+  const o = useOrders(today, pro, open);
   const groups = BUCKETS.map((name, i) => ({ name, i, items: o.upcoming.filter((x) => bucket(x.date, today) === i) })).filter((g) => g.items.length > 0);
   const months = byMonth(o.history);
 
@@ -101,7 +106,7 @@ export function VariantDni({ today, pro }: { today: string; pro: boolean }) {
           {groups.length === 0 && <p className="rounded-[6px] bg-surface px-3 py-4 text-ink-2">Няма предстояща работа. Когато някой ти се обади, натисни „Нова поръчка“.</p>}
           {groups.map((g) => (
             <div key={g.name}>
-              <h2 className={label}>{g.name}</h2>
+              <h2 className={group}>{g.name}</h2>
               <ul className="grid gap-1">
                 {g.items.map((x) => (
                   <li key={x.key}>{x.kind === "job" ? <JobRow o={o} j={x.job} date={x.date} under={g.i === 3 ? "month" : "weekday"} /> : <ChatRow x={x} today={today} under={g.i === 3 ? "month" : "weekday"} />}</li>
@@ -121,10 +126,10 @@ export function VariantDni({ today, pro }: { today: string; pro: boolean }) {
             <div className="mt-3 grid gap-7">
               {months.map((m) => (
                 <div key={m.ym}>
-                  <h3 className={`${label} flex items-baseline justify-between gap-3`}>
+                  <h3 className={`${group} flex items-baseline justify-between gap-3`}>
                     <span>{m.label}</span>
                     {m.done > 0 && (
-                      <span>
+                      <span className="font-sans text-sm font-bold tracking-normal text-ink-3">
                         {m.done === 1 ? "1 свършена" : `${m.done} свършени`} · <span className="numerals text-lg text-ink">{formatEur(m.total)}</span>
                       </span>
                     )}

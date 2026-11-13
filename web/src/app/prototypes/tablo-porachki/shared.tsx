@@ -17,10 +17,16 @@ export type Item = { kind: "job"; key: string; date: string; job: Job } | { kind
 
 const later = (a: string, b: string) => (a > b ? a : b);
 
-export function useOrders(today: string, pro: boolean, onSaved?: (job: Job) => void) {
+export function useOrders(today: string, pro: boolean, open = false) {
   const [jobs, setJobs] = useState(() => demoJobs(today));
   const [clients, setClients] = useState(CLIENTS);
-  const [editing, setEditing] = useState<string | "new" | null>(null);
+  const [editing, setEditingRaw] = useState<string | "new" | null>(open ? "new" : null);
+  // A form opened by the address (?forma=1) must not take the focus: the keys 1/2/3 of the picker would type into it.
+  const [quiet, setQuiet] = useState(open);
+  const setEditing = (v: string | "new" | null) => {
+    setQuiet(false);
+    setEditingRaw(v);
+  };
   const bookings = useMemo(() => demoBookings(today), [today]);
 
   const setStatus = (j: Job, status: JobStatus) => {
@@ -43,7 +49,6 @@ export function useOrders(today: string, pro: boolean, onSaved?: (job: Job) => v
     setJobs((all) => (all.some((x) => x.id === job.id) ? all.map((x) => (x.id === job.id ? job : x)) : [...all, job]));
     toast.success(editing === "new" ? "Поръчката е записана и часовете са заети в календара." : "Поръчката е обновена.");
     setEditing(null);
-    onSaved?.(job);
   };
 
   const order = (a: Item, b: Item) => a.date.localeCompare(b.date) || startOf(a).localeCompare(startOf(b));
@@ -57,7 +62,7 @@ export function useOrders(today: string, pro: boolean, onSaved?: (job: Job) => v
   const history = jobs.filter((j) => j.status !== "planned").sort((a, b) => b.start_date.localeCompare(a.start_date));
   const clientName = (j: Job) => clients.find((c) => c.id === j.client_id)?.name;
 
-  return { today, pro, jobs, clients, editing, setEditing, setStatus, remove, save, upcoming, overdue, history, clientName };
+  return { today, pro, jobs, clients, editing, quiet, setEditing, setStatus, remove, save, upcoming, overdue, history, clientName };
 }
 
 export type Orders = ReturnType<typeof useOrders>;
@@ -313,8 +318,11 @@ export function JobForm({ o, look }: { o: Orders; look: Look }) {
     set("materials", form.materials.map((x) => (x.key === key ? { ...x, ...patch } : x)));
 
   useEffect(() => {
+    if (o.quiet) return;
     box.current?.scrollIntoView({ block: "start", behavior: "smooth" });
     box.current?.querySelector<HTMLInputElement>("#j-title")?.focus({ preventScroll: true });
+    // only when the form appears
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const multiDay = form.to !== "" && form.to > form.from;
