@@ -1,16 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { signUp, type FormState } from "@/app/actions/auth";
 import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
 import { Turnstile } from "@/components/turnstile";
 
 type City = { slug: string; name: string; region: string; is_major: boolean };
 
-export function RegisterForm({ role: initialRole, cities, next }: { role: "client" | "craftsman"; cities: City[]; next: string }) {
+export function RegisterForm({
+  role: initialRole,
+  cities,
+  next,
+  onRoleChange,
+}: {
+  role: "client" | "craftsman";
+  cities: City[];
+  next: string;
+  onRoleChange?: (role: "client" | "craftsman") => void;
+}) {
   const [state, action] = useActionState<FormState, FormData>(signUp, {});
   const [role, setRole] = useState<"client" | "craftsman">((state.values?.role as "client" | "craftsman") ?? initialRole);
+  useEffect(() => {
+    onRoleChange?.(role);
+  }, [role, onRoleChange]);
   const majors = cities.filter((c) => c.is_major);
   const regions = Array.from(new Set(cities.filter((c) => !c.is_major).map((c) => c.region)));
 
