@@ -43,3 +43,16 @@
 nextjs-portal {
   display: none;
 }
+
+/*
+ * No thin lines (owner's decision of 13 November 2026, approved as „Плочки“). The site header and footer are product
+ * components these prototypes do not own, so their dividers are switched off from here: the header gets the light
+ * surface instead of a bottom line, the copyright strip in the footer loses its top line.
+ */
+body:has(.proto-nolines) header.sticky {
+  border-bottom-width: 0;
+  background: var(--surface);
+}
+body:has(.proto-nolines) footer .border-t {
+  border-top-width: 0;
+}

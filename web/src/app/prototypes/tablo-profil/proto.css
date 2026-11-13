@@ -1,0 +1,18 @@
+/* Prototype only: the save bar slides up when the first unsaved change appears. */
+@media (prefers-reduced-motion: no-preference) {
+  .proto-bar-in {
+    animation: proto-bar-in 260ms var(--ease-out) both;
+  }
+}
+
+@keyframes proto-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* Hide the Next.js dev badge on prototype pages: it sits on top of the bottom bar being judged. */
+nextjs-portal {
+  display: none;
+}

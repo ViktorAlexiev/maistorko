@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Frame, GROUPS, MORE_GROUPS, MoreSheet, PRIMARY, isMore, type NavItem } from "./shared";
 
-/** „Индекс“: no box and no icons; the sections are a printed index in the condensed face, the current one highlighted in yellow. */
+/** „Индекс“: no box, no icons and no divider lines; the sections are a printed index in the condensed face, the current one highlighted in yellow. */
 export function VariantIndeks() {
   return <Frame desktop={(a, pick) => <Index active={a} pick={pick} />} phone={(a, pick) => <Bar active={a} pick={pick} />} />;
 }
@@ -19,11 +19,11 @@ function Count({ it }: { it: NavItem }) {
   );
 }
 
-function Index({ active, pick }: { active: string; pick: (k: string) => void }) {
+export function Index({ active, pick }: { active: string; pick: (k: string) => void }) {
   return (
     <nav aria-label="Табло">
       {GROUPS.map((g, gi) => (
-        <ul key={g.label} className={`grid ${gi > 0 ? "mt-3 border-t border-line pt-3" : ""}`}>
+        <ul key={g.label} className={`grid ${gi > 0 ? "mt-[1.125rem]" : ""}`}>
           {g.items.map((it) => {
             const on = it.key === active;
             return (
@@ -51,7 +51,7 @@ function Index({ active, pick }: { active: string; pick: (k: string) => void }) 
       <a
         href="#"
         onClick={(e) => e.preventDefault()}
-        className="mt-3 flex min-h-10 items-center gap-1.5 border-t border-line pt-3 text-sm font-semibold text-ink-2 hover:text-ink"
+        className="mt-[1.125rem] flex min-h-10 items-center gap-1.5 text-sm font-semibold text-ink-2 hover:text-ink"
       >
         Публичен профил <ExternalLink className="size-3.5" aria-hidden />
       </a>
@@ -59,7 +59,7 @@ function Index({ active, pick }: { active: string; pick: (k: string) => void }) 
   );
 }
 
-function Bar({ active, pick }: { active: string; pick: (k: string) => void }) {
+export function Bar({ active, pick }: { active: string; pick: (k: string) => void }) {
   const [open, setOpen] = useState(false);
   const word = (on: boolean) =>
     `display rounded-[4px] px-1.5 py-1 text-[1.3rem] transition-colors ${on ? "bg-rule text-ink" : "text-ink-2"}`;
@@ -67,7 +67,7 @@ function Bar({ active, pick }: { active: string; pick: (k: string) => void }) {
     <>
       <nav
         aria-label="Табло"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_24px_-14px_rgb(22_20_15/0.3)]"
+        className="fixed inset-x-0 bottom-0 z-40 bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_24px_-14px_rgb(22_20_15/0.3)]"
       >
         <ul className="flex items-stretch justify-between px-2">
           {PRIMARY.map((it) => {
@@ -107,7 +107,7 @@ function Bar({ active, pick }: { active: string; pick: (k: string) => void }) {
       <MoreSheet open={open} onClose={() => setOpen(false)}>
         <div className="px-5 pb-4 pt-5">
           {MORE_GROUPS.map((g, gi) => (
-            <ul key={g.label} className={`grid ${gi > 0 ? "mt-2 border-t border-line pt-2" : ""}`}>
+            <ul key={g.label} className={`grid ${gi > 0 ? "mt-[1.125rem]" : ""}`}>
               {g.items.map((it) => {
                 const on = it.key === active;
                 return (
@@ -135,7 +135,7 @@ function Bar({ active, pick }: { active: string; pick: (k: string) => void }) {
           <a
             href="#"
             onClick={(e) => e.preventDefault()}
-            className="mt-2 flex min-h-12 items-center gap-1.5 border-t border-line pt-2 font-semibold text-ink-2"
+            className="mt-[1.125rem] flex min-h-12 items-center gap-1.5 font-semibold text-ink-2"
           >
             Публичен профил <ExternalLink className="size-4" aria-hidden />
           </a>

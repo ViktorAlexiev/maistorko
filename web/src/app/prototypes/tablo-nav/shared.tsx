@@ -74,7 +74,7 @@ type Render = (active: string, pick: (key: string) => void) => React.ReactNode;
 export function Frame({ desktop, phone }: { desktop: Render; phone: Render }) {
   const [active, setActive] = useState("pregled");
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 pb-28 sm:px-6 sm:py-10 lg:pb-10">
+    <div className="proto-nolines mx-auto max-w-7xl px-4 py-6 pb-28 sm:px-6 sm:py-10 lg:pb-10">
       <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10">
         <div className="hidden lg:block">
           <div className="sticky top-24">{desktop(active, setActive)}</div>
@@ -124,9 +124,9 @@ function MockPage({ active }: { active: string }) {
         <h2 id="proto-bookings" className="display text-4xl">
           Уговорени посещения
         </h2>
-        <ul className="mt-3 grid border-t border-line">
+        <ul className="mt-3 grid gap-1">
           {BOOKINGS.map((b) => (
-            <li key={b.who} className="flex items-center gap-3 border-b border-line px-1 py-3">
+            <li key={b.who} className="flex items-center gap-3 rounded-[6px] bg-surface px-3 py-3">
               {b.ok ? (
                 <CalendarCheck className="size-5 shrink-0 text-free" aria-hidden />
               ) : (
