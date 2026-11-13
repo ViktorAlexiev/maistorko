@@ -1,6 +1,4 @@
-import { RuleMark } from "@/components/logo";
-
-/** Two-column auth layout: form on paper, a yellow rule field beside it. */
+/** Two-column auth layout: form on paper, a plain side column (under the form on phones). */
 export function AuthShell({
   title,
   intro,
@@ -19,11 +17,7 @@ export function AuthShell({
         {intro && <div className="mt-3 text-lg text-ink-2">{intro}</div>}
         <div className="mt-8">{children}</div>
       </div>
-      <aside aria-hidden={!aside} className="relative hidden overflow-hidden rounded-[14px] bg-rule p-10 lg:block">
-        <div className="graduations graduations-top absolute inset-x-0 top-0 h-4" />
-        <RuleMark className="h-10 w-20" />
-        {aside}
-      </aside>
+      {aside && <aside className="relative self-start lg:sticky lg:top-24">{aside}</aside>}
     </div>
   );
 }
