@@ -27,6 +27,7 @@ export default async function EmployeeJobsPage({ params }: PageProps<"/tabla/fir
         today={todayISO()}
         proDetails={Boolean(details)}
         proClients={Boolean(cards)}
+        bookings={[]}
       />
     </div>
   );

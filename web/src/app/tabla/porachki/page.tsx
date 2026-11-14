@@ -5,7 +5,7 @@ import { requireCraftsman } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getMyPlan, hasFeature } from "@/lib/plan";
 import { formatEur, MONTHS, todayISO } from "@/lib/format";
-import { monthRange, shiftMonth, SOURCE_LABEL, type Client, type Job, type JobSource } from "@/lib/jobs";
+import { monthRange, shiftMonth, SOURCE_LABEL, type Client, type Job, type JobSource, type OrderBooking } from "@/lib/jobs";
 import { JobsManager } from "./jobs-manager";
 
 export const metadata: Metadata = { title: "Поръчки", robots: { index: false } };
@@ -32,7 +32,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/tabla/porac
   const proClients = hasFeature(plan, "client_cards");
   const proReports = hasFeature(plan, "reports");
 
-  const [{ data: jobs }, { data: clients }, report] = await Promise.all([
+  const [{ data: jobs }, { data: clients }, { data: bookingRows }, report] = await Promise.all([
     supabase
       .from("jobs")
       .select(
@@ -42,6 +42,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/tabla/porac
       .order("start_date", { ascending: false })
       .limit(300),
     supabase.from("craftsman_clients").select("id, name, phone, address, note").eq("craftsman_id", viewer.id).order("name"),
+    supabase.rpc("my_bookings", {}),
     proReports
       ? supabase.rpc("job_report", { p_from: monthRange(ym).from, p_to: monthRange(ym).to }).then((r) => r.data as Report | null)
       : Promise.resolve(null),
@@ -56,6 +57,22 @@ export default async function JobsPage({ searchParams }: PageProps<"/tabla/porac
       materials: (job_materials ?? []).map((m) => ({ ...m, amount: Number(m.amount) })),
     } as Job;
   });
+
+  const bookings: OrderBooking[] = (bookingRows ?? [])
+    .filter((b) => b.i_am === "craftsman")
+    .map((b) => ({
+      id: b.id,
+      conversation_id: b.conversation_id,
+      booking_date: b.booking_date,
+      end_date: b.end_date,
+      start_time: b.start_time,
+      end_time: b.end_time,
+      kind: b.kind as OrderBooking["kind"],
+      status: b.status as OrderBooking["status"],
+      proposed_by_me: b.proposed_by_me,
+      partner_name: b.partner_name,
+      note: b.note,
+    }));
 
   const revenue = report ? report.labor + report.transport + report.materials : 0;
   const [y, m] = ym.split("-").map(Number);
@@ -77,6 +94,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/tabla/porac
         today={today}
         proDetails={proDetails}
         proClients={proClients}
+        bookings={bookings}
       />
 
       <section aria-labelledby="report-heading" className="grid gap-4">

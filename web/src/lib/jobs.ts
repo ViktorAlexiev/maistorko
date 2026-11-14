@@ -32,6 +32,21 @@ export type Job = {
   materials: Material[];
 };
 
+/** A visit agreed in a chat, as the craftsman sees it in his list of orders. */
+export type OrderBooking = {
+  id: string;
+  conversation_id: string;
+  booking_date: string;
+  end_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  kind: "inspection" | "work";
+  status: "proposed" | "confirmed";
+  proposed_by_me: boolean;
+  partner_name: string;
+  note: string | null;
+};
+
 /** "14 окт" or "14 окт – 18 окт, цели дни" or "14 окт, 09:00–11:00" */
 export function jobWhen(j: Pick<Job, "start_date" | "end_date" | "start_time" | "end_time">) {
   if (j.end_date !== j.start_date) return `${formatDate(j.start_date)} – ${formatDate(j.end_date)}, цели дни`;

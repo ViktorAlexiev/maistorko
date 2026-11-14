@@ -2,14 +2,75 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
-import { Check, Lock, Pencil, Plus, Trash2, Undo2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Check, ChevronDown, ChevronRight, Lock, MessageSquare, Pencil, Plus, Trash2, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { formatEur } from "@/lib/format";
+import { diffDays, formatDate, formatEur, isoWeekday, MONTHS, MONTHS_SHORT, parseISO, WEEKDAYS_SHORT } from "@/lib/format";
 import { toMoney } from "@/lib/validation";
-import { hasMoney, jobTotal, jobWhen, SOURCE_LABEL, type Client, type Job, type JobSource, type JobStatus } from "@/lib/jobs";
-import { EmptyState } from "@/components/bits";
+import { hasMoney, jobTotal, SOURCE_LABEL, type Client, type Job, type JobSource, type JobStatus, type OrderBooking } from "@/lib/jobs";
+
+/**
+ * Boxes without frames: a light panel under a yellow band that carries the title in the condensed face;
+ * the quieter part inside it is one step back, on the paper.
+ */
+const look = {
+  shell: "grid overflow-hidden rounded-[10px] bg-surface",
+  head: "flex items-center justify-between gap-3 bg-rule px-5 py-2.5",
+  title: "display text-3xl",
+  body: "grid gap-4 p-5",
+  panel: "rounded-[8px] bg-paper p-4",
+  sum: "flex items-baseline justify-between gap-3 rounded-[6px] bg-surface px-3 py-2.5",
+};
+
+/** A group without a line over it: its name in the condensed face, then the rows. */
+const group = "display mb-2 text-[1.7rem]";
+
+const NO_MARKER = "list-none [&::-webkit-details-marker]:hidden";
+
+/** Row buttons: 36px with a pointer, 44px under a thumb. */
+const act = "btn btn-sm max-sm:min-h-11";
+
+const BUCKETS = ["Днес", "Утре", "До една седмица", "По-късно"] as const;
+const bucket = (iso: string, today: string) => {
+  const n = diffDays(today, iso);
+  return n <= 0 ? 0 : n === 1 ? 1 : n <= 7 ? 2 : 3;
+};
+
+type Item = { kind: "job"; key: string; date: string; job: Job } | { kind: "chat"; key: string; date: string; booking: OrderBooking };
+
+const later = (a: string, b: string) => (a > b ? a : b);
+const startOf = (i: Item) => (i.kind === "job" ? i.job.start_time : i.booking.start_time) ?? "00:00";
+const cap = (t: string) => t.charAt(0).toLocaleUpperCase("bg") + t.slice(1);
+
+/** Past jobs by month, newest first, with what the finished ones brought in. */
+function byMonth(history: Job[]) {
+  const months: { ym: string; label: string; jobs: Job[]; done: number; total: number }[] = [];
+  for (const j of history) {
+    const ym = j.start_date.slice(0, 7);
+    let m = months.find((x) => x.ym === ym);
+    if (!m) {
+      const [y, mo] = ym.split("-").map(Number);
+      m = { ym, label: `${cap(MONTHS[mo - 1])} ${y}`, jobs: [], done: 0, total: 0 };
+      months.push(m);
+    }
+    m.jobs.push(j);
+    if (j.status === "done") {
+      m.done += 1;
+      m.total += jobTotal(j);
+    }
+  }
+  return months;
+}
+
+/** "09:00–11:00", "цял ден", "до 26 ноември, цели дни" */
+const jobHours = (j: Job) =>
+  j.end_date !== j.start_date ? `до ${formatDate(j.end_date)}, цели дни` : j.start_time ? `${j.start_time.slice(0, 5)}–${j.end_time!.slice(0, 5)}` : "цял ден";
+
+const bookingHours = (b: OrderBooking) =>
+  b.end_date ? `до ${formatDate(b.end_date)}, цели дни` : b.start_time ? `${b.start_time.slice(0, 5)}–${b.end_time!.slice(0, 5)}` : "цял ден";
+
+const bookingTitle = (b: OrderBooking) => `${b.kind === "inspection" ? "Оглед" : "Работа"} при ${b.partner_name}`;
 
 const PRESETS = [
   { key: "day", label: "Цял ден", from: null, to: null },
@@ -51,6 +112,7 @@ export function JobsManager({
   today,
   proDetails,
   proClients,
+  bookings,
 }: {
   userId: string;
   initialJobs: Job[];
@@ -58,6 +120,7 @@ export function JobsManager({
   today: string;
   proDetails: boolean;
   proClients: boolean;
+  bookings: OrderBooking[];
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -246,68 +309,48 @@ export function JobsManager({
     });
   }
 
-  const upcoming = jobs.filter((j) => j.status === "planned" && j.end_date >= today).sort((a, b) => a.start_date.localeCompare(b.start_date));
-  const overdue = jobs.filter((j) => j.status === "planned" && j.end_date < today);
-  const history = jobs.filter((j) => j.status !== "planned");
+  const upcoming: Item[] = [
+    ...jobs
+      .filter((j) => j.status === "planned" && j.end_date >= today)
+      .map((j): Item => ({ kind: "job", key: j.id, date: later(j.start_date, today), job: j })),
+    ...bookings.map((b): Item => ({ kind: "chat", key: b.id, date: b.booking_date, booking: b })),
+  ].sort((a, b) => a.date.localeCompare(b.date) || startOf(a).localeCompare(startOf(b)));
+  const overdue = jobs.filter((j) => j.status === "planned" && j.end_date < today).sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const history = jobs.filter((j) => j.status !== "planned").sort((a, b) => b.start_date.localeCompare(a.start_date));
+  const groups = BUCKETS.map((name, i) => ({ name, i, items: upcoming.filter((x) => bucket(x.date, today) === i) })).filter((g) => g.items.length > 0);
+  const months = byMonth(history);
+  const acts: RowActions = { today, pending, clientName: (j) => (j.client_id ? clientName.get(j.client_id) : undefined), setStatus, openEdit, remove };
 
-  const Row = ({ j }: { j: Job }) => (
-    <li className="flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-line py-3">
-      <div className="min-w-0 flex-1">
-        <p className={`font-bold ${j.status === "cancelled" ? "line-through opacity-60" : ""}`}>{j.title}</p>
-        <p className="text-sm text-ink-2 first-letter:uppercase">{jobWhen(j)}</p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-ink-3">
-          <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs font-bold text-ink-2">{SOURCE_LABEL[j.source]}</span>
-          {j.client_id && clientName.get(j.client_id) && <span>{clientName.get(j.client_id)}</span>}
-          {j.note && <span className="truncate">{j.note}</span>}
-        </p>
-      </div>
-      {hasMoney(j) && <p className="numerals text-2xl">{formatEur(jobTotal(j))}</p>}
-      <div className="flex flex-wrap gap-1">
-        {j.status === "planned" ? (
-          <>
-            <button type="button" className="btn btn-outline btn-sm" disabled={pending} onClick={() => setStatus(j, "done")}>
-              <Check className="size-4" aria-hidden /> Свършена
-            </button>
-            <button type="button" className="btn btn-ghost btn-sm" disabled={pending} onClick={() => setStatus(j, "cancelled")}>
-              Отмени
-            </button>
-          </>
-        ) : (
-          <>
-            <button type="button" className="btn btn-ghost btn-sm" disabled={pending} onClick={() => setStatus(j, "planned")}>
-              <Undo2 className="size-4" aria-hidden /> Върни
-            </button>
-          </>
-        )}
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEdit(j)} aria-label={`Редактирай ${j.title}`}>
-          <Pencil className="size-4" aria-hidden />
-        </button>
-        <button type="button" className="btn btn-ghost btn-sm text-danger" disabled={pending} onClick={() => remove(j)} aria-label={`Изтрий ${j.title}`}>
-          <Trash2 className="size-4" aria-hidden />
-        </button>
-      </div>
-    </li>
-  );
+  const box = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (editing === null) return;
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    box.current?.scrollIntoView({ block: "start", behavior: calm ? "auto" : "smooth" });
+    box.current?.querySelector<HTMLInputElement>("#j-title")?.focus({ preventScroll: true });
+  }, [editing]);
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
-    <section aria-label="Поръчки" className="grid gap-6">
+    <section aria-label="Поръчки" className="grid gap-10">
       {editing === null ? (
         <div>
-          <button type="button" className="btn btn-primary btn-lg" onClick={openNew}>
+          <button type="button" className="btn btn-primary btn-lg max-sm:w-full" onClick={openNew}>
             <Plus className="size-5" aria-hidden /> Нова поръчка
           </button>
         </div>
       ) : (
-        <form onSubmit={save} className="grid gap-4 rounded-[10px] border-[1.5px] border-ink bg-surface p-5" noValidate>
-          <div className="flex items-start justify-between gap-3">
-            <h2 className="text-xl font-extrabold">{editing === "new" ? "Нова поръчка" : "Редакция на поръчка"}</h2>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(null)} aria-label="Затвори">
+        <form ref={box} onSubmit={save} className={look.shell} noValidate aria-labelledby="j-heading">
+          <div className={look.head}>
+            <h2 id="j-heading" className={look.title}>
+              {editing === "new" ? "Нова поръчка" : "Редакция на поръчка"}
+            </h2>
+            <button type="button" className="btn btn-ghost btn-sm -mr-2" onClick={() => setEditing(null)} aria-label="Затвори">
               <X className="size-5" aria-hidden />
             </button>
           </div>
 
+          <div className={look.body}>
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem]">
             <div>
               <label htmlFor="j-title" className="label">
@@ -380,7 +423,7 @@ export function JobsManager({
           </div>
 
           {!proDetails ? (
-            <div className="flex items-start gap-3 rounded-[8px] border border-dashed border-line-strong p-4">
+            <div className={`flex items-start gap-3 ${look.panel}`}>
               <Lock className="mt-0.5 size-5 shrink-0" aria-hidden />
               <p className="text-sm text-ink-2">
                 Клиентска карта, материали, транспорт и цена на поръчката са в Pro.{" "}
@@ -390,7 +433,7 @@ export function JobsManager({
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 rounded-[8px] bg-surface-2 p-4">
+            <div className={`grid gap-4 ${look.panel}`}>
               <fieldset>
                 <legend className="label">Клиент</legend>
                 <div className="flex flex-wrap gap-2">
@@ -433,7 +476,7 @@ export function JobsManager({
                 )}
               </fieldset>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="j-labor" className="label">
                     Труд (€)
@@ -455,11 +498,11 @@ export function JobsManager({
                   <span>Материалите ги осигурява клиентът (не влизат в сумата ми)</span>
                 </label>
                 {!form.byClient && (
-                  <div className="grid gap-2">
+                  <div className="grid gap-3 sm:gap-2">
                     {form.materials.map((m) => (
-                      <div key={m.key} className="grid grid-cols-[minmax(0,1fr)_5rem_6rem_auto] gap-2">
+                      <div key={m.key} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 sm:grid-cols-[minmax(0,1fr)_5rem_6rem_auto]">
                         <input
-                          className="field"
+                          className="field col-span-3 sm:col-span-1"
                           placeholder="напр. Бойлер 80 л"
                           aria-label="Материал"
                           maxLength={120}
@@ -482,14 +525,14 @@ export function JobsManager({
                           value={m.amount}
                           onChange={(e) => set("materials", form.materials.map((x) => (x.key === m.key ? { ...x, amount: e.target.value } : x)))}
                         />
-                        <button type="button" className="btn btn-ghost btn-sm" aria-label="Премахни реда" onClick={() => set("materials", form.materials.filter((x) => x.key !== m.key))}>
+                        <button type="button" className="btn btn-ghost btn-sm min-h-[2.875rem]" aria-label="Премахни реда" onClick={() => set("materials", form.materials.filter((x) => x.key !== m.key))}>
                           <Trash2 className="size-4" aria-hidden />
                         </button>
                       </div>
                     ))}
                     <button
                       type="button"
-                      className="btn btn-outline btn-sm justify-self-start"
+                      className={`${act} btn-outline justify-self-start`}
                       onClick={() => set("materials", [...form.materials, { key: ++rowKey, name: "", qty: "", amount: "" }])}
                     >
                       <Plus className="size-4" aria-hidden /> Добави материал
@@ -498,9 +541,9 @@ export function JobsManager({
                 )}
               </fieldset>
 
-              <p className="flex items-baseline justify-between gap-3 border-t border-line pt-3">
+              <p className={look.sum}>
                 <span className="font-bold">Общо за теб</span>
-                <span className="numerals text-3xl">{formatEur(total)}</span>
+                <span className="numerals text-3xl leading-none">{formatEur(total)}</span>
               </p>
             </div>
           )}
@@ -518,47 +561,235 @@ export function JobsManager({
               Откажи
             </button>
           </div>
+          </div>
         </form>
       )}
 
-      {jobs.length === 0 && editing === null && (
-        <EmptyState title="Още нямаш поръчки">
-          Когато някой ти се обади или те препоръчат, натисни „Нова поръчка“. Така календарът ти остава верен и ти не
-          забравяш нищо.
-        </EmptyState>
+      {overdue.length > 0 && (
+        <section aria-labelledby="dni-overdue" className="rounded-[10px] bg-rule-soft p-3 sm:p-4">
+          <h2 id="dni-overdue" className="px-1 text-xl font-extrabold">
+            {overdue.length === 1 ? "1 поръчка е минала и чака отметка" : `${overdue.length} поръчки са минали и чакат отметка`}
+          </h2>
+          <p className="px-1 text-sm text-ink-2">Отбележи ги като свършени или ги отмени.</p>
+          <ul className="mt-3 grid gap-1">
+            {overdue.map((j) => (
+              <li key={j.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[6px] bg-surface px-3 py-2.5">
+                <DateBlock iso={j.start_date} today={today} />
+                <div className="min-w-0 flex-1 basis-40">
+                  <p className="font-bold">{j.title}</p>
+                  <p className="text-sm text-ink-2">
+                    <span className="sr-only">{formatDate(j.start_date, true)}, </span>
+                    {jobHours(j)} · {SOURCE_LABEL[j.source]}
+                  </p>
+                </div>
+                {hasMoney(j) && <p className="numerals text-2xl">{formatEur(jobTotal(j))}</p>}
+                <div className="flex gap-1 max-sm:basis-full">
+                  <button type="button" className={`${act} btn-primary max-sm:flex-1`} disabled={pending} onClick={() => setStatus(j, "done")}>
+                    <Check className="size-4" aria-hidden /> Свършена
+                  </button>
+                  <button type="button" className={`${act} btn-outline max-sm:flex-1`} disabled={pending} onClick={() => setStatus(j, "cancelled")}>
+                    Отмени
+                  </button>
+                  <button type="button" className={`${act} btn-ghost`} onClick={() => openEdit(j)} aria-label={`Редактирай ${j.title}`}>
+                    <Pencil className="size-4" aria-hidden />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      {upcoming.length > 0 && (
-        <div>
-          <h2 className="display text-3xl">Предстоящи</h2>
-          <ul className="mt-2 grid border-t-[1.5px] border-ink">
-            {upcoming.map((j) => (
-              <Row key={j.id} j={j} />
-            ))}
-          </ul>
-        </div>
-      )}
-      {overdue.length > 0 && (
-        <div>
-          <h2 className="display text-3xl">Минали, още неотбелязани</h2>
-          <p className="text-sm text-ink-3">Отбележи ги като свършени или ги отмени.</p>
-          <ul className="mt-2 grid border-t-[1.5px] border-ink">
-            {overdue.map((j) => (
-              <Row key={j.id} j={j} />
-            ))}
-          </ul>
-        </div>
-      )}
+      <section aria-label="Предстоящи" className="grid gap-7">
+        {groups.length === 0 && (
+          <p className="rounded-[6px] bg-surface px-3 py-4 text-ink-2">Няма предстояща работа. Когато някой ти се обади, натисни „Нова поръчка“.</p>
+        )}
+        {groups.map((g) => (
+          <div key={g.name}>
+            <h2 className={group}>{g.name}</h2>
+            <ul className="grid gap-1">
+              {g.items.map((x) => (
+                <li key={x.key}>
+                  {x.kind === "job" ? (
+                    <JobRow a={acts} j={x.job} date={x.date} under={g.i === 3 ? "month" : "weekday"} />
+                  ) : (
+                    <ChatRow b={x.booking} date={x.date} today={today} under={g.i === 3 ? "month" : "weekday"} />
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </section>
+
       {history.length > 0 && (
-        <div>
-          <h2 className="display text-3xl">Свършени и отменени</h2>
-          <ul className="mt-2 grid border-t-[1.5px] border-ink">
-            {history.map((j) => (
-              <Row key={j.id} j={j} />
+        <details className="group/past">
+          <summary className={`flex min-h-11 cursor-pointer items-center gap-2.5 ${NO_MARKER}`}>
+            <h2 className="display text-3xl">Свършени и отменени</h2>
+            <span className="numerals text-2xl leading-none text-ink-3">{history.length}</span>
+            <ChevronDown className="size-5 text-ink-3 transition-transform duration-200 group-open/past:rotate-180 motion-reduce:transition-none" aria-hidden />
+          </summary>
+          <div className="mt-3 grid gap-7">
+            {months.map((m) => (
+              <div key={m.ym}>
+                <h3 className={`${group} flex items-baseline justify-between gap-3`}>
+                  <span>{m.label}</span>
+                  {m.done > 0 && (
+                    <span className="font-sans text-sm font-bold tracking-normal text-ink-3">
+                      {m.done === 1 ? "1 свършена" : `${m.done} свършени`} · <span className="numerals text-lg text-ink">{formatEur(m.total)}</span>
+                    </span>
+                  )}
+                </h3>
+                <ul className="grid gap-1">
+                  {m.jobs.map((j) => (
+                    <li key={j.id}>
+                      <JobRow a={acts} j={j} date={j.start_date} under="weekday" />
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
-        </div>
+          </div>
+        </details>
       )}
     </section>
+  );
+}
+
+type RowActions = {
+  today: string;
+  pending: boolean;
+  clientName: (j: Job) => string | undefined;
+  setStatus: (j: Job, status: JobStatus) => void;
+  openEdit: (j: Job) => void;
+  remove: (j: Job) => void;
+};
+
+/** The day as it is printed on the row: a condensed numeral, red for today, with the weekday or the month under it. */
+function DateBlock({ iso, today, under = "weekday", muted }: { iso: string; today: string; under?: "weekday" | "month"; muted?: boolean }) {
+  const d = parseISO(iso);
+  return (
+    <span className="w-11 shrink-0 text-center" aria-hidden>
+      <span className={`numerals block text-[1.9rem] leading-none ${muted ? "text-ink-3" : iso === today ? "text-red" : ""}`}>{d.getUTCDate()}</span>
+      <span className="mt-0.5 block text-xs font-bold text-ink-3">
+        {under === "month" ? MONTHS_SHORT[d.getUTCMonth()] : WEEKDAYS_SHORT[isoWeekday(iso) - 1]}
+      </span>
+    </span>
+  );
+}
+
+function ChatTag() {
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-[4px] bg-rule-soft px-1.5 py-0.5 text-xs font-bold text-ink">
+      <MessageSquare className="size-3" aria-hidden /> от чата
+    </span>
+  );
+}
+
+/** The state of a chat visit, with the same words and colours as „Уговорки“ on the overview. */
+function BookingState({ b, className = "" }: { b: OrderBooking; className?: string }) {
+  const confirmed = b.status === "confirmed";
+  const mine = b.status === "proposed" && !b.proposed_by_me;
+  return (
+    <span
+      className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold ${
+        confirmed ? "bg-free text-white" : mine ? "bg-red text-white" : "bg-rule-soft text-ink"
+      } ${className}`}
+    >
+      {confirmed ? "Уговорено" : mine ? "Отговори" : "Чака отговор"}
+    </span>
+  );
+}
+
+/** A job: closed it is the day, the work and the sum; opened it shows the note, the money and what can be done with it. */
+function JobRow({ a, j, date, under }: { a: RowActions; j: Job; date: string; under: "weekday" | "month" }) {
+  const client = a.clientName(j);
+  const cancelled = j.status === "cancelled";
+  const past = j.status !== "planned";
+  const materials = j.materials_by_client ? 0 : j.materials.reduce((n, m) => n + m.amount, 0);
+  return (
+    <details name="dni-red" className={`group rounded-[6px] ${cancelled ? "bg-surface-2" : "bg-surface"}`}>
+      <summary className={`flex min-h-16 cursor-pointer items-center gap-3 px-3 py-2.5 ${NO_MARKER}`}>
+        <DateBlock iso={date} today={a.today} under={under} muted={past} />
+        <span className="min-w-0 flex-1">
+          <span className={`block font-bold ${cancelled ? "text-ink-3" : ""}`}>{j.title}</span>
+          <span className={`block text-sm ${cancelled ? "text-ink-3" : "text-ink-2"}`}>
+            <span className="sr-only">{formatDate(date, true)}, </span>
+            {j.status === "done" && (
+              <span className="font-bold text-free">
+                <Check className="mb-0.5 inline size-3.5" aria-hidden /> Свършена ·{" "}
+              </span>
+            )}
+            {cancelled && <span className="font-bold">Отменена · </span>}
+            {jobHours(j)} · {SOURCE_LABEL[j.source]}
+            {client ? ` · ${client}` : ""}
+          </span>
+        </span>
+        {hasMoney(j) && !cancelled && <span className="numerals text-2xl">{formatEur(jobTotal(j))}</span>}
+        <ChevronDown className="size-4 shrink-0 text-ink-3 transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" aria-hidden />
+      </summary>
+      <div className="grid gap-3 px-3 pb-3 sm:pl-[4.25rem]">
+        {j.note && <p className="text-ink-2">{j.note}</p>}
+        {hasMoney(j) && (
+          <p className="text-sm text-ink-2">
+            {[
+              j.labor_price != null && `Труд ${formatEur(j.labor_price)}`,
+              j.transport_price != null && `Транспорт ${formatEur(j.transport_price)}`,
+              j.materials_by_client ? "Материалите са от клиента" : materials > 0 && `Материали ${formatEur(materials)}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        )}
+        <div className="flex flex-wrap gap-1">
+          {past ? (
+            <button type="button" className={`${act} btn-outline`} disabled={a.pending} onClick={() => a.setStatus(j, "planned")}>
+              <Undo2 className="size-4" aria-hidden /> Върни в предстоящи
+            </button>
+          ) : (
+            <>
+              <button type="button" className={`${act} btn-outline`} disabled={a.pending} onClick={() => a.setStatus(j, "done")}>
+                <Check className="size-4" aria-hidden /> Свършена
+              </button>
+              <button type="button" className={`${act} btn-ghost`} disabled={a.pending} onClick={() => a.setStatus(j, "cancelled")}>
+                Отмени
+              </button>
+            </>
+          )}
+          <button type="button" className={`${act} btn-ghost`} onClick={() => a.openEdit(j)}>
+            <Pencil className="size-4" aria-hidden /> Редактирай
+          </button>
+          <button type="button" className={`${act} btn-ghost text-danger`} disabled={a.pending} onClick={() => a.remove(j)}>
+            <Trash2 className="size-4" aria-hidden /> Изтрий
+          </button>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+/** A visit agreed in the chat: the same row, but it is a link to the conversation and has no buttons. */
+function ChatRow({ b, date, today, under }: { b: OrderBooking; date: string; today: string; under: "weekday" | "month" }) {
+  return (
+    <Link
+      href={`/saobshtenia/${b.conversation_id}`}
+      className="flex min-h-16 items-center gap-3 rounded-[6px] bg-surface px-3 py-2.5 transition-colors hover:bg-rule-soft motion-reduce:transition-none"
+    >
+      <DateBlock iso={date} today={today} under={under} />
+      <span className="min-w-0 flex-1">
+        <span className="block font-bold">{bookingTitle(b)}</span>
+        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-ink-2">
+          <ChatTag />
+          <BookingState b={b} className="sm:hidden" />
+          <span className="max-sm:basis-full">
+            <span className="sr-only">{formatDate(date, true)}, </span>
+            {bookingHours(b)}
+            {b.note ? ` · ${b.note}` : ""}
+          </span>
+        </span>
+      </span>
+      <BookingState b={b} className="max-sm:hidden" />
+      <ChevronRight className="size-4 shrink-0 text-ink-3" aria-hidden />
+    </Link>
   );
 }
