@@ -117,7 +117,7 @@ components:
 
 Майсторлъка is drawn from the yellow wooden folding carpenter's rule (сгъваем метър) that lives in every Bulgarian craftsman's back pocket. The product answers three questions, *who can, how much, when free*, and the rule answers the third one visually: every craftsman carries a graduated strip of the next 14 days, hinged at seven, with free days inked green and busy days left bare yellow. Time is measured like a job.
 
-The world is enamel yellow and printed ink on a neutral concrete-paper ground. Yellow is not an accent sprinkled on buttons. It owns whole fields: the search band, every availability rule, and the "Майстор ли си?" band. Everything else stays quiet (ink type, hairline dividers, warm off-white cards), so the rule is always the loudest object on the page. Type is Bulgarian-designed Sofia Sans. Its extra-condensed cut carries headlines and every number (dates, prices, counts), the way numerals are printed on a rule.
+The world is enamel yellow and printed ink on a neutral concrete-paper ground. Yellow is not an accent sprinkled on buttons. It owns whole fields: the search band, every availability rule, and the "Майстор ли си?" band. Everything else stays quiet (ink type, warm off-white strips and space instead of dividing lines), so the rule is always the loudest object on the page. Type is Bulgarian-designed Sofia Sans. Its extra-condensed cut carries headlines and every number (dates, prices, counts), the way numerals are printed on a rule.
 
 The interface is practical, legible for older and less tech-savvy craftsmen, and phone-first, with 44px or larger tap targets and one-thumb calendar actions. It refuses the category default of a white marketplace with a blue search hero and photo-card carousels.
 
@@ -202,7 +202,7 @@ The system is flat and tonal. Depth comes from paper, card surface and hairlines
 
 ## Shapes
 
-Corners are square-ish, like cut timber: 6px (md) on buttons, fields and rule ends, and 10px (lg) on rows, panels and cards. Chips are the only fully round shape. Sheets use 14px top corners on phones. Rules have a 1px inset ink outline, and each seven-day segment is joined by a brass rivet at the fold. Nothing is divided by lines: rows are strips with 6px corners and 4px between them, and boxes are 10px fields (see Separation).
+Corners are square-ish, like cut timber: 6px (md) on buttons, fields, rule ends and list rows, and 10px (lg) on panels and boxes. Chips are the only fully round shape. Sheets use 14px top corners on phones. Rules have a 1px inset ink outline, and each seven-day segment is joined by a brass rivet at the fold. Nothing is divided by lines: rows are strips with 6px corners and 4px between them, and boxes are 10px fields (see Separation).
 
 ## Components
 
