@@ -1,12 +1,15 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { ChevronRight } from "lucide-react";
 import { updateClientProfile, updateCraftsmanProfile } from "@/app/actions/dashboard";
 import type { FormState } from "@/app/actions/auth";
-import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
+import { FieldError } from "@/components/submit-button";
 import { CategoryIcon } from "@/components/category-icon";
 import { LimitNote } from "@/components/limit-note";
 import { LANGUAGE_LABEL } from "@/lib/format";
+import { CLIENT_PARTS, CRAFTSMAN_PARTS, PART_LABEL, PartTabs, SaveBar, st, useProfilePart, type PartId } from "./profile-parts";
 
 type City = { id: number; slug: string; name: string; region: string; is_major: boolean };
 type Tree = { id: number; slug: string; name: string; icon: string | null; children: { id: number; slug: string; name: string }[] }[];
@@ -21,6 +24,168 @@ const PHONE_OPTIONS: { value: PhoneVisibility; label: string; hint: string }[] =
 ];
 
 const OTHER_SLUGS = new Set(["drugo", "drugi-uslugi"]);
+
+export type CraftInitial = {
+  displayName: string;
+  businessName: string;
+  bio: string;
+  years: string;
+  city: string;
+  areas: string[];
+  categories: string[];
+  languages: string[];
+  contactHours: string;
+  otherServices: string;
+  phone: string;
+  phoneVisibility: PhoneVisibility;
+};
+
+type ClientInitial = { fullName: string; city: string; phone: string };
+
+// ---------------------------------------------------------------------------
+// Which form fields belong to which part. The unsaved-changes dot and the bar are worked out from these.
+// ---------------------------------------------------------------------------
+
+type PartFields = Partial<Record<PartId, readonly string[]>>;
+
+const CRAFTSMAN_FIELDS: PartFields = {
+  "za-men": ["displayName", "businessName", "bio", "years", "contactHours", "languages"],
+  kakvo: ["categories", "otherServices"],
+  kade: ["city", "areas"],
+  kontakti: ["phone", "phoneVisibility"],
+};
+const CLIENT_FIELDS: PartFields = { "za-men": ["fullName", "city", "phone"] };
+
+const CRAFTSMAN_LEAD: Partial<Record<PartId, string>> = {
+  "za-men": "Това виждат клиентите най-горе на страницата ти.",
+  kade: "Клиентите те намират по тези градове.",
+  kontakti: "Как да стигат до теб клиентите и какво да ти пращаме.",
+};
+
+type Snapshot = Partial<Record<PartId, string>>;
+
+/** What the form holds now, per part. Many-valued fields (ticks) are compared as sorted lists. */
+function snapshot(form: HTMLFormElement, fields: PartFields): Snapshot {
+  const data = new FormData(form);
+  const out: Snapshot = {};
+  for (const [part, names] of Object.entries(fields) as [PartId, readonly string[]][]) {
+    out[part] = names.map((n) => `${n}=${data.getAll(n).map(String).sort().join("\u0001")}`).join("\u0002");
+  }
+  return out;
+}
+
+const NONE: ReadonlySet<PartId> = new Set();
+const NO_STATE: FormState = {};
+const sameSet = (a: ReadonlySet<PartId>, b: ReadonlySet<PartId>) => a.size === b.size && [...a].every((p) => b.has(p));
+
+/**
+ * Remembers what the form held when it appeared, and after every change tells the owner which parts differ from that.
+ * The form keeps every part mounted (the hidden ones too), so one submit always carries all the fields.
+ */
+function useDirtyParts(fields: PartFields, report: (parts: ReadonlySet<PartId>) => void, state: FormState) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const base = useRef<Snapshot | null>(null);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form) return;
+    const now = snapshot(form, fields);
+    base.current ??= now;
+    const was = base.current;
+    report(new Set((Object.keys(now) as PartId[]).filter((p) => now[p] !== was[p])));
+    // `state` is here because a failed save resets the form to what was sent; the bar has to be worked out again
+  }, [tick, state, fields, report]);
+  return { formRef, changed: () => setTick((t) => t + 1) };
+}
+
+/**
+ * The state the outer component keeps so that edits survive a change of part: the part on the screen, the form key
+ * (a new key is a fresh form with the saved values), the parts with unsaved changes, and what a finished save does.
+ */
+function useProfileShell(parts: readonly PartId[], state: FormState, fields: PartFields) {
+  const [part, pick] = useProfilePart(parts);
+  const [formKey, setFormKey] = useState(0);
+  const [dirty, setDirty] = useState<ReadonlySet<PartId>>(NONE);
+  const [dismissed, setDismissed] = useState<FormState | null>(null);
+
+  // A saved profile: the page was refreshed on the server, so a new form starts from the new values.
+  const [seen, setSeen] = useState(state);
+  if (seen !== state) {
+    setSeen(state);
+    if (state.ok) {
+      setFormKey((k) => k + 1);
+      setDirty(NONE);
+    }
+  }
+
+  // A new answer from the server, handled once: the confirmation, or the part that holds a field with an error.
+  const handled = useRef(state);
+  useEffect(() => {
+    if (handled.current === state) return;
+    handled.current = state;
+    if (state.ok) {
+      if (state.message) toast.success(state.message);
+      return;
+    }
+    const wrong = Object.keys(state.errors ?? {});
+    const target = parts.find((p) => fields[p]?.some((f) => wrong.includes(f)));
+    if (target && target !== part) pick(target);
+  }, [state, parts, fields, part, pick]);
+
+  const report = useCallback((next: ReadonlySet<PartId>) => setDirty((prev) => (sameSet(prev, next) ? prev : next)), []);
+  const cancel = () => {
+    setDismissed(state);
+    setFormKey((k) => k + 1);
+    setDirty(NONE);
+  };
+  // After „Отказ“ the old answer (error text, sent values) is not shown again
+  const live = state === dismissed ? NO_STATE : state;
+  return { part, pick, formKey, dirty, report, cancel, live };
+}
+
+/** A part of the page; the ones not on the screen stay mounted but hidden. */
+function Pane({ on, className, children }: { on: boolean; className?: string; children: React.ReactNode }) {
+  return (
+    <div hidden={!on} className={on ? className : "hidden"}>
+      {children}
+    </div>
+  );
+}
+
+/** The frame both profiles share: the word menu, one part at a time, the slots that sit outside the form. */
+function Shell({
+  parts,
+  shell,
+  lead,
+  avatar,
+  notifications,
+  myData,
+  children,
+}: {
+  parts: readonly PartId[];
+  shell: ReturnType<typeof useProfileShell>;
+  lead?: string;
+  avatar: React.ReactNode;
+  notifications: React.ReactNode;
+  myData: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const { part } = shell;
+  return (
+    <div className={shell.dirty.size > 0 ? "pb-24" : ""}>
+      <PartTabs parts={parts} current={part} dirty={shell.dirty} onPick={shell.pick} />
+      <section aria-label={PART_LABEL[part]} className="mt-7 grid max-w-2xl gap-5">
+        {lead && <p className="mb-1 text-lg text-ink-2">{lead}</p>}
+        <Pane on={part === "za-men"}>{avatar}</Pane>
+        {children}
+        <Pane on={part === "kontakti"} className={parts.includes("kakvo") ? "mt-5" : undefined}>
+          {notifications}
+        </Pane>
+        <Pane on={part === "danni"}>{myData}</Pane>
+      </section>
+    </div>
+  );
+}
 
 function CitySelect({ id, name, value, cities, invalid }: { id: string; name: string; value: string; cities: City[]; invalid?: boolean }) {
   const regions = Array.from(new Set(cities.map((c) => c.region)));
@@ -42,68 +207,122 @@ function CitySelect({ id, name, value, cities, invalid }: { id: string; name: st
   );
 }
 
+// ---------------------------------------------------------------------------
+// Client
+// ---------------------------------------------------------------------------
+
 export function ClientProfileForm({
   email,
   cities,
   initial,
+  avatar,
+  notifications,
+  myData,
 }: {
   email: string;
   cities: City[];
-  initial: { fullName: string; city: string; phone: string };
+  initial: ClientInitial;
+  avatar: React.ReactNode;
+  notifications: React.ReactNode;
+  myData: React.ReactNode;
 }) {
   const [state, action] = useActionState<FormState, FormData>(updateClientProfile, {});
-  const v = { ...initial, ...state.values };
+  const shell = useProfileShell(CLIENT_PARTS, state, CLIENT_FIELDS);
+  const values = shell.live.values;
+  const v: ClientInitial = {
+    fullName: values?.fullName ?? initial.fullName,
+    city: values?.city ?? initial.city,
+    phone: values?.phone ?? initial.phone,
+  };
   return (
-    <form action={action} className="grid gap-5 rounded-[10px] border border-line bg-surface p-5" noValidate>
-      <div>
-        <p className="label">Имейл</p>
-        <p className="text-ink-2">{email}</p>
-      </div>
-      <div>
-        <label htmlFor="fullName" className="label">
-          Име
-        </label>
-        <input id="fullName" name="fullName" className="field" defaultValue={v.fullName} aria-invalid={Boolean(state.errors?.fullName)} />
-        <FieldError id="fullName-err" message={state.errors?.fullName} />
-      </div>
-      <div className="grid gap-5 sm:grid-cols-2">
+    <Shell parts={CLIENT_PARTS} shell={shell} avatar={avatar} notifications={notifications} myData={myData}>
+      <ClientFields
+        key={shell.formKey}
+        action={action}
+        state={shell.live}
+        part={shell.part}
+        dirty={shell.dirty.size > 0}
+        report={shell.report}
+        onCancel={shell.cancel}
+        email={email}
+        cities={cities}
+        v={v}
+      />
+    </Shell>
+  );
+}
+
+function ClientFields({
+  action,
+  state,
+  part,
+  dirty,
+  report,
+  onCancel,
+  email,
+  cities,
+  v,
+}: {
+  action: (formData: FormData) => void;
+  state: FormState;
+  part: PartId;
+  dirty: boolean;
+  report: (parts: ReadonlySet<PartId>) => void;
+  onCancel: () => void;
+  email: string;
+  cities: City[];
+  v: ClientInitial;
+}) {
+  const { formRef, changed } = useDirtyParts(CLIENT_FIELDS, report, state);
+  return (
+    <form ref={formRef} action={action} className="contents" noValidate onInput={changed} onChange={changed}>
+      <Pane on={part === "za-men"} className="grid gap-5">
         <div>
-          <label htmlFor="city" className="label">
-            Град
-          </label>
-          <CitySelect id="city" name="city" value={v.city} cities={cities} />
+          <p className="label">Имейл</p>
+          <p className="text-ink-2">{email}</p>
         </div>
         <div>
-          <label htmlFor="phone" className="label">
-            Телефон <span className="font-normal text-ink-3">(по желание)</span>
+          <label htmlFor="fullName" className="label">
+            Име
           </label>
-          <input id="phone" name="phone" type="tel" inputMode="tel" className="field" defaultValue={v.phone} aria-invalid={Boolean(state.errors?.phone)} />
-          <p className="hint">Не се показва на никого. Можете сами да го напишете в чата.</p>
-          <FieldError id="phone-err" message={state.errors?.phone} />
+          <input id="fullName" name="fullName" className="field" defaultValue={v.fullName} aria-invalid={Boolean(state.errors?.fullName)} />
+          <FieldError id="fullName-err" message={state.errors?.fullName} />
         </div>
-      </div>
-      <FormMessage state={state} />
-      <div>
-        <SubmitButton pendingText="Записваме…">Запази</SubmitButton>
-      </div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="city" className="label">
+              Град
+            </label>
+            <CitySelect id="city" name="city" value={v.city} cities={cities} />
+          </div>
+          <div>
+            <label htmlFor="phone" className="label">
+              Телефон <span className="font-normal text-ink-3">(по желание)</span>
+            </label>
+            <input id="phone" name="phone" type="tel" inputMode="tel" className="field" defaultValue={v.phone} aria-invalid={Boolean(state.errors?.phone)} />
+            <p className="hint">Не се показва на никого. Можете сами да го напишете в чата.</p>
+            <FieldError id="phone-err" message={state.errors?.phone} />
+          </div>
+        </div>
+      </Pane>
+      {dirty && <SaveBar state={state} onCancel={onCancel} text="Имате незаписани промени" />}
     </form>
   );
 }
 
-type CraftInitial = {
-  displayName: string;
-  businessName: string;
-  bio: string;
-  years: string;
-  city: string;
-  areas: string[];
-  categories: string[];
-  languages: string[];
-  contactHours: string;
-  otherServices: string;
-  phone: string;
-  phoneVisibility: PhoneVisibility;
-};
+// ---------------------------------------------------------------------------
+// Craftsman
+// ---------------------------------------------------------------------------
+
+/** The server's answer to a failed save carries the text fields; the ticks and the radio are added so a failed save loses nothing. */
+async function saveCraftsman(prev: FormState, formData: FormData): Promise<FormState> {
+  const result = await updateCraftsmanProfile(prev, formData);
+  if (result.ok) return result;
+  const sent = Object.fromEntries(
+    ["categories", "areas", "languages", "phoneVisibility"].map((k) => [k, formData.getAll(k).map(String).join(",")]),
+  );
+  return { ...result, values: { ...result.values, ...sent } };
+}
 
 export function CraftsmanProfileForm({
   email,
@@ -111,6 +330,9 @@ export function CraftsmanProfileForm({
   tree,
   initial,
   maxAreas,
+  avatar,
+  notifications,
+  myData,
 }: {
   email: string;
   cities: City[];
@@ -118,43 +340,99 @@ export function CraftsmanProfileForm({
   initial: CraftInitial;
   /** extra cities besides the main one; null = unlimited */
   maxAreas: number | null;
+  avatar: React.ReactNode;
+  notifications: React.ReactNode;
+  myData: React.ReactNode;
 }) {
-  const [state, action] = useActionState<FormState, FormData>(updateCraftsmanProfile, {});
-  const v = { ...initial, ...state.values } as CraftInitial;
-  const [picked, setPicked] = useState(new Set(initial.categories));
-  // Which category boxes are open. On a wide screen the boxes sit two in a row, and the neighbour opens and closes
-  // together with the one you touched, so the row never has one box open and an empty gap beside it.
-  const [openIds, setOpenIds] = useState<Set<number>>(
-    () => new Set(tree.filter((t) => t.children.some((c) => initial.categories.includes(String(c.id))) || initial.categories.includes(String(t.id))).map((t) => t.id)),
+  const [state, action] = useActionState<FormState, FormData>(saveCraftsman, {});
+  const shell = useProfileShell(CRAFTSMAN_PARTS, state, CRAFTSMAN_FIELDS);
+  const values = shell.live.values;
+  const list = (key: string, fallback: string[]) => {
+    const sent = values?.[key];
+    return sent === undefined ? fallback : sent ? sent.split(",") : [];
+  };
+  const v: CraftInitial = {
+    displayName: values?.displayName ?? initial.displayName,
+    businessName: values?.businessName ?? initial.businessName,
+    bio: values?.bio ?? initial.bio,
+    years: values?.years ?? initial.years,
+    city: values?.city ?? initial.city,
+    areas: list("areas", initial.areas),
+    categories: list("categories", initial.categories),
+    languages: list("languages", initial.languages),
+    contactHours: values?.contactHours ?? initial.contactHours,
+    otherServices: values?.otherServices ?? initial.otherServices,
+    phone: values?.phone ?? initial.phone,
+    phoneVisibility: (values?.phoneVisibility ?? initial.phoneVisibility) as PhoneVisibility,
+  };
+  return (
+    <Shell
+      parts={CRAFTSMAN_PARTS}
+      shell={shell}
+      lead={CRAFTSMAN_LEAD[shell.part]}
+      avatar={avatar}
+      notifications={notifications}
+      myData={myData}
+    >
+      <CraftsmanFields
+        key={shell.formKey}
+        action={action}
+        state={shell.live}
+        part={shell.part}
+        dirty={shell.dirty.size > 0}
+        report={shell.report}
+        onCancel={shell.cancel}
+        email={email}
+        cities={cities}
+        tree={tree}
+        maxAreas={maxAreas}
+        v={v}
+      />
+    </Shell>
   );
-  function toggleBox(index: number, open: boolean) {
-    const twoColumns = typeof window !== "undefined" && window.matchMedia("(min-width: 640px)").matches;
-    const mate = twoColumns ? tree[index ^ 1] : undefined;
-    setOpenIds((prev) => {
-      const next = new Set(prev);
-      for (const t of [tree[index], mate]) {
-        if (!t) continue;
-        if (open) next.add(t.id);
-        else next.delete(t.id);
-      }
-      return next;
-    });
-  }
-  const [bioLen, setBioLen] = useState(initial.bio.length);
-  const [areaChecked, setAreaChecked] = useState(() => new Set(initial.areas));
-  const areaCount = areaChecked.size;
-  const regions = Array.from(new Set(cities.map((c) => c.region)));
+}
+
+function CraftsmanFields({
+  action,
+  state,
+  part,
+  dirty,
+  report,
+  onCancel,
+  email,
+  cities,
+  tree,
+  maxAreas,
+  v,
+}: {
+  action: (formData: FormData) => void;
+  state: FormState;
+  part: PartId;
+  dirty: boolean;
+  report: (parts: ReadonlySet<PartId>) => void;
+  onCancel: () => void;
+  email: string;
+  cities: City[];
+  tree: Tree;
+  maxAreas: number | null;
+  v: CraftInitial;
+}) {
+  const { formRef, changed } = useDirtyParts(CRAFTSMAN_FIELDS, report, state);
+  const [picked, setPicked] = useState(() => new Set(v.categories));
+  // Which category strips are open
+  const [openIds, setOpenIds] = useState<Set<number>>(
+    () => new Set(tree.filter((t) => t.children.some((c) => v.categories.includes(String(c.id))) || v.categories.includes(String(t.id))).map((t) => t.id)),
+  );
+  const [bioLen, setBioLen] = useState(v.bio.length);
+  const [areaChecked, setAreaChecked] = useState(() => new Set(v.areas));
   const otherIds = new Set(
     tree.flatMap((t) => [t, ...t.children]).filter((c) => OTHER_SLUGS.has(c.slug)).map((c) => String(c.id)),
   );
   const otherPicked = [...picked].some((id) => otherIds.has(id));
 
   return (
-    <form action={action} className="grid gap-10" noValidate>
-      <section className="grid gap-5 rounded-[10px] border border-line bg-surface p-5" aria-labelledby="basics">
-        <h2 id="basics" className="text-xl font-extrabold">
-          Основни данни
-        </h2>
+    <form ref={formRef} action={action} className="contents" noValidate onInput={changed} onChange={changed}>
+      <Pane on={part === "za-men"} className="grid gap-5">
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
             <label htmlFor="displayName" className="label">
@@ -226,63 +504,76 @@ export function CraftsmanProfileForm({
           </div>
           <FieldError id="languages-err" message={state.errors?.languages} />
         </fieldset>
-      </section>
+      </Pane>
 
-      <section className="grid gap-4" aria-labelledby="cats">
+      <Pane on={part === "kakvo"} className="grid gap-4">
         <div>
-          <h2 id="cats" className="display text-4xl">
-            Какво работиш
-          </h2>
-          <p className="text-ink-2">
+          <p className="text-lg text-ink-2">
             Избери конкретните услуги. Показваш се в търсенето по тях.{" "}
-            <span className="numerals text-lg">{picked.size}</span> избрани.
+            <span className="whitespace-nowrap">
+              <span className="numerals text-xl text-ink">{picked.size}</span> избрани.
+            </span>
           </p>
           <FieldError id="categories-err" message={state.errors?.categories} />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {tree.map((top, index) => {
+        <div className={st.folds}>
+          {tree.map((top) => {
             const count = top.children.filter((c) => picked.has(String(c.id))).length + (picked.has(String(top.id)) ? 1 : 0);
             return (
               <details
                 key={top.id}
-                className="group rounded-[10px] border border-line bg-surface open:border-ink"
+                className={st.fold}
                 open={openIds.has(top.id)}
                 onToggle={(e) => {
                   const now = e.currentTarget.open;
-                  if (now !== openIds.has(top.id)) toggleBox(index, now);
+                  setOpenIds((s) => {
+                    if (s.has(top.id) === now) return s;
+                    const n = new Set(s);
+                    if (now) n.add(top.id);
+                    else n.delete(top.id);
+                    return n;
+                  });
                 }}
               >
-                <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
-                  <span className="grid size-9 place-items-center rounded-[8px] bg-paper ring-1 ring-inset ring-line group-open:bg-rule">
-                    <CategoryIcon name={top.icon} />
-                  </span>
+                <summary className={st.foldSummary}>
+                  <CategoryIcon name={top.icon} className="size-5 shrink-0 text-ink-2" />
                   <span className="flex-1 font-bold">{top.name}</span>
-                  {count > 0 && <span className="numerals rounded-full bg-ink px-2 text-white">{count}</span>}
+                  {count > 0 && (
+                    <span className="text-sm text-ink-2">
+                      <span className="numerals text-lg text-ink">{count}</span> {count === 1 ? "избрана" : "избрани"}
+                    </span>
+                  )}
+                  <ChevronRight
+                    className="size-4 shrink-0 text-ink-3 transition-transform duration-200 group-open:rotate-90 motion-reduce:transition-none"
+                    aria-hidden
+                  />
                 </summary>
-                <div className="grid gap-2 px-3 pb-3">
+                <ul className={`grid sm:grid-cols-2 sm:gap-x-6 ${st.foldBody}`}>
                   {(top.children.length ? top.children : [{ id: top.id, slug: top.slug, name: top.name }]).map((c) => (
-                    <label key={c.id} className="flex cursor-pointer items-center gap-3">
-                      <input
-                        type="checkbox"
-                        name="categories"
-                        value={c.id}
-                        className="check"
-                        defaultChecked={initial.categories.includes(String(c.id))}
-                        onChange={(e) => {
-                          // read now: the updater may run later, when the event target has changed again
-                          const on = e.target.checked;
-                          setPicked((s) => {
-                            const n = new Set(s);
-                            if (on) n.add(String(c.id));
-                            else n.delete(String(c.id));
-                            return n;
-                          });
-                        }}
-                      />
-                      {c.name}
-                    </label>
+                    <li key={c.id}>
+                      <label className={`cursor-pointer ${st.rowIn}`}>
+                        <input
+                          type="checkbox"
+                          name="categories"
+                          value={c.id}
+                          className="check"
+                          defaultChecked={v.categories.includes(String(c.id))}
+                          onChange={(e) => {
+                            // read now: the updater may run later, when the event target has changed again
+                            const on = e.target.checked;
+                            setPicked((s) => {
+                              const n = new Set(s);
+                              if (on) n.add(String(c.id));
+                              else n.delete(String(c.id));
+                              return n;
+                            });
+                          }}
+                        />
+                        {c.name}
+                      </label>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </details>
             );
           })}
@@ -308,66 +599,22 @@ export function CraftsmanProfileForm({
             <FieldError id="otherServices-err" message={state.errors?.otherServices} />
           </div>
         )}
-      </section>
+      </Pane>
 
-      <section className="grid gap-4 rounded-[10px] border border-line bg-surface p-5" aria-labelledby="where">
-        <h2 id="where" className="text-xl font-extrabold">
-          Къде работиш
-        </h2>
-        <div className="max-w-sm">
-          <label htmlFor="city" className="label">
-            Основен град
-          </label>
-          <CitySelect id="city" name="city" value={v.city} cities={cities} invalid={Boolean(state.errors?.city)} />
-          <FieldError id="city-err" message={state.errors?.city} />
-        </div>
-        <fieldset>
-          <legend className="label">Пътувам и до</legend>
-          {maxAreas != null && (
-            <div className="mb-2">
-              <LimitNote used={areaCount + 1} limit={maxAreas + 1} what="града (с основния)" />
-            </div>
-          )}
-          <div className="grid gap-4 sm:grid-cols-2">
-            {regions.map((r) => (
-              <div key={r}>
-                <p className="mb-1 text-sm font-bold text-ink-3">Област {r}</p>
-                <div className="grid gap-1.5">
-                  {cities
-                    .filter((c) => c.region === r)
-                    .map((c) => (
-                      <label key={c.slug} className="flex cursor-pointer items-center gap-2.5">
-                        <input
-                          type="checkbox"
-                          name="areas"
-                          value={c.slug}
-                          className="check"
-                          defaultChecked={initial.areas.includes(c.slug)}
-                          disabled={maxAreas != null && areaCount >= maxAreas && !areaChecked.has(c.slug)}
-                          onChange={(e) => {
-                            const on = e.target.checked;
-                            setAreaChecked((s) => {
-                              const n = new Set(s);
-                              if (on) n.add(c.slug);
-                              else n.delete(c.slug);
-                              return n;
-                            });
-                          }}
-                        />
-                        {c.name}
-                      </label>
-                    ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </fieldset>
-      </section>
+      {/* „Къде работя“ is this one block, so it can be swapped for another without touching the rest */}
+      <Pane on={part === "kade"} className="grid gap-6">
+        <WhereBlock
+          cities={cities}
+          maxAreas={maxAreas}
+          mainCity={v.city}
+          areaDefaults={v.areas}
+          areaChecked={areaChecked}
+          setAreaChecked={setAreaChecked}
+          state={state}
+        />
+      </Pane>
 
-      <section className="grid gap-4 rounded-[10px] border border-line bg-surface p-5" aria-labelledby="contact">
-        <h2 id="contact" className="text-xl font-extrabold">
-          Контакти
-        </h2>
+      <Pane on={part === "kontakti"} className="grid gap-5">
         <div>
           <p className="label">Имейл</p>
           <p className="text-ink-2">{email}</p>
@@ -381,16 +628,10 @@ export function CraftsmanProfileForm({
         </div>
         <fieldset>
           <legend className="label">Кой вижда телефона ти</legend>
-          <div className="grid gap-2.5">
+          <div className={st.list}>
             {PHONE_OPTIONS.map((o) => (
-              <label key={o.value} className="flex cursor-pointer items-start gap-3">
-                <input
-                  type="radio"
-                  name="phoneVisibility"
-                  value={o.value}
-                  className="check mt-0.5 rounded-full"
-                  defaultChecked={initial.phoneVisibility === o.value}
-                />
+              <label key={o.value} className={`cursor-pointer ${st.rowTall}`}>
+                <input type="radio" name="phoneVisibility" value={o.value} className="check mt-0.5" defaultChecked={v.phoneVisibility === o.value} />
                 <span>
                   <span className="font-bold">{o.label}</span>
                   <span className="block text-sm text-ink-2">{o.hint}</span>
@@ -399,17 +640,86 @@ export function CraftsmanProfileForm({
             ))}
           </div>
         </fieldset>
-      </section>
+      </Pane>
 
-      <div className="sticky bottom-3 z-10 grid gap-2 rounded-[10px] bg-ink p-3 text-white shadow-[var(--shadow-lg)] sm:flex sm:items-center">
-        <div className="flex-1 [&_p]:bg-transparent [&_p]:p-0 [&_p]:text-rule">
-          <FormMessage state={state} />
-          {!state.message && <p className="pl-1 text-sm !text-[#d8d4c8]">Промените се виждат веднага в профила.</p>}
-        </div>
-        <SubmitButton className="btn btn-rule" pendingText="Записваме…">
-          Запази профила
-        </SubmitButton>
-      </div>
+      {dirty && <SaveBar state={state} onCancel={onCancel} />}
     </form>
+  );
+}
+
+/** The main city and the cities he also travels to, as strips grouped by region. */
+function WhereBlock({
+  cities,
+  maxAreas,
+  mainCity,
+  areaDefaults,
+  areaChecked,
+  setAreaChecked,
+  state,
+}: {
+  cities: City[];
+  maxAreas: number | null;
+  mainCity: string;
+  areaDefaults: string[];
+  areaChecked: Set<string>;
+  setAreaChecked: React.Dispatch<React.SetStateAction<Set<string>>>;
+  state: FormState;
+}) {
+  const areaCount = areaChecked.size;
+  const regions = Array.from(new Set(cities.map((c) => c.region)));
+  return (
+    <>
+      <div className="max-w-sm">
+        <label htmlFor="city" className="label">
+          Основен град
+        </label>
+        <CitySelect id="city" name="city" value={mainCity} cities={cities} invalid={Boolean(state.errors?.city)} />
+        <FieldError id="city-err" message={state.errors?.city} />
+      </div>
+      <fieldset>
+        <legend className="mb-3 text-xl font-extrabold">Пътувам и до</legend>
+        {maxAreas != null && (
+          <div className="mb-3">
+            <LimitNote used={areaCount + 1} limit={maxAreas + 1} what="града (с основния)" />
+          </div>
+        )}
+        <div className="grid gap-6">
+          {regions.map((r) => (
+            <div key={r}>
+              <p className={st.label}>Област {r}</p>
+              <div className={st.grid2}>
+                {cities
+                  .filter((c) => c.region === r)
+                  .map((c) => {
+                    const off = maxAreas != null && areaCount >= maxAreas && !areaChecked.has(c.slug);
+                    return (
+                      <label key={c.slug} className={`${st.row} ${off ? st.rowOff : "cursor-pointer"}`}>
+                        <input
+                          type="checkbox"
+                          name="areas"
+                          value={c.slug}
+                          className="check disabled:cursor-not-allowed disabled:bg-surface-2"
+                          defaultChecked={areaDefaults.includes(c.slug)}
+                          disabled={off}
+                          onChange={(e) => {
+                            const on = e.target.checked;
+                            setAreaChecked((s) => {
+                              const n = new Set(s);
+                              if (on) n.add(c.slug);
+                              else n.delete(c.slug);
+                              return n;
+                            });
+                          }}
+                        />
+                        {c.name}
+                      </label>
+                    );
+                  })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </fieldset>
+    </>
   );
 }

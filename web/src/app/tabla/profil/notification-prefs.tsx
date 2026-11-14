@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { st } from "./profile-parts";
 
 export type Prefs = { email_messages: boolean; email_bookings: boolean; email_reviews: boolean; email_calendar: boolean };
 
@@ -31,17 +32,17 @@ export function NotificationPrefs({ userId, initial, isCraftsman }: { userId: st
   }
 
   return (
-    <section aria-labelledby="notif-heading" className="grid gap-4 rounded-[10px] border border-line bg-surface p-5">
-      <div>
-        <h2 id="notif-heading" className="text-xl font-extrabold">
-          Писма на имейла
-        </h2>
-        <p className="text-sm text-ink-2">Известията в сайта (камбанката) винаги работят. Тук избираш кое да идва и по имейл.</p>
-      </div>
-      <ul className="grid gap-3">
+    <section aria-labelledby="notif-heading">
+      <h2 id="notif-heading" className="text-xl font-extrabold">
+        Писма на имейла
+      </h2>
+      <p className="mt-1 text-sm text-ink-2">
+        Известията в сайта (камбанката) винаги работят. Тук избираш кое да идва и по имейл. Записва се веднага.
+      </p>
+      <ul className={`mt-3 ${st.list}`}>
         {OPTIONS.filter((o) => !o.craftsmanOnly || isCraftsman).map((o) => (
           <li key={o.key}>
-            <label className="flex cursor-pointer items-start gap-3">
+            <label className={`cursor-pointer ${st.rowTall}`}>
               <input type="checkbox" className="check mt-0.5" checked={prefs[o.key]} onChange={(e) => toggle(o.key, e.target.checked)} />
               <span>
                 <span className="font-bold">{o.label}</span>

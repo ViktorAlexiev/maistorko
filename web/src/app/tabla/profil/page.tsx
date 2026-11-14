@@ -25,27 +25,25 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
   const prefs: Prefs = prefsRow ?? { email_messages: true, email_bookings: true, email_reviews: true, email_calendar: true };
 
   const header = (
-    <div className="grid gap-6">
-      <div>
-        <h1 className="display text-5xl sm:text-6xl">Профил</h1>
-        <p className="mt-2 text-lg text-ink-2">
-          {viewer.craftsmanSlug
-            ? "Това виждат клиентите на страницата ти. Телефонът ти остава скрит."
-            : "Данните ви за връзка. Не се показват публично."}
+    <div>
+      <h1 className="display text-5xl sm:text-6xl">Профил</h1>
+      <p className="mt-2 max-w-2xl text-lg text-ink-2">
+        {viewer.craftsmanSlug
+          ? "Това виждат клиентите на страницата ти. Телефонът ти остава скрит."
+          : "Данните ви за връзка. Не се показват публично."}
+      </p>
+      {sp.nov === "1" && (
+        <p role="status" className="mt-4 max-w-2xl rounded-[8px] bg-free-soft px-4 py-3 font-semibold text-free">
+          Профилът ти на майстор е създаден. Избери категории, за да се появиш в търсенето.
         </p>
-        {sp.nov === "1" && (
-          <p role="status" className="mt-4 rounded-[8px] bg-free-soft px-4 py-3 font-semibold text-free">
-            Профилът ти на майстор е създаден. Избери категории, за да се появиш в търсенето.
-          </p>
-        )}
-      </div>
-      <AvatarUpload userId={viewer.id} name={viewer.profile.full_name || viewer.email} url={viewer.profile.avatar_url} />
+      )}
     </div>
   );
+  const avatar = <AvatarUpload userId={viewer.id} name={viewer.profile.full_name || viewer.email} url={viewer.profile.avatar_url} />;
 
   if (!viewer.craftsmanSlug) {
     return (
-      <div className="grid max-w-2xl gap-8">
+      <div>
         {header}
         <ClientProfileForm
           email={viewer.email}
@@ -55,9 +53,10 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
             city: cityOf(viewer.profile.city_id),
             phone: viewer.profile.phone ?? "",
           }}
+          avatar={avatar}
+          notifications={<NotificationPrefs userId={viewer.id} initial={prefs} isCraftsman={false} />}
+          myData={<MyData />}
         />
-        <NotificationPrefs userId={viewer.id} initial={prefs} isCraftsman={false} />
-        <MyData />
       </div>
     );
   }
@@ -74,7 +73,7 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
   ]);
 
   return (
-    <div className="grid max-w-3xl gap-8">
+    <div>
       {header}
       <CraftsmanProfileForm
         email={viewer.email}
@@ -95,9 +94,10 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
           phone: viewer.profile.phone ?? "",
           phoneVisibility: (cp?.phone_visibility ?? "login") as "public" | "login" | "chat" | "hidden",
         }}
+        avatar={avatar}
+        notifications={<NotificationPrefs userId={viewer.id} initial={prefs} isCraftsman />}
+        myData={<MyData />}
       />
-      <NotificationPrefs userId={viewer.id} initial={prefs} isCraftsman />
-      <MyData />
     </div>
   );
 }
