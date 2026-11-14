@@ -85,7 +85,7 @@ export function PartTabs({
                 type="button"
                 aria-current={on ? "page" : undefined}
                 onClick={() => onPick(p)}
-                className="group flex min-h-11 items-center gap-1.5"
+                className="group relative flex min-h-11 items-center gap-1.5"
               >
                 <span
                   className={`display -mx-1.5 rounded-[4px] px-1.5 py-1 text-[1.45rem] transition-colors motion-reduce:transition-none ${
@@ -94,7 +94,11 @@ export function PartTabs({
                 >
                   {PART_LABEL[p]}
                 </span>
-                {dirty.has(p) && <span className="ml-1 size-1.5 rounded-full bg-ink" role="img" aria-label="има незаписани промени" />}
+                {dirty.has(p) && <span
+                    className="absolute -right-1.5 top-1 size-2.5 rounded-full bg-brass shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]"
+                    role="img"
+                    aria-label="има незаписани промени"
+                  />}
               </button>
             </li>
           );

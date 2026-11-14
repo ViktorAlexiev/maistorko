@@ -117,7 +117,7 @@ export function NotificationBell({ userId, initial, initialUnread }: { userId: s
                       {n.body && <span className="line-clamp-2 block text-sm text-ink-2">{n.body}</span>}
                       <span className="block text-xs text-ink-3">{timeAgo(n.created_at)}</span>
                     </span>
-                    {!n.read_at && <span aria-label="непрочетено" className="mt-1.5 size-2.5 shrink-0 rounded-full bg-red" />}
+                    {!n.read_at && <span aria-label="непрочетено" className="mt-1 size-3 shrink-0 rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.6)]" />}
                   </>
                 );
                 const cls = "flex gap-3 rounded-[6px] bg-paper px-4 py-3 transition-colors hover:bg-rule-soft/50";
