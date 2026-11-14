@@ -7,11 +7,11 @@ import { updateClientProfile, updateCraftsmanProfile } from "@/app/actions/dashb
 import type { FormState } from "@/app/actions/auth";
 import { FieldError } from "@/components/submit-button";
 import { CategoryIcon } from "@/components/category-icon";
-import { LimitNote } from "@/components/limit-note";
+import type { City } from "@/lib/data";
 import { LANGUAGE_LABEL } from "@/lib/format";
 import { CLIENT_PARTS, CRAFTSMAN_PARTS, PART_LABEL, PartTabs, SaveBar, st, useProfilePart, type PartId } from "./profile-parts";
+import { WhereWork } from "./where-work";
 
-type City = { id: number; slug: string; name: string; region: string; is_major: boolean };
 type Tree = { id: number; slug: string; name: string; icon: string | null; children: { id: number; slug: string; name: string }[] }[];
 
 /** Picking one of these reveals a free-text field: what exactly the "other" work is. */
@@ -424,7 +424,6 @@ function CraftsmanFields({
     () => new Set(tree.filter((t) => t.children.some((c) => v.categories.includes(String(c.id))) || v.categories.includes(String(t.id))).map((t) => t.id)),
   );
   const [bioLen, setBioLen] = useState(v.bio.length);
-  const [areaChecked, setAreaChecked] = useState(() => new Set(v.areas));
   const otherIds = new Set(
     tree.flatMap((t) => [t, ...t.children]).filter((c) => OTHER_SLUGS.has(c.slug)).map((c) => String(c.id)),
   );
@@ -603,14 +602,12 @@ function CraftsmanFields({
 
       {/* „Къде работя“ is this one block, so it can be swapped for another without touching the rest */}
       <Pane on={part === "kade"} className="grid gap-6">
-        <WhereBlock
+        <WhereWork
           cities={cities}
+          initialCity={v.city}
+          initialAreas={v.areas}
           maxAreas={maxAreas}
-          mainCity={v.city}
-          areaDefaults={v.areas}
-          areaChecked={areaChecked}
-          setAreaChecked={setAreaChecked}
-          state={state}
+          cityError={state.errors?.city}
         />
       </Pane>
 
@@ -644,82 +641,5 @@ function CraftsmanFields({
 
       {dirty && <SaveBar state={state} onCancel={onCancel} />}
     </form>
-  );
-}
-
-/** The main city and the cities he also travels to, as strips grouped by region. */
-function WhereBlock({
-  cities,
-  maxAreas,
-  mainCity,
-  areaDefaults,
-  areaChecked,
-  setAreaChecked,
-  state,
-}: {
-  cities: City[];
-  maxAreas: number | null;
-  mainCity: string;
-  areaDefaults: string[];
-  areaChecked: Set<string>;
-  setAreaChecked: React.Dispatch<React.SetStateAction<Set<string>>>;
-  state: FormState;
-}) {
-  const areaCount = areaChecked.size;
-  const regions = Array.from(new Set(cities.map((c) => c.region)));
-  return (
-    <>
-      <div className="max-w-sm">
-        <label htmlFor="city" className="label">
-          Основен град
-        </label>
-        <CitySelect id="city" name="city" value={mainCity} cities={cities} invalid={Boolean(state.errors?.city)} />
-        <FieldError id="city-err" message={state.errors?.city} />
-      </div>
-      <fieldset>
-        <legend className="mb-3 text-xl font-extrabold">Пътувам и до</legend>
-        {maxAreas != null && (
-          <div className="mb-3">
-            <LimitNote used={areaCount + 1} limit={maxAreas + 1} what="града (с основния)" />
-          </div>
-        )}
-        <div className="grid gap-6">
-          {regions.map((r) => (
-            <div key={r}>
-              <p className={st.label}>Област {r}</p>
-              <div className={st.grid2}>
-                {cities
-                  .filter((c) => c.region === r)
-                  .map((c) => {
-                    const off = maxAreas != null && areaCount >= maxAreas && !areaChecked.has(c.slug);
-                    return (
-                      <label key={c.slug} className={`${st.row} ${off ? st.rowOff : "cursor-pointer"}`}>
-                        <input
-                          type="checkbox"
-                          name="areas"
-                          value={c.slug}
-                          className="check disabled:cursor-not-allowed disabled:bg-surface-2"
-                          defaultChecked={areaDefaults.includes(c.slug)}
-                          disabled={off}
-                          onChange={(e) => {
-                            const on = e.target.checked;
-                            setAreaChecked((s) => {
-                              const n = new Set(s);
-                              if (on) n.add(c.slug);
-                              else n.delete(c.slug);
-                              return n;
-                            });
-                          }}
-                        />
-                        {c.name}
-                      </label>
-                    );
-                  })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </fieldset>
-    </>
   );
 }
