@@ -2,7 +2,7 @@ import { Download } from "lucide-react";
 import { DeleteAccount } from "./delete-account-dialog";
 
 /** GDPR: download everything we hold about you, or delete the account for good (the deleting happens in a popup). */
-export function MyData() {
+export function MyData({ forClient = false }: { forClient?: boolean }) {
   return (
     <div className="grid max-w-2xl gap-10">
       <div>
@@ -16,7 +16,7 @@ export function MyData() {
       <div>
         <h3 className="text-xl font-extrabold">Изтриване на профила</h3>
         <p className="mt-1 text-ink-2">Профилът и всичко към него се изтрива завинаги. Преди това ще те питаме още веднъж.</p>
-        <DeleteAccount />
+        <DeleteAccount forClient={forClient} />
       </div>
     </div>
   );

@@ -55,7 +55,7 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
           }}
           avatar={avatar}
           notifications={<NotificationPrefs userId={viewer.id} initial={prefs} isCraftsman={false} />}
-          myData={<MyData />}
+          myData={<MyData forClient />}
         />
       </div>
     );

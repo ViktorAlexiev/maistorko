@@ -16,6 +16,14 @@ const DELETED = [
   "Отзивите за теб и отзивите, които си написал",
 ];
 
+const DELETED_CLIENT = [
+  "Профилът ти",
+  "Разговорите с майсторите",
+  "Отзивите, които си написал",
+  "Снимките, които си пратил в чата",
+  "Запазените майстори",
+];
+
 /** The red button: grey until the word is typed exactly, and busy while the account is being removed. */
 function ConfirmButton({ ready }: { ready: boolean }) {
   const { pending } = useFormStatus();
@@ -33,7 +41,7 @@ function ConfirmButton({ ready }: { ready: boolean }) {
 }
 
 /** The content of the popup. It is remounted every time the popup closes, so the word and any old error start clean. */
-function DeleteForm({ onCancel }: { onCancel: () => void }) {
+function DeleteForm({ onCancel, forClient }: { onCancel: () => void; forClient: boolean }) {
   const [state, action] = useActionState<FormState, FormData>(deleteAccount, {});
   const [word, setWord] = useState("");
   return (
@@ -57,7 +65,7 @@ function DeleteForm({ onCancel }: { onCancel: () => void }) {
       <div>
         <p className="text-ink-2">Изтрива се завинаги и не може да се върне:</p>
         <ul className="mt-2 grid gap-1">
-          {DELETED.map((x) => (
+          {(forClient ? DELETED_CLIENT : DELETED).map((x) => (
             <li key={x} className="rounded-[6px] bg-paper px-3 py-2.5 font-semibold">
               {x}
             </li>
@@ -100,7 +108,7 @@ function DeleteForm({ onCancel }: { onCancel: () => void }) {
 }
 
 /** „Изтрий профила“ and the popup behind it: a sheet from the bottom on phones, a dialog in the middle on wider screens. */
-export function DeleteAccount() {
+export function DeleteAccount({ forClient = false }: { forClient?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   // Bumped on every close (Escape, Отказ, the backdrop, the cross), which remounts the form and clears it
   const [round, setRound] = useState(0);
@@ -126,7 +134,7 @@ export function DeleteAccount() {
         onClose={() => setRound((n) => n + 1)}
         onClick={(e) => e.target === ref.current && close()}
       >
-        <DeleteForm key={round} onCancel={close} />
+        <DeleteForm key={round} onCancel={close} forClient={forClient} />
       </dialog>
     </>
   );
