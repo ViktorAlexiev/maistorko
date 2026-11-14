@@ -253,6 +253,8 @@ Your own bubbles are ink with white text and a 4px tail corner. The other side's
 
 **The Light Bar Rule.** The site header is a solid Card Surface bar over the paper ground: no bottom line, no translucency, no blur, no shadow. The footer has no line above the copyright; the copyright row sits on a full-width Graphite Deep strip. Dropdowns from the header have no border, only the large shadow.
 
+**The Tab and Rivet Rule.** A count beside a word (unread messages, new items) is an ink tab with yellow numerals: Ink background, Enamel Rule Yellow numerals in the condensed numerals style, 4px corners, about 24px high, set inline after the word. On the phone bottom bar the tab is smaller and sits at the word's top-right corner with a Card Surface ring. Above 99 it reads „99+“. Red is not used for counts (red marks position in time, see The Measuring Mark Rule). A status mark without a number is a rivet, like the hinge rivet of the folding rule: a round mark with an inset ink ring. Unsaved changes are a 10px Hinge Brass rivet at the top-right corner of the word, positioned out of the layout so nothing moves when it appears. An unread item in a list is a 12px red rivet at the right of the row. The site header's circular badges (bell, „Съобщения“) are not covered yet.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -261,6 +263,7 @@ Your own bubbles are ink with white text and a 4px tail corner. The other side's
 - **Do** give yellow whole regions: bands, strips and fields.
 - **Do** keep tap targets at 44px or more and calendar actions reachable with one thumb.
 - **Do** label demo imagery "Демо изображение" until real photos exist.
+- **Do** mark counts with an ink tab and unsaved or unread states with a rivet (The Tab and Rivet Rule).
 
 ### Don't:
 - **Don't** use red for emphasis or errors. Red marks time only.
