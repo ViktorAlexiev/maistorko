@@ -424,6 +424,13 @@ function CraftsmanFields({
     () => new Set(tree.filter((t) => t.children.some((c) => v.categories.includes(String(c.id))) || v.categories.includes(String(t.id))).map((t) => t.id)),
   );
   const [bioLen, setBioLen] = useState(v.bio.length);
+  // Every failed save remounts „Къде работя“ with the sent values, so the reset form does not fall back to the old city and ticks
+  const [seen, setSeen] = useState(state);
+  const [round, setRound] = useState(0);
+  if (seen !== state) {
+    setSeen(state);
+    setRound((r) => r + 1);
+  }
   const otherIds = new Set(
     tree.flatMap((t) => [t, ...t.children]).filter((c) => OTHER_SLUGS.has(c.slug)).map((c) => String(c.id)),
   );
@@ -603,6 +610,7 @@ function CraftsmanFields({
       {/* „Къде работя“ is this one block, so it can be swapped for another without touching the rest */}
       <Pane on={part === "kade"} className="grid gap-6">
         <WhereWork
+          key={round}
           cities={cities}
           initialCity={v.city}
           initialAreas={v.areas}

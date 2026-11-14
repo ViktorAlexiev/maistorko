@@ -10,7 +10,9 @@ import { st } from "./profile-parts";
 
 /**
  * „Къде работя“: the main city, then the places around it first, the other groups fold out, a plain reason at the limit.
- * Holds the state of the select (`city`) and of the ticks (`areas`) itself, so the form around it only has to read the fields.
+ * The select (`city`) and the ticks (`areas`) are uncontrolled, because React resets the form after every save, failed or
+ * not; their state is mirrored here for the groups, the counter and the limit. After a failed save the form remounts this
+ * block with the sent values.
  */
 export function WhereWork({
   cities,
@@ -72,7 +74,7 @@ export function WhereWork({
                 name="areas"
                 value={c.slug}
                 className="check disabled:cursor-not-allowed disabled:bg-surface-2"
-                checked={on}
+                defaultChecked={on}
                 disabled={off}
                 onChange={(e) => toggle(c.slug, e.target.checked)}
               />
@@ -94,7 +96,7 @@ export function WhereWork({
           id={cityId}
           name="city"
           className="field"
-          value={city}
+          defaultValue={initialCity}
           onChange={(e) => pickCity(e.target.value)}
           aria-invalid={Boolean(cityError)}
           aria-describedby={cityError ? "city-err" : undefined}
