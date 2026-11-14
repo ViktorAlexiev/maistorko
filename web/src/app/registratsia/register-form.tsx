@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { signUp, type FormState } from "@/app/actions/auth";
 import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
 import { Turnstile } from "@/components/turnstile";
@@ -24,6 +24,13 @@ export function RegisterForm({
   useEffect(() => {
     onRoleChange?.(role);
   }, [role, onRoleChange]);
+  // React resets the form after every action, which puts the hidden radios back to their first value: put them back on the chosen role
+  const picks = useRef<HTMLFieldSetElement>(null);
+  useEffect(() => {
+    picks.current?.querySelectorAll<HTMLInputElement>('input[name="role-pick"]').forEach((r) => {
+      r.checked = r.value === role;
+    });
+  }, [state, role]);
   const majors = cities.filter((c) => c.is_major);
   const regions = Array.from(new Set(cities.filter((c) => !c.is_major).map((c) => c.region)));
 
@@ -36,7 +43,7 @@ export function RegisterForm({
       <input type="hidden" name="next" value={next} />
       {/* the role is sent from the state: React resets the form after a failed attempt, which would flip the radios back */}
       <input type="hidden" name="role" value={role} />
-      <fieldset>
+      <fieldset ref={picks}>
         <legend className="label">Регистрирам се като</legend>
         <div className="grid grid-cols-2 gap-2">
           {(
