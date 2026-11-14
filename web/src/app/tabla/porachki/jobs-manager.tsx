@@ -63,12 +63,12 @@ function byMonth(history: Job[]) {
   return months;
 }
 
-/** "09:00–11:00", "цял ден", "до 26 ноември, цели дни" */
+/** "09:00-11:00", "цял ден", "до 26 ноември, цели дни" */
 const jobHours = (j: Job) =>
-  j.end_date !== j.start_date ? `до ${formatDate(j.end_date)}, цели дни` : j.start_time ? `${j.start_time.slice(0, 5)}–${j.end_time!.slice(0, 5)}` : "цял ден";
+  j.end_date !== j.start_date ? `до ${formatDate(j.end_date)}, цели дни` : j.start_time ? `${j.start_time.slice(0, 5)}-${j.end_time!.slice(0, 5)}` : "цял ден";
 
 const bookingHours = (b: OrderBooking) =>
-  b.end_date ? `до ${formatDate(b.end_date)}, цели дни` : b.start_time ? `${b.start_time.slice(0, 5)}–${b.end_time!.slice(0, 5)}` : "цял ден";
+  b.end_date ? `до ${formatDate(b.end_date)}, цели дни` : b.start_time ? `${b.start_time.slice(0, 5)}-${b.end_time!.slice(0, 5)}` : "цял ден";
 
 const bookingTitle = (b: OrderBooking) => `${b.kind === "inspection" ? "Оглед" : "Работа"} при ${b.partner_name}`;
 
@@ -402,7 +402,7 @@ export function JobsManager({
                 {PRESETS.map((x) => (
                   <button key={x.key} type="button" className="chip" aria-pressed={form.preset === x.key} onClick={() => set("preset", x.key)}>
                     {x.label}
-                    {x.from && x.key !== "custom" && <span className="text-xs font-medium opacity-75">{x.from.slice(0, 2)}–{x.to!.slice(0, 2)}</span>}
+                    {x.from && x.key !== "custom" && <span className="text-xs font-medium opacity-75">{x.from.slice(0, 2)}-{x.to!.slice(0, 2)}</span>}
                   </button>
                 ))}
               </div>

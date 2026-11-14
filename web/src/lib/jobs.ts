@@ -47,10 +47,10 @@ export type OrderBooking = {
   note: string | null;
 };
 
-/** "14 окт" or "14 окт – 18 окт, цели дни" or "14 окт, 09:00–11:00" */
+/** "14 окт" or "14 окт - 18 окт, цели дни" or "14 окт, 09:00-11:00" */
 export function jobWhen(j: Pick<Job, "start_date" | "end_date" | "start_time" | "end_time">) {
-  if (j.end_date !== j.start_date) return `${formatDate(j.start_date)} – ${formatDate(j.end_date)}, цели дни`;
-  if (j.start_time) return `${formatDate(j.start_date, true)}, ${j.start_time.slice(0, 5)}–${j.end_time!.slice(0, 5)}`;
+  if (j.end_date !== j.start_date) return `${formatDate(j.start_date)} - ${formatDate(j.end_date)}, цели дни`;
+  if (j.start_time) return `${formatDate(j.start_date, true)}, ${j.start_time.slice(0, 5)}-${j.end_time!.slice(0, 5)}`;
   return `${formatDate(j.start_date, true)}, цял ден`;
 }
 
