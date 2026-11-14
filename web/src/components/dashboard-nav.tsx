@@ -49,7 +49,7 @@ export function DashboardNav({
                       <UnreadBadge
                         userId={unread.userId}
                         initial={unread.initial}
-                        className="numerals text-[1.35rem] leading-none text-red"
+                        className="numerals grid h-6 min-w-6 place-items-center rounded-[4px] bg-ink px-1.5 text-[1.05rem] leading-none text-rule"
                       />
                     )}
                   </Link>

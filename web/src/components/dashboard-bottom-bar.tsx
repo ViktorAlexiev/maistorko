@@ -63,7 +63,7 @@ export function DashboardBottomBar({
                     <UnreadBadge
                       userId={unread.userId}
                       initial={unread.initial}
-                      className="numerals absolute -right-1 top-1.5 text-[0.95rem] leading-none text-red"
+                      className="numerals absolute -right-2 top-0.5 grid h-[1.125rem] min-w-[1.125rem] place-items-center rounded-[4px] bg-ink px-1 text-[0.85rem] leading-none text-rule ring-2 ring-surface"
                     />
                   )}
                 </Link>
