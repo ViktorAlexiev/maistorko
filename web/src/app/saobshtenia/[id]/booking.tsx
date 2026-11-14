@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { CalendarCheck, CalendarClock, CalendarX, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { useConfirm } from "@/components/confirm-dialog";
+import { DateField, TimeField } from "@/components/date-time-fields";
 import { formatDate, relativeDay, todayISO } from "@/lib/format";
 import { SLOT_DEFS, type Range } from "@/lib/slots";
 
@@ -55,8 +57,9 @@ export function BookingCard({
   const st = STATUS[booking.status];
   const Icon = booking.status === "confirmed" ? CalendarCheck : booking.status === "proposed" ? CalendarClock : CalendarX;
 
-  const act = (action: "confirm" | "decline" | "cancel", confirmText?: string) => {
-    if (confirmText && !window.confirm(confirmText)) return;
+  const { confirm, dialog } = useConfirm();
+  const act = async (action: "confirm" | "decline" | "cancel", ask?: { title: string; message?: string }) => {
+    if (ask && !(await confirm({ ...ask, confirmLabel: "Да, отмени", cancelLabel: "Не", danger: true }))) return;
     start(async () => {
       const { error } = await supabase.rpc("respond_booking", { p_booking: booking.id, p_action: action });
       if (error) toast.error(error.message);
@@ -113,13 +116,14 @@ export function BookingCard({
               type="button"
               className="font-bold text-danger underline"
               disabled={pending}
-              onClick={() => act("cancel", "Да отменя ли уговорката? Другата страна ще види съобщение.")}
+              onClick={() => act("cancel", { title: "Да отменя ли уговорката?", message: "Другата страна ще види съобщение." })}
             >
               Отмени
             </button>
           </div>
         )}
       </div>
+      {dialog}
     </div>
   );
 }
@@ -208,7 +212,7 @@ export function BookingSheet({
         p_end_date: multiDay ? endDate : undefined,
       });
       if (error) return void toast.error(error.message);
-      toast.success(iAmCraftsman ? "Запазено в календара ти." : `Изпратено. ${partnerName.split(" ")[0]} трябва да потвърди.`);
+      toast.success(`Изпратено. ${partnerName.split(" ")[0]} трябва да потвърди.`);
       setNote("");
       setEndDate("");
       onCreated();
@@ -228,11 +232,11 @@ export function BookingSheet({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="bk-title" className="display text-4xl">
-              {iAmCraftsman ? "Запази час" : "Предложи час"}
+              Предложи час
             </h2>
             <p className="mt-1 text-sm text-ink-2">
               {iAmCraftsman
-                ? "Интервалът веднага става зает в календара ти и клиентът вижда уговорката в чата."
+                ? "Клиентът вижда предложението в чата. След като се съгласи, часът става зает в календара ти."
                 : `${partnerName.split(" ")[0]} ще потвърди и тогава часът става зает в календара му.`}
             </p>
           </div>
@@ -262,15 +266,7 @@ export function BookingSheet({
           <label htmlFor="bk-date" className="label">
             Ден
           </label>
-          <input
-            id="bk-date"
-            type="date"
-            className="field"
-            min={today}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
+          <DateField id="bk-date" min={today} value={date} onChange={setDate} required />
           <p className="hint">
             {free === null
               ? "Проверяваме свободните часове…"
@@ -296,21 +292,13 @@ export function BookingSheet({
                 <label htmlFor="bk-from" className="text-sm font-semibold text-ink-2">
                   От
                 </label>
-                <input id="bk-from" type="time" step={900} className="field mt-1" value={from} onChange={(e) => setFrom(e.target.value)} />
+                <TimeField id="bk-from" className="field mt-1" value={from} onChange={setFrom} ariaLabel="От" />
               </div>
               <div>
                 <label htmlFor="bk-to" className="text-sm font-semibold text-ink-2">
                   До
                 </label>
-                <input
-                  id="bk-to"
-                  type="time"
-                  step={900}
-                  className="field mt-1"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  aria-invalid={invalid}
-                />
+                <TimeField id="bk-to" className="field mt-1" value={to} onChange={setTo} invalid={invalid} ariaLabel="До" />
               </div>
             </div>
           )}
@@ -322,15 +310,7 @@ export function BookingSheet({
             <label htmlFor="bk-end" className="label">
               До ден <span className="font-normal text-ink-3">(ако работата е за няколко дни)</span>
             </label>
-            <input
-              id="bk-end"
-              type="date"
-              className="field"
-              min={date}
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              aria-invalid={invalidEnd}
-            />
+            <DateField id="bk-end" min={date} value={endDate} onChange={setEndDate} invalid={invalidEnd} />
             {invalidEnd ? (
               <p className="error-text">Крайният ден трябва да е след първия.</p>
             ) : (

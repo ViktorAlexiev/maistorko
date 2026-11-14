@@ -2,6 +2,7 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { TimeField } from "@/components/date-time-fields";
 import {
   add,
   covers,
@@ -67,28 +68,24 @@ export function RowList({ rows, onChange, idPrefix }: { rows: Row[]; onChange: (
                 <label className="text-xs font-semibold text-ink-2" htmlFor={`${idPrefix}-${r.key}-a`}>
                   От
                 </label>
-                <input
+                <TimeField
                   id={`${idPrefix}-${r.key}-a`}
-                  type="time"
-                  step={900}
                   className="field mt-0.5"
                   value={Number.isFinite(r.a) ? toTime(r.a) : ""}
-                  aria-invalid={bad}
-                  onChange={(e) => set(r.key, { a: parseStart(e.target.value) })}
+                  invalid={bad}
+                  onChange={(v) => set(r.key, { a: parseStart(v) })}
                 />
               </div>
               <div className="flex-1 sm:flex-none">
                 <label className="text-xs font-semibold text-ink-2" htmlFor={`${idPrefix}-${r.key}-b`}>
                   До
                 </label>
-                <input
+                <TimeField
                   id={`${idPrefix}-${r.key}-b`}
-                  type="time"
-                  step={900}
                   className="field mt-0.5"
                   value={Number.isFinite(r.b) ? toTime(r.b % (24 * 60)) : ""}
-                  aria-invalid={bad}
-                  onChange={(e) => set(r.key, { b: parseEnd(e.target.value) })}
+                  invalid={bad}
+                  onChange={(v) => set(r.key, { b: parseEnd(v) })}
                 />
               </div>
               <button

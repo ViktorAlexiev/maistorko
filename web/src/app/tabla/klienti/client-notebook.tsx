@@ -6,6 +6,8 @@ import { BellRing, Phone, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatDate, timeAgo } from "@/lib/format";
+import { useConfirm } from "@/components/confirm-dialog";
+import { DateField } from "@/components/date-time-fields";
 import { ClientPhotos } from "./client-photos";
 
 export const STATUS_LABEL = {
@@ -48,6 +50,7 @@ export function ClientNotebook({
 }) {
   const supabase = createClient();
   const router = useRouter();
+  const { confirm, dialog } = useConfirm();
   const [pending, start] = useTransition();
   const [clients, setClients] = useState(initialClients);
   const [notes, setNotes] = useState(initialNotes);
@@ -119,8 +122,9 @@ export function ClientNotebook({
     });
   }
 
-  function removeClient(c: NotebookClient) {
-    if (!window.confirm(`Да изтрием ли „${c.name}“ и бележките към него? Поръчките остават.`)) return;
+  async function removeClient(c: NotebookClient) {
+    const ok = await confirm({ title: `Да изтрием ли „${c.name}“?`, message: "Бележките и снимките към клиента също се изтриват. Поръчките остават.", confirmLabel: "Изтрий", danger: true });
+    if (!ok) return;
     start(async () => {
       const { error } = await supabase.from("craftsman_clients").delete().eq("id", c.id);
       if (error) return void toast.error("Не успяхме да изтрием.");
@@ -233,12 +237,10 @@ export function ClientNotebook({
                         <label className="label" htmlFor={`ra-${c.id}`}>
                           Напомни ми на
                         </label>
-                        <input
+                        <DateField
                           id={`ra-${c.id}`}
-                          type="date"
-                          className="field"
                           value={c.remind_at ?? ""}
-                          onChange={(e) => patch(c.id, e.target.value ? { remind_at: e.target.value } : { remind_at: null, remind_note: null })}
+                          onChange={(v) => patch(c.id, v ? { remind_at: v } : { remind_at: null, remind_note: null })}
                         />
                       </div>
                       <div>
@@ -312,6 +314,7 @@ export function ClientNotebook({
           })}
         </ul>
       )}
+      {dialog}
     </div>
   );
 }

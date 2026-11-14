@@ -146,7 +146,8 @@ export async function Catalog({
             <RuleLegend className="mt-4" />
             {state.sort === "recommended" && (
               <p className="mt-2 text-sm text-ink-3">
-                „Препоръчани“ е подредено по едни и същи правила за всички.{" "}
+                „Препоръчани“ е подредено по наличност, оценки, бързина на отговор, актуален календар и пълнота на профила. Профили с платен
+                бонус от Pro са обозначени „Платен бонус в класирането“.{" "}
                 <Link href="/kak-podrejdame" className="link font-semibold">
                   Как подреждаме
                 </Link>

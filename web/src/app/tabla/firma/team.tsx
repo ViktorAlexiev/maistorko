@@ -7,6 +7,7 @@ import { Copy, Send } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/avatar";
+import { useConfirm } from "@/components/confirm-dialog";
 import { formatDate, relativeDay, timeAgo } from "@/lib/format";
 
 export type TeamMember = {
@@ -26,6 +27,7 @@ export function TeamList({ team, meId, myRole }: { team: TeamMember[]; meId: str
   const router = useRouter();
   const [pending, start] = useTransition();
   const manager = myRole === "owner" || myRole === "manager";
+  const { confirm, dialog } = useConfirm();
 
   function call(fn: () => PromiseLike<{ error: { message: string } | null }>, ok: string) {
     start(async () => {
@@ -39,6 +41,7 @@ export function TeamList({ team, meId, myRole }: { team: TeamMember[]; meId: str
   }
 
   return (
+    <>
     <ul className="grid border-t-[1.5px] border-ink">
       {team.map((m) => (
         <li key={m.user_id} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line py-3">
@@ -92,8 +95,9 @@ export function TeamList({ team, meId, myRole }: { team: TeamMember[]; meId: str
                   type="button"
                   className="btn btn-danger btn-sm"
                   disabled={pending}
-                  onClick={() => {
-                    if (!window.confirm(`Да махна ли ${m.name} от фирмата? Профилът и отзивите му остават негови.`)) return;
+                  onClick={async () => {
+                    const ok = await confirm({ title: `Да махна ли ${m.name} от фирмата?`, message: "Профилът и отзивите му остават негови.", confirmLabel: "Махни", danger: true });
+                    if (!ok) return;
                     call(() => createClient().rpc("remove_org_member", { p_user: m.user_id }), "Махнат от фирмата.");
                   }}
                 >
@@ -105,6 +109,8 @@ export function TeamList({ team, meId, myRole }: { team: TeamMember[]; meId: str
         </li>
       ))}
     </ul>
+    {dialog}
+    </>
   );
 }
 
@@ -324,13 +330,16 @@ export function OrgProfileForm({
 export function LeaveButton() {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const { confirm, dialog } = useConfirm();
   return (
+    <>
     <button
       type="button"
       className="btn btn-danger"
       disabled={pending}
-      onClick={() => {
-        if (!window.confirm("Да напусна ли фирмата?")) return;
+      onClick={async () => {
+        const ok = await confirm({ title: "Да напусна ли фирмата?", message: "Ще загубиш достъпа до фирмения профил и Pro плана на фирмата.", confirmLabel: "Напусни", danger: true });
+        if (!ok) return;
         start(async () => {
           const { error } = await createClient().rpc("leave_org");
           if (error) return void toast.error(error.message);
@@ -342,5 +351,7 @@ export function LeaveButton() {
     >
       Напусни фирмата
     </button>
+    {dialog}
+    </>
   );
 }

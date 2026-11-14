@@ -2,10 +2,12 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-dialog";
 import { resolveReports, setBanned, setHidden } from "@/app/actions/admin";
 
 export function ReportActions({ userId, isCraftsman, hidden, banned }: { userId: string; isCraftsman: boolean; hidden: boolean; banned: boolean }) {
   const [pending, start] = useTransition();
+  const { confirm, dialog } = useConfirm();
   const act = (fn: () => Promise<{ ok: boolean; message: string }>) =>
     start(async () => {
       try {
@@ -28,8 +30,8 @@ export function ReportActions({ userId, isCraftsman, hidden, banned }: { userId:
         type="button"
         className={`btn btn-sm ${banned ? "btn-outline" : "btn-danger"}`}
         disabled={pending}
-        onClick={() => {
-          if (!banned && !window.confirm("Да блокирам ли този потребител? Няма да може да пише, а профилът му ще се скрие.")) return;
+        onClick={async () => {
+          if (!banned && !(await confirm({ title: "Да блокирам ли този потребител?", message: "Няма да може да пише, а профилът му ще се скрие.", confirmLabel: "Блокирай", danger: true }))) return;
           act(() => setBanned(userId, !banned));
         }}
       >
@@ -42,6 +44,7 @@ export function ReportActions({ userId, isCraftsman, hidden, banned }: { userId:
       <button type="button" className="btn btn-ghost btn-sm" disabled={pending} onClick={() => act(() => resolveReports(userId, "dismissed"))}>
         Отхвърли
       </button>
+      {dialog}
     </div>
   );
 }

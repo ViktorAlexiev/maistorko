@@ -71,6 +71,7 @@ export async function updateCraftsmanProfile(_: FormState, formData: FormData): 
     categories: formData.getAll("categories").map(String),
     languages: formData.getAll("languages").map(String),
     contactHours: String(formData.get("contactHours") ?? ""),
+    replyHours: String(formData.get("replyHours") ?? ""),
     otherServices: String(formData.get("otherServices") ?? ""),
     phone: String(formData.get("phone") ?? ""),
     phoneVisibility: String(formData.get("phoneVisibility") ?? "login"),
@@ -82,6 +83,7 @@ export async function updateCraftsmanProfile(_: FormState, formData: FormData): 
     years: raw.years,
     city: raw.city,
     contactHours: raw.contactHours,
+    replyHours: raw.replyHours,
     otherServices: raw.otherServices,
     phone: raw.phone,
   };
@@ -111,6 +113,7 @@ export async function updateCraftsmanProfile(_: FormState, formData: FormData): 
       city_id: mainCity,
       languages: d.languages,
       contact_hours: d.contactHours || null,
+      reply_within_hours: d.replyHours ? Number(d.replyHours) : null,
       phone_visibility: d.phoneVisibility,
       other_services: d.otherServices || null,
     })

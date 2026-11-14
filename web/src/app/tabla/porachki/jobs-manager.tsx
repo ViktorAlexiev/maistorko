@@ -9,6 +9,8 @@ import { createClient } from "@/lib/supabase/client";
 import { diffDays, formatDate, formatEur, isoWeekday, MONTHS, MONTHS_SHORT, parseISO, WEEKDAYS_SHORT } from "@/lib/format";
 import { toMoney } from "@/lib/validation";
 import { hasMoney, jobTotal, SOURCE_LABEL, type Client, type Job, type JobSource, type JobStatus, type OrderBooking } from "@/lib/jobs";
+import { useConfirm } from "@/components/confirm-dialog";
+import { DateField, TimeField } from "@/components/date-time-fields";
 
 /**
  * Boxes without frames: a light panel under a yellow band that carries the title in the condensed face;
@@ -125,6 +127,7 @@ export function JobsManager({
   head?: React.ReactNode;
 }) {
   const supabase = createClient();
+  const { confirm, dialog } = useConfirm();
   const router = useRouter();
   const [jobs, setJobs] = useState(initialJobs);
   const [clients, setClients] = useState(initialClients);
@@ -301,8 +304,9 @@ export function JobsManager({
     });
   }
 
-  function remove(j: Job) {
-    if (!window.confirm(`Да изтрия ли „${j.title}“? Часовете ѝ ще се освободят в календара.`)) return;
+  async function remove(j: Job) {
+    const ok = await confirm({ title: `Да изтрия ли „${j.title}“?`, message: "Часовете ѝ ще се освободят в календара.", confirmLabel: "Изтрий", danger: true });
+    if (!ok) return;
     start(async () => {
       const { error: e } = await supabase.from("jobs").delete().eq("id", j.id);
       if (e) return void toast.error("Не успяхме да изтрием поръчката.");
@@ -398,13 +402,13 @@ export function JobsManager({
               <label htmlFor="j-from" className="label">
                 Ден
               </label>
-              <input id="j-from" type="date" className="field" value={form.from} onChange={(e) => set("from", e.target.value)} />
+              <DateField id="j-from" value={form.from} onChange={(v) => set("from", v)} />
             </div>
             <div>
               <label htmlFor="j-to" className="label">
                 До ден <span className="font-normal text-ink-3">(ако е за няколко дни)</span>
               </label>
-              <input id="j-to" type="date" className="field" min={form.from} value={form.to} onChange={(e) => set("to", e.target.value)} />
+              <DateField id="j-to" min={form.from} value={form.to} onChange={(v) => set("to", v)} />
             </div>
           </div>
           {multiDay ? (
@@ -422,8 +426,8 @@ export function JobsManager({
               </div>
               {form.preset === "custom" && (
                 <div className="mt-3 grid max-w-sm grid-cols-2 gap-2">
-                  <input type="time" step={900} className="field" aria-label="От" value={form.timeFrom} onChange={(e) => set("timeFrom", e.target.value)} />
-                  <input type="time" step={900} className="field" aria-label="До" value={form.timeTo} onChange={(e) => set("timeTo", e.target.value)} />
+                  <TimeField ariaLabel="От" value={form.timeFrom} onChange={(v) => set("timeFrom", v)} />
+                  <TimeField ariaLabel="До" value={form.timeTo} onChange={(v) => set("timeTo", v)} />
                 </div>
               )}
             </fieldset>
@@ -666,6 +670,7 @@ export function JobsManager({
           </div>
         </details>
       )}
+      {dialog}
     </section>
   );
 }

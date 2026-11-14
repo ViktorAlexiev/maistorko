@@ -6,6 +6,8 @@ import { Copy, Plus, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatDate, formatEur } from "@/lib/format";
+import { useConfirm } from "@/components/confirm-dialog";
+import { DateField } from "@/components/date-time-fields";
 
 export type OfferRow = {
   id: string;
@@ -40,6 +42,7 @@ function statusLabel(o: OfferRow) {
 export function OffersManager({ initial, userId, today }: { initial: OfferRow[]; userId: string; today: string }) {
   const supabase = createClient();
   const router = useRouter();
+  const { confirm, dialog } = useConfirm();
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -100,8 +103,9 @@ export function OffersManager({ initial, userId, today }: { initial: OfferRow[];
     }
   }
 
-  function remove(o: OfferRow) {
-    if (!window.confirm(`Да изтрием ли офертата „${o.title}“? Линкът ще спре да работи.`)) return;
+  async function remove(o: OfferRow) {
+    const ok = await confirm({ title: `Да изтрием ли офертата „${o.title}“?`, message: "Линкът към нея ще спре да работи.", confirmLabel: "Изтрий", danger: true });
+    if (!ok) return;
     start(async () => {
       const { error } = await supabase.from("offers").delete().eq("id", o.id);
       if (error) return void toast.error("Не успяхме да изтрием.");
@@ -186,11 +190,11 @@ export function OffersManager({ initial, userId, today }: { initial: OfferRow[];
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="of-from" className="label">От дата <span className="font-normal text-ink-3">(по желание)</span></label>
-              <input id="of-from" type="date" className="field" min={today} value={from} onChange={(e) => setFrom(e.target.value)} />
+              <DateField id="of-from" min={today} value={from} onChange={setFrom} />
             </div>
             <div>
               <label htmlFor="of-to" className="label">До дата <span className="font-normal text-ink-3">(ако е за няколко дни)</span></label>
-              <input id="of-to" type="date" className="field" min={from || today} value={to} onChange={(e) => setTo(e.target.value)} disabled={!from} />
+              <DateField id="of-to" min={from || today} value={to} onChange={setTo} disabled={!from} />
             </div>
           </div>
           <p className="-mt-2 text-sm text-ink-3">Ако посочиш дата, при приемане от клиента работата се записва в „Поръчки“ и календарът ти я брои за заета.</p>
@@ -243,6 +247,7 @@ export function OffersManager({ initial, userId, today }: { initial: OfferRow[];
           </ul>
         )}
       </section>
+      {dialog}
     </div>
   );
 }

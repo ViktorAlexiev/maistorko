@@ -35,6 +35,7 @@ export type CraftInitial = {
   categories: string[];
   languages: string[];
   contactHours: string;
+  replyHours: string;
   otherServices: string;
   phone: string;
   phoneVisibility: PhoneVisibility;
@@ -49,7 +50,7 @@ type ClientInitial = { fullName: string; city: string; phone: string };
 type PartFields = Partial<Record<PartId, readonly string[]>>;
 
 const CRAFTSMAN_FIELDS: PartFields = {
-  "za-men": ["displayName", "businessName", "bio", "years", "contactHours", "languages"],
+  "za-men": ["displayName", "businessName", "bio", "years", "contactHours", "replyHours", "languages"],
   kakvo: ["categories", "otherServices"],
   kade: ["city", "areas"],
   kontakti: ["phone", "phoneVisibility"],
@@ -361,6 +362,7 @@ export function CraftsmanProfileForm({
     categories: list("categories", initial.categories),
     languages: list("languages", initial.languages),
     contactHours: values?.contactHours ?? initial.contactHours,
+    replyHours: values?.replyHours ?? initial.replyHours,
     otherServices: values?.otherServices ?? initial.otherServices,
     phone: values?.phone ?? initial.phone,
     phoneVisibility: (values?.phoneVisibility ?? initial.phoneVisibility) as PhoneVisibility,
@@ -496,6 +498,20 @@ function CraftsmanFields({
               Кога отговаряш <span className="font-normal text-ink-3">(по желание)</span>
             </label>
             <input id="contactHours" name="contactHours" className="field" maxLength={80} defaultValue={v.contactHours} placeholder="напр. вечер след 18 ч." />
+          </div>
+          <div>
+            <label htmlFor="replyHours" className="label">
+              Обикновено отговарям за <span className="font-normal text-ink-3">(по желание)</span>
+            </label>
+            <select id="replyHours" name="replyHours" className="field" defaultValue={v.replyHours}>
+              <option value="">Не показвай</option>
+              <option value="1">до 1 час</option>
+              <option value="2">до 2 часа</option>
+              <option value="4">до 4 часа</option>
+              <option value="24">до 24 часа</option>
+              <option value="48">до 2 дни</option>
+            </select>
+            <p className="hint">Клиентите го виждат в профила ти. Бързият отговор е това, което печели работа.</p>
           </div>
         </div>
         <fieldset>
