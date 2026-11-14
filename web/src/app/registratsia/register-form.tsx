@@ -34,6 +34,8 @@ export function RegisterForm({
   return (
     <form action={action} className="grid gap-5" noValidate>
       <input type="hidden" name="next" value={next} />
+      {/* the role is sent from the state: React resets the form after a failed attempt, which would flip the radios back */}
+      <input type="hidden" name="role" value={role} />
       <fieldset>
         <legend className="label">Регистрирам се като</legend>
         <div className="grid grid-cols-2 gap-2">
@@ -51,7 +53,7 @@ export function RegisterForm({
             >
               <input
                 type="radio"
-                name="role"
+                name="role-pick"
                 value={value}
                 checked={role === value}
                 onChange={() => setRole(value)}
