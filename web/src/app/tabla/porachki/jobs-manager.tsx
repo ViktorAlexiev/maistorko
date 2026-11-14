@@ -345,7 +345,7 @@ export function JobsManager({
             <h2 id="j-heading" className={look.title}>
               {editing === "new" ? "Нова поръчка" : "Редакция на поръчка"}
             </h2>
-            <button type="button" className="btn btn-ghost btn-sm -mr-2" onClick={() => setEditing(null)} aria-label="Затвори">
+            <button type="button" className="btn btn-ghost btn-sm -mr-2 max-sm:min-h-11 max-sm:min-w-11" onClick={() => setEditing(null)} aria-label="Затвори">
               <X className="size-5" aria-hidden />
             </button>
           </div>

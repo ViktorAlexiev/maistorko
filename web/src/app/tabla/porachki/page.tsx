@@ -104,13 +104,13 @@ export default async function JobsPage({ searchParams }: PageProps<"/tabla/porac
           </h2>
           {proReports && (
             <div className="flex items-center gap-1">
-              <Link href={`/tabla/porachki?mesec=${shiftMonth(ym, -1)}`} className="btn btn-ghost btn-sm" aria-label="Предишен месец">
+              <Link href={`/tabla/porachki?mesec=${shiftMonth(ym, -1)}`} className="btn btn-ghost btn-sm max-sm:min-h-11 max-sm:min-w-11" aria-label="Предишен месец">
                 <ChevronLeft className="size-5" aria-hidden />
               </Link>
               <span className="min-w-36 text-center text-lg font-extrabold capitalize">
                 {MONTHS[m - 1]} {y}
               </span>
-              <Link href={`/tabla/porachki?mesec=${shiftMonth(ym, 1)}`} className="btn btn-ghost btn-sm" aria-label="Следващ месец">
+              <Link href={`/tabla/porachki?mesec=${shiftMonth(ym, 1)}`} className="btn btn-ghost btn-sm max-sm:min-h-11 max-sm:min-w-11" aria-label="Следващ месец">
                 <ChevronRight className="size-5" aria-hidden />
               </Link>
             </div>
