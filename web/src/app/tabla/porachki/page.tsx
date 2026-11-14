@@ -82,8 +82,8 @@ export default async function JobsPage({ searchParams }: PageProps<"/tabla/porac
       <div>
         <h1 className="display text-5xl sm:text-6xl">Поръчки</h1>
         <p className="mt-2 max-w-2xl text-lg text-ink-2">
-          Работа, която не е дошла през чата: обаждане, препоръка, познат. Щом я запишеш, часовете ѝ стават заети в
-          календара и клиентите от сайта не ги виждат като свободни.
+          Цялата ти работа на едно място. Уговорките от чата идват сами, а работата от обаждане или препоръка я записваш ти и часовете ѝ стават заети в
+          календара.
         </p>
       </div>
 
@@ -118,7 +118,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/tabla/porac
         </div>
 
         {!proReports || !report ? (
-          <div className="flex items-start gap-3 rounded-[10px] border border-dashed border-line-strong p-5">
+          <div className="flex items-start gap-3 rounded-[8px] bg-paper p-4">
             <Lock className="mt-0.5 size-5 shrink-0" aria-hidden />
             <p className="text-ink-2">
               Отчетът (колко поръчки, колко пари, откъде идват клиентите) е в Pro.{" "}
@@ -129,14 +129,14 @@ export default async function JobsPage({ searchParams }: PageProps<"/tabla/porac
           </div>
         ) : (
           <>
-            <dl className="grid gap-3 sm:grid-cols-4">
+            <dl className="grid grid-cols-2 gap-1 sm:grid-cols-4">
               {[
                 ["Поръчки", report.jobs],
                 ["Свършени", report.done],
                 ["Приходи", formatEur(revenue)],
                 ["От тях труд", formatEur(report.labor)],
               ].map(([label, value]) => (
-                <div key={label as string} className="rounded-[10px] border border-line bg-surface p-4">
+                <div key={label as string} className="rounded-[10px] bg-surface p-4">
                   <dt className="text-sm text-ink-3">{label}</dt>
                   <dd className="numerals mt-1 text-3xl leading-none">{value}</dd>
                 </div>
@@ -146,15 +146,15 @@ export default async function JobsPage({ searchParams }: PageProps<"/tabla/porac
               Приходите се броят само за свършените поръчки: труд {formatEur(report.labor)}, транспорт {formatEur(report.transport)}, материали, които си
               осигурил ти, {formatEur(report.materials)}.
             </p>
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-7 sm:grid-cols-2">
               <div>
-                <h3 className="font-extrabold">Откъде идва работата</h3>
+                <h3 className="display mb-2 text-[1.7rem]">Откъде идва работата</h3>
                 {report.by_source.length === 0 ? (
-                  <p className="mt-1 text-ink-3">Още няма поръчки този месец.</p>
+                  <p className="text-ink-3">Още няма поръчки този месец.</p>
                 ) : (
-                  <ul className="mt-2 grid gap-1.5">
+                  <ul className="grid gap-1">
                     {report.by_source.map((s) => (
-                      <li key={s.source} className="flex items-center gap-3">
+                      <li key={s.source} className="flex items-center gap-3 rounded-[6px] bg-surface px-3 py-2.5">
                         <span className="w-32 shrink-0">{SOURCE_LABEL[s.source]}</span>
                         <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2" aria-hidden>
                           <span className="block h-full rounded-full bg-ink" style={{ width: `${(s.count / report.jobs) * 100}%` }} />
@@ -166,13 +166,13 @@ export default async function JobsPage({ searchParams }: PageProps<"/tabla/porac
                 )}
               </div>
               <div>
-                <h3 className="font-extrabold">Най-чести работи</h3>
+                <h3 className="display mb-2 text-[1.7rem]">Най-чести работи</h3>
                 {report.top_work.length === 0 ? (
-                  <p className="mt-1 text-ink-3">Още няма поръчки този месец.</p>
+                  <p className="text-ink-3">Още няма поръчки този месец.</p>
                 ) : (
-                  <ol className="mt-2 grid gap-1.5">
+                  <ol className="grid gap-1">
                     {report.top_work.map((t) => (
-                      <li key={t.title} className="flex items-center justify-between gap-3">
+                      <li key={t.title} className="flex items-center justify-between gap-3 rounded-[6px] bg-surface px-3 py-2.5">
                         <span className="min-w-0 truncate first-letter:uppercase">{t.title}</span>
                         <span className="numerals text-lg">{t.count}</span>
                       </li>
