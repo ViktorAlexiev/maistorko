@@ -796,7 +796,7 @@ function ScheduleEditor({ userId, initialRules, onSaved }: { userId: string; ini
       {!dirty ? (
         <p className="text-sm text-ink-3">Графикът е записан. Промените се виждат веднага в профила ти.</p>
       ) : (
-        <div className="sticky bottom-3 z-10 flex items-center gap-3 rounded-[10px] bg-ink p-3 text-white shadow-[var(--shadow-lg)]">
+        <div className="sticky bottom-3 z-10 flex items-center gap-3 rounded-[10px] bg-ink p-3 max-lg:bottom-[calc(4.25rem+env(safe-area-inset-bottom))] text-white shadow-[var(--shadow-lg)]">
           <p className="flex-1 pl-1 text-sm">
             {invalid ? "Поправи часовете, в които краят е преди началото." : "Имате незаписани промени."}
           </p>
