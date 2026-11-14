@@ -581,6 +581,26 @@ export function AddServiceButton({ demo, onClick, label = "Добави услу
   );
 }
 
+/** In place of „Добави услуга“ when the free plan is full: the reason and the way out, right where the button was. */
+export function FullNote({ demo }: { demo: Demo }) {
+  return (
+    <p className="flex items-start gap-2 rounded-[6px] bg-paper px-3 py-2.5 text-[0.95rem] text-ink">
+      <Lock className="mt-1 size-4 shrink-0" aria-hidden />
+      <span>
+        Планът е пълен:{" "}
+        <span className="font-semibold">
+          {demo.used} от {demo.limit} услуги
+        </span>
+        . Изтрий услуга или{" "}
+        <Link href="/tabla/plan" className="link font-bold">
+          виж Pro
+        </Link>
+        .
+      </span>
+    </p>
+  );
+}
+
 /* ------------------------------------------------------------------------------------------------
  * Terms: visit, travel, materials, inspection, how I work
  * ---------------------------------------------------------------------------------------------- */

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import type { Box, Terms } from "./data";
 import {
   AddServiceButton,
+  FullNote,
   GroupHint,
   LimitLine,
   PageHead,
@@ -145,6 +146,8 @@ function BoxCard({
           <div className={svcs.length > 0 ? "mt-3" : ""}>
             {adding ? (
               <ServiceForm demo={demo} catId={box.id} onDone={() => setForm(null)} />
+            ) : demo.full ? (
+              <FullNote demo={demo} />
             ) : (
               <AddServiceButton demo={demo} onClick={() => setForm({ catId: box.id })} />
             )}
