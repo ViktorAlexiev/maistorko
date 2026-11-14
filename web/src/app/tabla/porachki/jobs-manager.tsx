@@ -113,6 +113,7 @@ export function JobsManager({
   proDetails,
   proClients,
   bookings,
+  head,
 }: {
   userId: string;
   initialJobs: Job[];
@@ -121,6 +122,7 @@ export function JobsManager({
   proDetails: boolean;
   proClients: boolean;
   bookings: OrderBooking[];
+  head?: React.ReactNode;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -333,12 +335,24 @@ export function JobsManager({
 
   return (
     <section aria-label="Поръчки" className="grid gap-10">
+      {head ? (
+        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          {head}
+          {editing === null && (
+            <button type="button" className="btn btn-primary btn-lg max-sm:w-full" onClick={openNew}>
+              <Plus className="size-5" aria-hidden /> Нова поръчка
+            </button>
+          )}
+        </header>
+      ) : null}
       {editing === null ? (
-        <div>
-          <button type="button" className="btn btn-primary btn-lg max-sm:w-full" onClick={openNew}>
-            <Plus className="size-5" aria-hidden /> Нова поръчка
-          </button>
-        </div>
+        head ? null : (
+          <div>
+            <button type="button" className="btn btn-primary btn-lg max-sm:w-full" onClick={openNew}>
+              <Plus className="size-5" aria-hidden /> Нова поръчка
+            </button>
+          </div>
+        )
       ) : (
         <form ref={box} onSubmit={save} className={look.shell} noValidate aria-labelledby="j-heading">
           <div className={look.head}>

@@ -79,15 +79,16 @@ export default async function JobsPage({ searchParams }: PageProps<"/tabla/porac
 
   return (
     <div className="grid max-w-4xl gap-10">
-      <div>
-        <h1 className="display text-5xl sm:text-6xl">Поръчки</h1>
-        <p className="mt-2 max-w-2xl text-lg text-ink-2">
-          Цялата ти работа на едно място. Уговорките от чата идват сами, а работата от обаждане или препоръка я записваш ти и часовете ѝ стават заети в
-          календара.
-        </p>
-      </div>
-
       <JobsManager
+        head={
+          <div>
+            <h1 className="display text-5xl sm:text-6xl">Поръчки</h1>
+            <p className="mt-2 max-w-2xl text-lg text-ink-2">
+              Цялата ти работа на едно място. Уговорките от чата идват сами, а работата от обаждане или препоръка я записваш ти и часовете ѝ стават заети в
+              календара.
+            </p>
+          </div>
+        }
         userId={viewer.id}
         initialJobs={list}
         initialClients={(clients ?? []) as Client[]}
