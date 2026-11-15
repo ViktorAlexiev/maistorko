@@ -142,10 +142,13 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
   }
   const catList = [...topCats.values()].sort((a, b) => a.sort - b.sort);
   const services = [...c.services].sort((a, b) => a.sort - b.sort);
-  // "Каква работа" in the chat: priced services first; a picked category shows only while it has no priced service
-  const pricedCats = new Set(services.map((s) => s.category_id).filter(Boolean));
+  // "Каква работа" in the chat: priced services first; a picked category shows only while it has no priced service.
+  // Only services in a ticked subcategory count (the boxes below show the same ones; „Други услуги“ is hidden from clients).
+  const boxIds = new Set(c.cats.flatMap((x) => (x.category && one(x.category.parent) ? [x.category.id] : [])));
+  const shownServices = services.filter((s) => s.category_id != null && boxIds.has(s.category_id));
+  const pricedCats = new Set(shownServices.map((s) => s.category_id));
   const workOptions: WorkOption[] = [
-    ...services.map((s) => ({
+    ...shownServices.map((s) => ({
       value: `s:${s.id}`,
       label: `${s.name}: ${servicePrice(s.price_kind as PriceKind, s.price, s.unit as PriceUnit)}`,
       priced: true,

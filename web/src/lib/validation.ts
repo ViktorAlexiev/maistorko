@@ -94,9 +94,7 @@ export const boxSchema = z
   })
   .superRefine((v, ctx) => {
     if (v.kind !== "quote") {
-      const p = v.price.trim();
-      const n = Number(p.replace(",", "."));
-      if (!/^\d+([.,]\d{1,2})?$/.test(p) || !(n > 0) || !(n < 100000)) {
+      if (!isMoneyText(v.price)) {
         ctx.addIssue({ code: "custom", message: "Въведете сума, напр. 25 или 12,50.", path: ["price"] });
       }
     }
@@ -104,16 +102,6 @@ export const boxSchema = z
       ctx.addIssue({ code: "custom", message: "Изберете мерна единица.", path: ["unit"] });
     }
   });
-
-export const serviceSchema = z
-  .object({
-    name: z.string().trim().min(2, "Въведете име на услугата.").max(120),
-    kind: z.enum(["fixed", "from", "quote"]),
-    price: money,
-    unit: z.enum(["job", "hour", "m2", "piece", "meter", "day"]),
-    categoryId: z.string().optional(),
-  })
-  .refine((v) => v.kind === "quote" || v.price !== "", { message: "Въведете цена или изберете „по оглед“.", path: ["price"] });
 
 export const messageSchema = z.object({
   body: z.string().trim().min(1, "Напишете съобщение.").max(4000, "Съобщението е до 4000 символа."),
@@ -139,6 +127,14 @@ export const categorySchema = z.object({
 
 export function toMoney(v: string): number | null {
   return v.trim() === "" ? null : Number(v.replace(",", "."));
+}
+
+/** A sum as typed: digits with up to 2 decimals („25“, „12,50“), above 0 (or 0 itself with `allowZero`) and below 100000. */
+export function isMoneyText(v: string, allowZero = false): boolean {
+  const s = v.trim();
+  if (!/^\d+([.,]\d{1,2})?$/.test(s)) return false;
+  const n = Number(s.replace(",", "."));
+  return (allowZero ? n >= 0 : n > 0) && n < 100000;
 }
 
 export type FieldErrors = Record<string, string>;

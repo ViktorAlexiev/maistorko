@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { savePrices, type TermsInput } from "@/app/actions/dashboard";
 import { createClient } from "@/lib/supabase/client";
-import { toMoney } from "@/lib/validation";
+import { isMoneyText, toMoney } from "@/lib/validation";
 import type { PriceKind, PriceUnit } from "@/lib/format";
 import type { BoxKind } from "@/lib/prices";
 import {
@@ -208,12 +208,7 @@ export function PricesBoard({
   }
 
   async function save() {
-    const missing = boxes.find((b) => {
-      if (!b.kind || b.kind === "quote") return false;
-      const p = b.price.trim();
-      const n = toMoney(p);
-      return !/^\d+([.,]\d{1,2})?$/.test(p) || !(n !== null && n > 0 && n < 100000);
-    });
+    const missing = boxes.find((b) => b.kind && b.kind !== "quote" && !isMoneyText(b.price));
     if (missing) return void toast.error(`Напиши цена в „${missing.name}“ или избери „По оглед“.`);
     setPending(true);
     try {

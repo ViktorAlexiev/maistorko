@@ -2093,19 +2093,6 @@ export type Database = {
           slug: string
         }[]
       }
-      category_price_guide: {
-        Args: { p_category: number }
-        Returns: {
-          hourly_count: number
-          hourly_median: number
-          hourly_p25: number
-          hourly_p75: number
-          job_count: number
-          job_median: number
-          job_p25: number
-          job_p75: number
-        }[]
-      }
       category_price_hint: {
         Args: { p_category: number }
         Returns: {

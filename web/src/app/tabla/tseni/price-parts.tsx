@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Lock, LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react";
-import { toMoney } from "@/lib/validation";
+import { isMoneyText } from "@/lib/validation";
 import { BOX_KINDS, BOX_UNITS, hourEstimate, priceText, type BoxKind } from "@/lib/prices";
-import { servicePrice, UNIT_LABEL, UNIT_OPTIONS, type PriceKind, type PriceUnit } from "@/lib/format";
+import { servicePrice, UNIT_LABEL, UNIT_OPTIONS, UNIT_SHORT, type PriceKind, type PriceUnit } from "@/lib/format";
 import type { TermsInput } from "@/app/actions/dashboard";
 import type { BoardBox, BoardHint, BoardService, BoardTemplate } from "./prices-board";
 
@@ -26,10 +26,8 @@ export const st = {
   rivet: "inline-block size-2.5 shrink-0 rounded-full bg-brass shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]",
 };
 
-export const isMoney = (v: string) => {
-  const n = toMoney(v);
-  return n !== null && Number.isFinite(n) && n >= 0 && n < 100000;
-};
+/** Service and terms sums: 0 is allowed here (a box price is not, see save()). */
+export const isMoney = (v: string) => isMoneyText(v, true);
 
 /* ------------------------------------------------------------------------------------------------
  * Page head, plan notes, the limit counter
@@ -371,7 +369,7 @@ export function ServiceForm({
             </select>
           </div>
         ) : (
-          <p className="hint">Клиентите виждат „по оглед“{est ? ` и ориентировъчно ≈ ${est} € от цената ти на час.` : "."}</p>
+          <p className="hint">Клиентите виждат „по оглед“{est ? ` и ориентировъчно ≈ ${est} €${UNIT_SHORT[d.unit]} от цената ти на час.` : "."}</p>
         )}
         {errors.price && <p className="error-text">{errors.price}</p>}
         {proHints && range && (
@@ -460,7 +458,7 @@ export function SuggestionRow({
       <div className="min-w-0 flex-[1_1_14rem]">
         <p className="font-semibold leading-snug">{t.name}</p>
         <p className="text-sm text-ink-3">
-          {price.trim() === "" ? (est ? `Без цена: по оглед, ≈ ${est} €` : "Без цена: по оглед") : templateUnit(t.unit)}
+          {price.trim() === "" ? (est ? `Без цена: по оглед, ≈ ${est} €${UNIT_SHORT[t.unit]}` : "Без цена: по оглед") : templateUnit(t.unit)}
           {proHints && t.range && (
             <>
               {" · "}
