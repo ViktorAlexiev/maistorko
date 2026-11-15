@@ -2119,6 +2119,7 @@ export type Database = {
           visibility: string
         }[]
       }
+      craftsman_has_price: { Args: { p_id: string }; Returns: boolean }
       craftsman_is_listed: { Args: { p_id: string }; Returns: boolean }
       craftsman_is_public: { Args: { p_id: string }; Returns: boolean }
       craftsman_phone: { Args: { p_craftsman: string }; Returns: string }

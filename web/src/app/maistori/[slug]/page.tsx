@@ -64,7 +64,10 @@ const getCraftsman = cache(async (slug: string) => {
 /** The headline price: the same rule as the catalog row, „по оглед“ also when a ticked subcategory's box says so. */
 function headline(c: NonNullable<Awaited<ReturnType<typeof getCraftsman>>>) {
   const ticked = new Set(c.cats.map((x) => x.category?.id));
-  const quote = c.quote_on_inspection || c.prices.some((p) => p.kind === "quote" && ticked.has(p.category_id));
+  const quote =
+    c.quote_on_inspection ||
+    c.prices.some((p) => p.kind === "quote" && ticked.has(p.category_id)) ||
+    c.services.some((s) => s.price_kind === "quote" && s.category_id != null && ticked.has(s.category_id));
   return headlinePrice(c.price_from, c.price_from_unit as PriceUnit | null, quote);
 }
 

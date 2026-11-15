@@ -1218,6 +1218,33 @@ async function main() {
       m7,
     );
 
+    const mF = await listed("tsenif", [techove]);
+    await svc(mF, techove, "Тестов оглед на теч", "quote", null, "job");
+    const m8 = await find([mF.id]);
+    ok(
+      "видимост: само услуга „по оглед“ на отметната подкатегория → майсторът излиза в търсенето с „по оглед“",
+      m8.length === 1 && m8[0].price_from == null && m8[0].quote_on_inspection === true,
+      m8,
+    );
+
+    const mG = await listed("tsenig", [techove]);
+    await svc(mG, elInst, "Тестов оглед", "quote", null, "job");
+    const m9 = await find([mG.id]);
+    ok("видимост: услуга „по оглед“ на неотметната подкатегория не пуска майстора", m9.length === 0, m9);
+
+    const mH = await listed("tsenih", [techove]);
+    const { data: hp1 } = await anon.rpc("craftsman_has_price", { p_id: mH.id });
+    await admin.from("craftsman_profiles").update({ quote_on_inspection: true }).eq("id", mH.id);
+    const { data: hp2 } = await anon.rpc("craftsman_has_price", { p_id: mH.id });
+    ok("craftsman_has_price: без кутии и услуги → не; с quote_on_inspection → да", hp1 === false && hp2 === true, { hp1, hp2 });
+
+    const mI = await listed("tsenii", [techove]);
+    await svc(mI, elInst, "Тестова услуга", "fixed", 40, "job");
+    const { data: hp3 } = await anon.rpc("craftsman_has_price", { p_id: mI.id });
+    await admin.from("craftsman_categories").insert({ craftsman_id: mI.id, category_id: elInst });
+    const { data: hp4 } = await anon.rpc("craftsman_has_price", { p_id: mI.id });
+    ok("craftsman_has_price: услуга с цена само на неотметната подкатегория → не", hp3 === false && hp4 === true, { hp3, hp4 });
+
     for (const id of extra) await admin.auth.admin.deleteUser(id);
   }
 
