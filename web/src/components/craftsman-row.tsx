@@ -4,6 +4,7 @@ import { Avatar } from "@/components/avatar";
 import { Rating, VerifiedBadge } from "@/components/bits";
 import { RuleStrip } from "@/components/rule-strip";
 import { formatDate, headlinePrice, relativeDay, type PriceUnit } from "@/lib/format";
+import { priceText } from "@/lib/prices";
 
 export type CraftsmanCardData = {
   id: string;
@@ -31,6 +32,11 @@ export type CraftsmanCardData = {
   /** period search: free days out of the days asked for */
   free_days?: number | null;
   span_days?: number | null;
+  /** search text matched a service or box: its name, kind and price (all null when nothing matches) */
+  match_name?: string | null;
+  match_kind?: "fixed" | "from" | "hour" | "quote" | null;
+  match_price?: number | null;
+  match_unit?: PriceUnit | null;
 };
 
 /** A catalog row: who, what, how much, and the folding rule of the next 14 days. */
@@ -45,7 +51,10 @@ export function CraftsmanRow({
 }) {
   const href = `/maistori/${c.slug}${dateQuery ? `?data=${dateQuery}` : ""}`;
   const free = c.matched_date ?? c.next_free;
-  const price = headlinePrice(c.price_from, c.price_from_unit, c.quote_on_inspection);
+  const matchPrice =
+    !compact && c.match_name && c.match_kind ? priceText(c.match_kind, c.match_price, c.match_unit ?? "job") : null;
+  const matchName = matchPrice ? c.match_name : null;
+  const price = matchPrice ?? headlinePrice(c.price_from, c.price_from_unit, c.quote_on_inspection);
   const cats = (c.category_names ?? []).slice(0, 3);
 
   return (
@@ -86,9 +95,13 @@ export function CraftsmanRow({
                 <span className="ml-2 font-sans text-sm font-normal text-ink-3">{c.years_experience} г. опит</span>
               ) : null}
             </p>
+            {matchName && <p className="mt-1 text-sm font-semibold text-ink-2 sm:hidden">{matchName}</p>}
           </div>
           <div className="hidden shrink-0 text-right sm:block">
             <p className={`numerals leading-none ${compact ? "text-[1.35rem] sm:text-[1.75rem]" : "text-[1.5rem] sm:text-[2rem]"}`}>{price}</p>
+            {matchName && (
+              <p className="ml-auto mt-1 max-w-[9rem] text-sm font-semibold leading-snug text-ink-2 line-clamp-2">{matchName}</p>
+            )}
             {c.years_experience ? (
               <p className="mt-1 text-sm text-ink-3">{c.years_experience} г. опит</p>
             ) : null}
