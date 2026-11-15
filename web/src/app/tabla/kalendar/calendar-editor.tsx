@@ -34,6 +34,7 @@ import {
   type Interval,
   type Row,
 } from "@/lib/intervals";
+import { SCHEDULE_PRESETS } from "@/lib/schedule-presets";
 import { RowList, SlotChips } from "./interval-editor";
 import { DateField } from "@/components/date-time-fields";
 
@@ -732,15 +733,20 @@ function ScheduleEditor({ userId, initialRules, onSaved }: { userId: string; ini
       </p>
       <div className="flex flex-wrap gap-2">
         <span className="self-center text-sm font-bold">Бързо:</span>
-        <button type="button" className="chip" onClick={() => preset((d) => (d <= 5 ? [[480, 1020]] : []))}>
-          Пн–Пт 8–17
-        </button>
-        <button type="button" className="chip" onClick={() => preset((d) => (d <= 6 ? [[480, 1080]] : []))}>
-          Пн–Сб 8–18
-        </button>
-        <button type="button" className="chip" onClick={() => preset((d) => (d <= 5 ? [[1020, 1230]] : [[540, 1020]]))}>
-          Вечери и уикенд
-        </button>
+        {SCHEDULE_PRESETS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            className="chip"
+            onClick={() =>
+              preset((d) =>
+                p.rules.filter((r) => r.weekday === d).map((r): Interval => [toMin(r.start_time), toMin(r.end_time)]),
+              )
+            }
+          >
+            {p.label}
+          </button>
+        ))}
         <button type="button" className="chip" onClick={() => preset(() => [])}>
           Изчисти
         </button>
