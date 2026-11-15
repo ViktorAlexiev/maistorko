@@ -39,10 +39,12 @@ export function joinMissing(steps: FirstStep[]): string {
  * „Метър“: one short field. The five steps are the parts of the bar itself, each one a link;
  * the three the search needs stand apart from the two that are up to you.
  */
-export function FirstSteps({ steps }: { steps: FirstStep[] }) {
-  const hidden = steps.some((s) => s.required && !s.done);
+export function FirstSteps({ steps, listed }: { steps: FirstStep[]; listed: boolean }) {
+  const missingRequired = steps.some((s) => s.required && !s.done);
+  // Nothing required is missing, yet the profile is not listed (e.g. hidden by an admin): not in the search, so no „се вижда“
+  const notListed = missingRequired || !listed;
   const done = steps.filter((s) => s.done).length;
-  // The three the search needs come first, so the next step is always one of them while the profile is hidden
+  // The three the search needs come first, so the next step is always one of them while a required one is missing
   const next = steps.find((s) => !s.done) ?? steps[0];
   return (
     <section
@@ -60,12 +62,14 @@ export function FirstSteps({ steps }: { steps: FirstStep[] }) {
           </p>
         </div>
         <p className="mt-1 text-ink-2">
-          {hidden
+          {missingRequired
             ? `Профилът ти още не се вижда в търсенето. Липсва: ${joinMissing(steps)}.`
-            : "Профилът ти се вижда в търсенето. Останалото е по желание."}
+            : !listed
+              ? "Профилът ти е скрит от администратор и не се показва в търсенето."
+              : "Профилът ти се вижда в търсенето. Останалото е по желание."}
         </p>
       </div>
-      <Link href={next.href} className={`btn [grid-area:btn] ${hidden ? "btn-primary" : "btn-outline"}`}>
+      <Link href={next.href} className={`btn [grid-area:btn] ${notListed ? "btn-primary" : "btn-outline"}`}>
         Продължи: {next.short} <ArrowRight className="size-4" aria-hidden />
       </Link>
       <ol className="flex gap-1 [grid-area:meter]">

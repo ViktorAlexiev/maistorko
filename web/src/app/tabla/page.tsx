@@ -88,7 +88,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
 
         {myPlan && myPlan.plan !== "company" && <DemoProButton isPro={myPlan.plan === "pro"} />}
 
-        {steps.some((s) => !s.done) && <FirstSteps steps={steps} />}
+        {steps.some((s) => !s.done) && <FirstSteps steps={steps} listed={status.listed} />}
 
         {status.hasSchedule && daysAgo >= 7 && <ConfirmCalendarBanner daysAgo={daysAgo} />}
 
