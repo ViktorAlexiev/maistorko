@@ -756,7 +756,6 @@ async function main() {
           bio: c.bio,
           years_experience: c.years,
           languages: c.languages ?? ["bg"],
-          hourly_rate: c.hourly ?? null,
           callout_fee: c.callout ?? null,
           travel_fee: c.travel ?? null,
           materials_included: c.materials ?? false,
@@ -779,6 +778,14 @@ async function main() {
       db.from("craftsman_categories").insert(c.cats.map((s) => ({ craftsman_id: id, category_id: catId(s) }))),
       "categories",
     );
+    if (c.hourly != null) {
+      await must(
+        db.from("category_prices").insert(
+          c.cats.map((s) => ({ craftsman_id: id, category_id: catId(s), kind: "hour", price: c.hourly, unit: "hour" })),
+        ),
+        "category prices",
+      );
+    }
     await must(
       db.from("services").insert(
         c.services.map(([name, kind, price, unit, cat], sort) => ({

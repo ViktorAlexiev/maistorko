@@ -1047,6 +1047,105 @@ async function main() {
     await admin.auth.admin.deleteUser(boss.id);
   }
 
+  console.log("\nЦени по категории");
+  {
+    const hour = (price: number) => ({ kind: "hour" as const, price, unit: "hour" as const });
+    const fixedJob = (price: number) => ({ kind: "fixed" as const, price, unit: "job" as const });
+    const catId = async (slug: string) => (await admin.from("categories").select("id").eq("slug", slug).single()).data!.id as number;
+    const [techove, vik, elInst, osvetlenie, elektro] = [await catId("techove"), await catId("vik"), await catId("el-instalatsii"), await catId("osvetlenie"), await catId("elektro")];
+    const extra: string[] = [];
+
+    // the box: who writes, who reads, only on a subcategory
+    const pU = await user("craftsman", "price-p");
+    extra.push(pU.id);
+    await admin.from("craftsman_categories").insert({ craftsman_id: pU.id, category_id: techove });
+    const { error: ownBox } = await pU.c.from("category_prices").insert({ craftsman_id: pU.id, category_id: techove, ...hour(28) });
+    ok("кутии: майсторът записва своя кутия", !ownBox, ownBox);
+    const otherU = await user("craftsman", "price-other");
+    extra.push(otherU.id);
+    const { error: foreignBox } = await otherU.c.from("category_prices").insert({ craftsman_id: pU.id, category_id: elInst, ...hour(5) });
+    ok("кутии: чужда кутия не се пише", Boolean(foreignBox));
+    const { error: anonBox } = await anon.from("category_prices").insert({ craftsman_id: pU.id, category_id: elInst, ...hour(5) });
+    ok("кутии: без вход кутия не се пише", Boolean(anonBox));
+    const { data: anonBoxes } = await anon.from("category_prices").select("category_id").eq("craftsman_id", pU.id);
+    ok("кутии: кутиите на видим майстор се четат без вход", anonBoxes?.length === 1, anonBoxes);
+    const { error: topBox } = await pU.c.from("category_prices").insert({ craftsman_id: pU.id, category_id: vik, ...hour(5) });
+    ok("кутии: горна категория не получава кутия", Boolean(topBox));
+
+    // boxes are not limited on the free plan; only services are
+    const fU = await user("craftsman", "price-free");
+    extra.push(fU.id);
+    const { data: leafs } = await admin.from("categories").select("id").not("parent_id", "is", null).order("id").limit(5);
+    await admin.from("craftsman_categories").insert((leafs ?? []).map((l) => ({ craftsman_id: fU.id, category_id: l.id })));
+    const freeErrors: unknown[] = [];
+    for (let n = 1; n <= 8; n++) {
+      const { error } = await fU.c.from("services").insert({ craftsman_id: fU.id, category_id: leafs![0].id, name: `Тестова услуга ${n}`, price_kind: "fixed", price: 10, unit: "job" });
+      if (error) freeErrors.push(error);
+    }
+    for (const l of leafs ?? []) {
+      const { error } = await fU.c.from("category_prices").insert({ craftsman_id: fU.id, category_id: l.id, ...hour(25) });
+      if (error) freeErrors.push(error);
+    }
+    ok("кутии: безплатен майстор с 8 услуги записва цени на 5 подкатегории", freeErrors.length === 0, freeErrors);
+    const { error: ninth } = await fU.c.from("services").insert({ craftsman_id: fU.id, category_id: leafs![0].id, name: "Тестова услуга 9", price_kind: "fixed", price: 10, unit: "job" });
+    ok("кутии: 9-ата услуга пак се спира", /Безплатният план/.test(ninth?.message ?? ""), ninth?.message);
+    const { data: freePlan } = await fU.c.rpc("my_plan");
+    ok("кутии: my_plan брои само услугите", (freePlan as { usage?: { services: number } })?.usage?.services === 8, freePlan);
+
+    // the headline price counts boxes and services of ticked subcategories only
+    const qU = await user("craftsman", "price-q");
+    extra.push(qU.id);
+    await admin.from("craftsman_categories").insert({ craftsman_id: qU.id, category_id: elInst });
+    await admin.from("availability_rules").insert({ craftsman_id: qU.id, weekday: 1, start_time: "08:00", end_time: "17:00" });
+    const lead = async () => {
+      const { data } = await anon.rpc("search_craftsmen", { p_ids: [qU.id] });
+      return { price: Number(data?.[0]?.price_from), unit: data?.[0]?.price_from_unit };
+    };
+    await qU.c.from("category_prices").insert({ craftsman_id: qU.id, category_id: elInst, ...hour(20) });
+    const l1 = await lead();
+    ok("водеща цена: само кутия 20 €/ч → 20 €/ч", l1.price === 20 && l1.unit === "hour", l1);
+    await qU.c.from("services").insert({ craftsman_id: qU.id, category_id: elInst, name: "Тестова услуга Q", price_kind: "fixed", price: 50, unit: "job" });
+    const l2 = await lead();
+    ok("водеща цена: кутия 20 €/ч и услуга 50 € за работа → 50 € за работа", l2.price === 50 && l2.unit === "job", l2);
+    await qU.c.from("category_prices").insert({ craftsman_id: qU.id, category_id: techove, ...fixedJob(5) });
+    await qU.c.from("services").insert({ craftsman_id: qU.id, category_id: techove, name: "Тестова услуга Q2", price_kind: "fixed", price: 3, unit: "job" });
+    const l3 = await lead();
+    await admin.from("craftsman_categories").insert({ craftsman_id: qU.id, category_id: techove });
+    const l4 = await lead();
+    await admin.from("craftsman_categories").delete().eq("craftsman_id", qU.id).eq("category_id", techove);
+    const l5 = await lead();
+    const { data: kept } = await admin.from("category_prices").select("category_id").eq("craftsman_id", qU.id).eq("category_id", techove);
+    ok(
+      "водеща цена: кутия и услуга на неотметната подкатегория не се броят",
+      l3.price === 50 && l3.unit === "job" && l4.price === 3 && l4.unit === "job" && l5.price === 50 && l5.unit === "job" && kept?.length === 1,
+      { l3, l4, l5, kept },
+    );
+
+    // price hint (Pro): hourly range from the boxes, one value per colleague (his lowest)
+    const { data: slivo } = await admin.from("cities").select("id").eq("slug", "slivo-pole").single();
+    const hU = await user("craftsman", "price-hint");
+    extra.push(hU.id);
+    await admin.from("craftsman_subscriptions").insert({ craftsman_id: hU.id, plan: "pro", source: "admin" });
+    await admin.from("craftsman_profiles").update({ city_id: slivo!.id }).eq("id", hU.id);
+    const boxes: [number, number][][] = [[[10, elInst], [60, osvetlenie]], [[20, elInst]], [[30, elInst]], [[40, elInst]], [[50, elInst]]];
+    for (let i = 0; i < boxes.length; i++) {
+      const colleague = await user("craftsman", `price-col${i + 1}`);
+      extra.push(colleague.id);
+      await admin.from("craftsman_profiles").update({ city_id: slivo!.id }).eq("id", colleague.id);
+      await admin.from("craftsman_categories").insert(boxes[i].map(([, c]) => ({ craftsman_id: colleague.id, category_id: c })));
+      await admin.from("category_prices").insert(boxes[i].map(([p, c]) => ({ craftsman_id: colleague.id, category_id: c, ...hour(p) })));
+    }
+    const { data: hint } = await hU.c.rpc("category_price_hint", { p_category: elektro });
+    const h = hint?.[0];
+    ok(
+      "подсказки: 5 колеги с кутия на час в горната категория → обхватът на час е от кутиите им",
+      h?.scope === "city" && Number(h.hourly_p25) === 20 && Number(h.hourly_p75) === 40 && h.hourly_count === 5,
+      hint,
+    );
+
+    for (const id of extra) await admin.auth.admin.deleteUser(id);
+  }
+
   console.log("\nМодерация");
   {
     await admin.from("craftsman_profiles").update({ is_hidden: true }).eq("id", other.id);

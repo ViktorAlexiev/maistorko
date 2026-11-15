@@ -292,6 +292,49 @@ export type Database = {
           },
         ]
       }
+      category_prices: {
+        Row: {
+          category_id: number
+          craftsman_id: string
+          kind: string
+          price: number | null
+          unit: Database["public"]["Enums"]["price_unit"]
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          category_id: number
+          craftsman_id: string
+          kind: string
+          price?: number | null
+          unit: Database["public"]["Enums"]["price_unit"]
+          updated_at?: string
+        }
+        Update: {
+          category_id?: number
+          craftsman_id?: string
+          kind?: string
+          price?: number | null
+          unit?: Database["public"]["Enums"]["price_unit"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_prices_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_prices_craftsman_id_fkey"
+            columns: ["craftsman_id"]
+            isOneToOne: false
+            referencedRelation: "craftsman_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_photo_purge_queue: {
         Row: {
           conversation_id: string
@@ -656,7 +699,6 @@ export type Database = {
           contact_hours: string | null
           created_at: string
           display_name: string
-          hourly_rate: number | null
           id: string
           inspection_fee: number | null
           inspection_policy: string | null
@@ -692,7 +734,6 @@ export type Database = {
           contact_hours?: string | null
           created_at?: string
           display_name: string
-          hourly_rate?: number | null
           id: string
           inspection_fee?: number | null
           inspection_policy?: string | null
@@ -727,7 +768,6 @@ export type Database = {
           contact_hours?: string | null
           created_at?: string
           display_name?: string
-          hourly_rate?: number | null
           id?: string
           inspection_fee?: number | null
           inspection_policy?: string | null
@@ -1001,6 +1041,7 @@ export type Database = {
       }
       job_templates: {
         Row: {
+          category_id: number
           category_slug: string
           id: number
           name: string
@@ -1010,6 +1051,7 @@ export type Database = {
         }
         ComputedFields: never
         Insert: {
+          category_id: number
           category_slug: string
           id?: never
           name: string
@@ -1018,6 +1060,7 @@ export type Database = {
           unit?: Database["public"]["Enums"]["price_unit"]
         }
         Update: {
+          category_id?: number
           category_slug?: string
           id?: never
           name?: string
@@ -1025,7 +1068,15 @@ export type Database = {
           typical_hours?: number
           unit?: Database["public"]["Enums"]["price_unit"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "job_templates_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       jobs: {
         Row: {
