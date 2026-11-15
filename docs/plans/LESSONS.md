@@ -5,3 +5,9 @@
 - Small status marks (unread counts, unsaved and unread dots) were never put through the variant round, and the owner rejected them at acceptance: include every indicator a piece shows in its approved design.
 - Acceptance criteria named demo accounts by a property ("free plan") that had changed by execution time: give each such account a query that proves the property, and re-run it at intake.
 - An approved element moved when the page was split across a server and a client component (the „Нова поръчка“ button left the header row): task notes should say where each approved element lands when the prototype's single tree is split.
+
+## 2026-11-15 · Цени (2026-11-14-tseni)
+
+- The query that proved the free-plan account read only `craftsman_subscriptions`, but the app decides the plan with `craftsman_plan()` (company membership counts), so `ivan-dimitrov` was on the company plan: proof queries must call the same function the app uses.
+- A task made every box save also write the craftsman's terms, which exposed a bug already on `main` (an ambiguous `cities` embed loaded the terms empty and the save wiped them); it only surfaced at browser evidence: when a save starts writing fields it did not write before, add a criterion that their existing values survive a save and a reload.
+- The plan dropped a database function another developer had added, without saying why, and the owner had to ask: list every object a plan drops, with who added it and why nothing needs it.
