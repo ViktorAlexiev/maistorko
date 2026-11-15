@@ -8,7 +8,7 @@
 -- ---------------------------------------------------------------------------
 create table public.category_prices (
   craftsman_id uuid not null references public.craftsman_profiles (id) on delete cascade,
-  category_id smallint not null references public.categories (id),
+  category_id smallint not null references public.categories (id) on delete cascade,
   kind text not null check (kind in ('fixed', 'from', 'hour', 'quote')),
   price numeric(8,2) check (price is null or (price > 0 and price <= 100000)),
   unit public.price_unit not null,

@@ -1070,7 +1070,7 @@ async function main() {
     const { data: anonBoxes } = await anon.from("category_prices").select("category_id").eq("craftsman_id", pU.id);
     ok("кутии: кутиите на видим майстор се четат без вход", anonBoxes?.length === 1, anonBoxes);
     const { error: topBox } = await pU.c.from("category_prices").insert({ craftsman_id: pU.id, category_id: vik, ...hour(5) });
-    ok("кутии: горна категория не получава кутия", Boolean(topBox));
+    ok("кутии: горна категория не получава кутия", /Цена се слага само на подкатегория\./.test(topBox?.message ?? ""), topBox?.message);
 
     // boxes are not limited on the free plan; only services are
     const fU = await user("craftsman", "price-free");
