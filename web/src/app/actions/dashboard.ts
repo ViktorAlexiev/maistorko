@@ -104,6 +104,18 @@ export async function updateCraftsmanProfile(_: FormState, formData: FormData): 
     return { message: `Безплатният план позволява до ${citiesLimit} града с основния. С Pro няма ограничение.`, values };
   }
 
+  // Zero ticked categories is allowed only for a craftsman with none saved (he skipped them in the setup).
+  // If the count is unknown, refuse: never wipe saved categories.
+  if (d.categories.length === 0) {
+    const { count, error: countError } = await supabase
+      .from("craftsman_categories")
+      .select("category_id", { count: "exact", head: true })
+      .eq("craftsman_id", id);
+    if (countError || count === null || count > 0) {
+      return { errors: { categories: "Изберете поне една категория." }, values };
+    }
+  }
+
   const { error: e1 } = await supabase
     .from("craftsman_profiles")
     .update({
