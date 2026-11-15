@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/database.types";
 import { cookieOptions } from "./config";
 
-const PROTECTED = ["/tabla", "/saobshtenia", "/admin", "/nova-parola"];
+const PROTECTED = ["/tabla", "/setap", "/saobshtenia", "/admin", "/nova-parola"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
