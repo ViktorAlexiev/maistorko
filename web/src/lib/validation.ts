@@ -89,6 +89,37 @@ export const pricingSchema = z
     path: ["inspectionFee"],
   });
 
+// Terms saved together with the price boxes. No fee-vs-policy check: the server clears the fee unless paid/deducted.
+export const termsSchema = z.object({
+  callout: money,
+  travel: money,
+  materials: z.boolean(),
+  quoteOnInspection: z.boolean(),
+  policy: z.enum(["", "free", "paid", "deducted", "none"]),
+  inspectionFee: money,
+  note: z.string().trim().max(600, "Текстът е до 600 символа."),
+});
+
+export const boxSchema = z
+  .object({
+    categoryId: z.number().int().positive(),
+    kind: z.enum(["fixed", "from", "hour", "quote"]),
+    price: z.string(),
+    unit: z.enum(["job", "hour", "m2", "piece", "meter", "day"]),
+  })
+  .superRefine((v, ctx) => {
+    if (v.kind !== "quote") {
+      const p = v.price.trim();
+      const n = Number(p.replace(",", "."));
+      if (!/^\d+([.,]\d{1,2})?$/.test(p) || !(n > 0) || !(n < 100000)) {
+        ctx.addIssue({ code: "custom", message: "Въведете сума, напр. 25 или 12,50.", path: ["price"] });
+      }
+    }
+    if ((v.kind === "fixed" || v.kind === "from") && v.unit === "hour") {
+      ctx.addIssue({ code: "custom", message: "Изберете мерна единица.", path: ["unit"] });
+    }
+  });
+
 export const serviceSchema = z
   .object({
     name: z.string().trim().min(2, "Въведете име на услугата.").max(120),

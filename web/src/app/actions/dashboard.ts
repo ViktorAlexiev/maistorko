@@ -2,15 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
+  boxSchema,
   clientProfileSchema,
   craftsmanProfileSchema,
   fieldErrors,
   pricingSchema,
+  termsSchema,
   toMoney,
 } from "@/lib/validation";
 import type { FormState } from "@/app/actions/auth";
+import type { PriceUnit } from "@/lib/format";
+import type { BoxKind } from "@/lib/prices";
 
 async function me() {
   const supabase = await createClient();
@@ -176,6 +181,72 @@ export async function updatePricing(_: FormState, formData: FormData): Promise<F
     })
     .eq("id", id);
   if (error) return { message: "Цените не бяха записани. Опитайте отново.", values };
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Цените са записани." };
+}
+
+export type BoxInput = { categoryId: number; kind: BoxKind; price: string; unit: PriceUnit };
+export type TermsInput = {
+  callout: string;
+  travel: string;
+  materials: boolean;
+  quoteOnInspection: boolean;
+  policy: "" | "free" | "paid" | "deducted" | "none";
+  inspectionFee: string;
+  note: string;
+};
+
+export async function savePrices(input: { boxes: BoxInput[]; terms: TermsInput }): Promise<{ ok: boolean; message: string }> {
+  const { supabase, id } = await me();
+  const boxes = z.array(boxSchema).safeParse(input.boxes);
+  const terms = termsSchema.safeParse(input.terms);
+  if (!boxes.success || !terms.success) return { ok: false, message: "Цените не бяха записани. Провери сумите." };
+
+  // Every box must belong to a subcategory the craftsman has ticked
+  const ids = [...new Set(boxes.data.map((b) => b.categoryId))];
+  if (ids.length) {
+    const [{ data: mine }, { data: leaves }] = await Promise.all([
+      supabase.from("craftsman_categories").select("category_id").eq("craftsman_id", id).in("category_id", ids),
+      supabase.from("categories").select("id").in("id", ids).not("parent_id", "is", null),
+    ]);
+    const ticked = new Set((mine ?? []).map((r) => r.category_id));
+    const leafIds = new Set((leaves ?? []).map((r) => r.id));
+    if (ids.some((c) => !ticked.has(c) || !leafIds.has(c))) {
+      return { ok: false, message: "Категориите в профила са сменени. Презареди страницата." };
+    }
+  }
+
+  const failed = { ok: false, message: "Цените не бяха записани. Опитайте отново." };
+  if (boxes.data.length) {
+    const now = new Date().toISOString();
+    const { error: e1 } = await supabase.from("category_prices").upsert(
+      boxes.data.map((b) => ({
+        craftsman_id: id,
+        category_id: b.categoryId,
+        kind: b.kind,
+        price: b.kind === "quote" ? null : toMoney(b.price),
+        unit: b.kind === "hour" ? ("hour" as const) : b.kind === "quote" ? ("job" as const) : b.unit,
+        updated_at: now,
+      })),
+      { onConflict: "craftsman_id,category_id" },
+    );
+    if (e1) return failed;
+  }
+
+  const t = terms.data;
+  const { error: e2 } = await supabase
+    .from("craftsman_profiles")
+    .update({
+      callout_fee: toMoney(t.callout),
+      travel_fee: toMoney(t.travel),
+      materials_included: t.materials,
+      quote_on_inspection: t.quoteOnInspection,
+      inspection_policy: t.policy || null,
+      inspection_fee: t.policy === "paid" || t.policy === "deducted" ? toMoney(t.inspectionFee) : null,
+      terms_note: t.note || null,
+    })
+    .eq("id", id);
+  if (e2) return failed;
   revalidatePath("/", "layout");
   return { ok: true, message: "Цените са записани." };
 }

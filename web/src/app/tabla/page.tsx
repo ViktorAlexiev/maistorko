@@ -36,14 +36,15 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
   );
 
   if (viewer.craftsmanSlug) {
-    const [{ data: cp }, { data: strip }, cats, services, rules, photos, { data: busyRows }, { data: dueClients }] = await Promise.all([
+    const [{ data: cp }, { data: strip }, { data: cats }, { data: boxes }, services, rules, photos, { data: busyRows }, { data: dueClients }] = await Promise.all([
       supabase
         .from("craftsman_profiles")
         .select("id, bio, last_confirmed_at, rating_avg, rating_count, is_verified, is_hidden")
         .eq("id", viewer.id)
         .single(),
       supabase.rpc("availability_strip", { p_craftsman: viewer.id, p_from: todayISO(), p_days: 14 }),
-      supabase.from("craftsman_categories").select("category_id", { count: "exact", head: true }).eq("craftsman_id", viewer.id),
+      supabase.from("craftsman_categories").select("category_id").eq("craftsman_id", viewer.id),
+      supabase.from("category_prices").select("category_id").eq("craftsman_id", viewer.id),
       supabase.from("services").select("id", { count: "exact", head: true }).eq("craftsman_id", viewer.id),
       supabase.from("availability_rules").select("id", { count: "exact", head: true }).eq("craftsman_id", viewer.id),
       supabase.from("work_photos").select("id", { count: "exact", head: true }).eq("craftsman_id", viewer.id),
@@ -65,11 +66,14 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
         .limit(5),
     ]);
     const myPlan = process.env.DEMO_PRO_BUTTON === "1" ? await getMyPlan() : null;
+    const ticked = new Set((cats ?? []).map((c) => c.category_id));
+    const catCount = ticked.size;
+    const pricesDone = (services.count ?? 0) > 0 || (boxes ?? []).some((b) => ticked.has(b.category_id));
     const daysAgo = cp ? daysSince(cp.last_confirmed_at) : 0;
     const steps = [
-      { done: (cats.count ?? 0) > 0, label: "Избери какво работиш", href: "/tabla/profil" },
+      { done: catCount > 0, label: "Избери какво работиш", href: "/tabla/profil" },
       { done: Boolean(cp?.bio && cp.bio.length > 40), label: "Напиши няколко изречения за себе си", href: "/tabla/profil" },
-      { done: (services.count ?? 0) > 0, label: "Добави цени", href: "/tabla/tseni" },
+      { done: pricesDone, label: "Добави цени", href: "/tabla/tseni" },
       { done: (rules.count ?? 0) > 0, label: "Отбележи кога си свободен", href: "/tabla/kalendar" },
       { done: (photos.count ?? 0) > 0, label: "Качи снимки от работа", href: "/tabla/snimki" },
     ];
@@ -101,7 +105,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
               </p>
             </div>
             <p className="mt-1 text-ink-2">
-              {(cats.count ?? 0) === 0 || (rules.count ?? 0) === 0 || (services.count ?? 0) === 0
+              {catCount === 0 || (rules.count ?? 0) === 0 || !pricesDone
                 ? "Профилът ти се показва в търсенето, след като избереш категории, добавиш цени (или „по оглед“) и отбележиш кога си свободен."
                 : "Пълният профил получава повече запитвания."}
             </p>
