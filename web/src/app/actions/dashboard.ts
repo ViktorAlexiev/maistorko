@@ -35,7 +35,7 @@ export async function becomeCraftsman() {
   const { error } = await supabase.rpc("become_craftsman");
   if (error) redirect("/tabla?greshka=maistor");
   revalidatePath("/", "layout");
-  redirect("/tabla/profil?nov=1");
+  redirect("/setap");
 }
 
 export async function updateClientProfile(_: FormState, formData: FormData): Promise<FormState> {

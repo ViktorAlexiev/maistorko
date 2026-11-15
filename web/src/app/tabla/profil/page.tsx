@@ -10,9 +10,8 @@ import { MyData } from "./my-data";
 
 export const metadata: Metadata = { title: "Профил", robots: { index: false } };
 
-export default async function ProfileSettingsPage({ searchParams }: PageProps<"/tabla/profil">) {
+export default async function ProfileSettingsPage() {
   const viewer = await requireViewer();
-  const sp = await searchParams;
   const supabase = await createClient();
   const [cities, tree] = await Promise.all([getCities(), getCategoryTree()]);
   const cityOf = (id: number | null) => cities.find((c) => c.id === id)?.slug ?? "";
@@ -32,11 +31,6 @@ export default async function ProfileSettingsPage({ searchParams }: PageProps<"/
           ? "Това виждат клиентите на страницата ти. Телефонът ти остава скрит."
           : "Данните ви за връзка. Не се показват публично."}
       </p>
-      {sp.nov === "1" && (
-        <p role="status" className="mt-4 max-w-2xl rounded-[8px] bg-free-soft px-4 py-3 font-semibold text-free">
-          Профилът ти на майстор е създаден. Избери категории, за да се появиш в търсенето.
-        </p>
-      )}
     </div>
   );
   const avatar = <AvatarUpload userId={viewer.id} name={viewer.profile.full_name || viewer.email} url={viewer.profile.avatar_url} />;

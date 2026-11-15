@@ -169,7 +169,7 @@ export function RegisterForm({
         <label className="flex cursor-pointer items-start gap-3">
           <input type="checkbox" name="terms" className="check mt-0.5" aria-invalid={Boolean(state.errors?.terms)} />
           <span className="text-ink-2">
-            Съгласен съм данните ми да се използват за работата на профила. Телефонът ми не се показва публично.
+            Съгласен съм данните ми да се използват за работата на профила.
           </span>
         </label>
         <FieldError id="terms-err" message={state.errors?.terms} />

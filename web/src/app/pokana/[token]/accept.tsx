@@ -14,8 +14,8 @@ export function AcceptInvite({ token, role }: { token: string; role: "owner" | "
     start(async () => {
       const { error: e } = await createClient().rpc("claim_org_invite", { p_token: token });
       if (e) return void setError(e.message);
-      // a new craftsman completes the profile; owners and managers go to the company
-      router.push(role === "craftsman" ? "/tabla/profil?nov=1" : "/tabla/firma");
+      // a new craftsman goes through setup (it redirects to the dashboard if the profile is already listed); owners and managers go to the company
+      router.push(role === "craftsman" ? "/setap?ot=pokana" : "/tabla/firma");
       router.refresh();
     });
   }

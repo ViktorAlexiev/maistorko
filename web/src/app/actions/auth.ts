@@ -68,7 +68,7 @@ export async function signUp(_: FormState, formData: FormData): Promise<FormStat
     password: parsed.data.password,
     options: {
       data: { full_name: parsed.data.fullName, role: parsed.data.role, city: parsed.data.city },
-      emailRedirectTo: `${siteUrl()}/auth/callback?next=/tabla`,
+      emailRedirectTo: `${siteUrl()}/auth/callback?next=${parsed.data.role === "craftsman" ? "/setap" : "/tabla"}`,
     },
   });
   if (error) {
@@ -84,7 +84,7 @@ export async function signUp(_: FormState, formData: FormData): Promise<FormStat
     return { ok: true, message: "Изпратихме ви имейл за потвърждение. Отворете линка в него, за да влезете." };
   }
   revalidatePath("/", "layout");
-  redirect(parsed.data.role === "craftsman" ? "/tabla?nov=1" : safeNext(formData.get("next")));
+  redirect(parsed.data.role === "craftsman" ? "/setap" : safeNext(formData.get("next")));
 }
 
 export async function signOut() {
