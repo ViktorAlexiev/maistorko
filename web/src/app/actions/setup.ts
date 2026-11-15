@@ -44,6 +44,12 @@ export async function saveSetupCategories(input: { categoryIds: number[]; otherS
   if (!other.success) return { ok: false, message: other.error.issues[0].message };
 
   const failed = { ok: false as const, message: "Категориите не бяха записани." };
+  // "Какво е „Друго“?" is kept only while an "other services" category is ticked.
+  // Looked up before any write: a failed read must not erase the typed text.
+  const { data: picked, error: e0 } = await supabase.from("categories").select("slug").in("id", ids.data);
+  if (e0) return failed;
+  const hasOther = (picked ?? []).some((c) => OTHER_SLUGS.has(c.slug));
+
   const { error: e1 } = await supabase.from("craftsman_categories").delete().eq("craftsman_id", id);
   if (e1) return failed;
   const { error: e2 } = await supabase
@@ -51,9 +57,6 @@ export async function saveSetupCategories(input: { categoryIds: number[]; otherS
     .insert(ids.data.map((category_id) => ({ craftsman_id: id, category_id })));
   if (e2) return failed;
 
-  // "Какво е „Друго“?" is kept only while an "other services" category is ticked
-  const { data: picked } = await supabase.from("categories").select("slug").in("id", ids.data);
-  const hasOther = (picked ?? []).some((c) => OTHER_SLUGS.has(c.slug));
   const { error: e3 } = await supabase
     .from("craftsman_profiles")
     .update({ other_services: hasOther ? other.data || null : null })
