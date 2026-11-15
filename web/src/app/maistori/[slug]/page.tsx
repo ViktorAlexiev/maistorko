@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { Check, Clock, Info, Languages, MapPin, MessageCircle, Zap } from "lucide-react";
+import { Clock, Languages, MapPin, MessageCircle, Zap } from "lucide-react";
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth";
@@ -11,7 +11,6 @@ import { photoUrl } from "@/lib/data";
 import {
   daysSince,
   formatDate,
-  formatEur,
   headlinePrice,
   LANGUAGE_LABEL,
   servicePrice,
@@ -32,6 +31,8 @@ import { Gallery } from "@/components/gallery";
 import { ReviewForm } from "@/components/review-form";
 import { BUSY_UNTIL_NOTE } from "@/components/busy-until";
 import { deleteReview } from "@/app/actions/engage";
+import { hourEstimate, type BoxKind } from "@/lib/prices";
+import { ProfilePrices, type ProfileBox, type ProfileGroup } from "./profile-prices";
 
 /** PostgREST self-joins may come back as an object or a one-element array. */
 function one<T>(x: T | T[] | null | undefined): T | null {
@@ -52,12 +53,20 @@ const getCraftsman = cache(async (slug: string) => {
        areas:craftsman_service_areas(city:cities(name, slug, sort)),
        cats:craftsman_categories(category:categories(id, name, slug, sort, parent:parent_id(id, name, slug, sort))),
        services(id, name, description, price_kind, price, unit, sort, category_id, template_id, template:job_templates(typical_hours)),
+       prices:category_prices(category_id, kind, price, unit),
        photos:work_photos(id, path, caption, sort)`,
     )
     .eq("slug", slug)
     .maybeSingle();
   return data;
 });
+
+/** The headline price: the same rule as the catalog row, „по оглед“ also when a ticked subcategory's box says so. */
+function headline(c: NonNullable<Awaited<ReturnType<typeof getCraftsman>>>) {
+  const ticked = new Set(c.cats.map((x) => x.category?.id));
+  const quote = c.quote_on_inspection || c.prices.some((p) => p.kind === "quote" && ticked.has(p.category_id));
+  return headlinePrice(c.price_from, c.price_from_unit as PriceUnit | null, quote);
+}
 
 export async function generateMetadata({ params }: PageProps<"/maistori/[slug]">): Promise<Metadata> {
   const { slug } = await params;
@@ -67,7 +76,7 @@ export async function generateMetadata({ params }: PageProps<"/maistori/[slug]">
   const title = `${c.display_name}: ${cats.slice(0, 2).join(", ")}${c.city ? `, ${c.city.name}` : ""}`;
   return {
     title,
-    description: `${headlinePrice(c.price_from, c.price_from_unit as PriceUnit | null, c.quote_on_inspection)}. ${c.bio.slice(0, 140)}`,
+    description: `${headline(c)}. ${c.bio.slice(0, 140)}`,
     alternates: { canonical: `/maistori/${c.slug}` },
     openGraph: { title, type: "profile" },
   };
@@ -164,10 +173,54 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
     ? await supabase.rpc("template_price_ranges", { p_templates: templateIds, p_city: c.city?.slug ?? undefined })
     : { data: [] };
   const rangeOf = new Map((rangeRows ?? []).map((r) => [r.template_id, r]));
+  // One box per ticked subcategory (a ticked top-level category has no box); it shows when it has a price or a service
+  const priceOf = new Map(c.prices.map((p) => [p.category_id, p]));
+  const groupMap = new Map<number, { id: number; name: string; sort: number; boxes: { sort: number; box: ProfileBox }[] }>();
+  for (const x of c.cats) {
+    const cat = x.category;
+    const parent = cat ? one(cat.parent) : null;
+    if (!cat || !parent) continue;
+    const row = priceOf.get(cat.id);
+    const box: ProfileBox = {
+      id: cat.id,
+      name: cat.name,
+      kind: (row?.kind ?? null) as BoxKind | null,
+      price: row?.price ?? null,
+      unit: (row?.unit ?? "job") as PriceUnit,
+      services: [],
+    };
+    box.services = services
+      .filter((s) => s.category_id === cat.id)
+      .map((s) => {
+        const range = s.template_id != null ? rangeOf.get(s.template_id) : undefined;
+        return {
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          kind: s.price_kind as PriceKind,
+          price: s.price,
+          unit: s.unit as PriceUnit,
+          estimate: s.price_kind === "quote" && s.template_id != null ? hourEstimate(box, one(s.template)?.typical_hours) : null,
+          range: range ? { p25: Number(range.p25), p75: Number(range.p75), scope: range.scope } : null,
+        };
+      });
+    const hasPrice = box.kind === "quote" || (box.kind !== null && box.price !== null);
+    if (!hasPrice && box.services.length === 0) continue;
+    const group = groupMap.get(parent.id) ?? { id: parent.id, name: parent.name, sort: parent.sort, boxes: [] };
+    group.boxes.push({ sort: cat.sort, box });
+    groupMap.set(parent.id, group);
+  }
+  const priceGroups: ProfileGroup[] = [...groupMap.values()]
+    .sort((a, b) => a.sort - b.sort || a.id - b.id)
+    .map((g) => ({
+      id: g.id,
+      name: g.name,
+      boxes: g.boxes.sort((a, b) => a.sort - b.sort || a.box.id - b.box.id).map((x) => x.box),
+    }));
   const myReview = reviews?.find((r) => r.is_mine);
   const dayInfo = (days ?? []).map((d) => ({ day: d.day, status: d.status, ranges: d.ranges })) as DayInfo[];
   const initialDate = typeof sp.data === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.data) ? sp.data : undefined;
-  const price = headlinePrice(c.price_from, c.price_from_unit as PriceUnit | null, c.quote_on_inspection);
+  const price = headline(c);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -283,75 +336,21 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
           />
 
           {/* Prices */}
-          <section id="tseni" aria-labelledby="price-heading">
-            <h2 id="price-heading" className="display text-4xl">
-              Цени
-            </h2>
-            <p className="mt-2 flex items-start gap-2 text-ink-2">
-              <Info className="mt-1 size-4 shrink-0" aria-hidden />
-              Цените са ориентировъчни. Точната цена се уговаря в чата, а за по-големи работи обикновено първо има оглед.
-            </p>
-            {services.length > 0 ? (
-              <table className="mt-4 w-full border-t-[1.5px] border-ink text-left">
-                <caption className="sr-only">Ценоразпис на {c.display_name}</caption>
-                <thead className="sr-only">
-                  <tr>
-                    <th scope="col">Услуга</th>
-                    <th scope="col">Цена</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {services.map((s) => {
-                    const range = s.template_id != null ? rangeOf.get(s.template_id) : undefined;
-                    const unitSuffix = s.unit === "m2" ? "/м²" : s.unit === "hour" ? "/ч" : "";
-                    return (
-                      <tr key={s.id} className="border-b border-line">
-                        <th scope="row" className="py-3 pr-4 font-semibold">
-                          {s.name}
-                          {s.description && <span className="block text-sm font-normal text-ink-3">{s.description}</span>}
-                          {range && (
-                            <span className="block text-sm font-normal text-ink-3">
-                              Обикновено {range.scope === "city" && c.city ? `в ${c.city.name}` : "в България"}: {range.p25}–{range.p75} €{unitSuffix} (ориентировъчно)
-                            </span>
-                          )}
-                        </th>
-                        <td
-                          className={`whitespace-nowrap py-3 text-right ${s.price_kind === "quote" ? "font-semibold text-ink-2" : "numerals text-2xl"}`}
-                        >
-                          {servicePrice(s.price_kind as PriceKind, s.price, s.unit as PriceUnit)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            ) : (
-              <p className="mt-3 text-ink-2">Питайте {firstName} за цена в чата.</p>
-            )}
-            <h3 className="mt-8 text-lg font-extrabold">Условия</h3>
-            <dl className="mt-2 grid border-t border-line text-[0.95rem]">
-              <TermRow label="Оглед">
-                {inspectionText(c.inspection_policy, c.inspection_fee, c.quote_on_inspection)}
-              </TermRow>
-              {c.callout_fee != null && <TermRow label="Посещение">{formatEur(c.callout_fee)} минимум за идване</TermRow>}
-              {c.travel_fee != null && <TermRow label="Транспорт извън града">{formatEur(c.travel_fee)}</TermRow>}
-              <TermRow label="Материали">
-                {c.materials_included ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Check className="size-4 text-free" aria-hidden /> Включени в цената
-                  </span>
-                ) : (
-                  "Заплащат се отделно"
-                )}
-              </TermRow>
-            </dl>
-            {c.terms_note && (
-              <blockquote className="mt-4 border-l-[3px] border-rule pl-4 text-ink-2">
-                <p className="whitespace-pre-line">{c.terms_note}</p>
-                <footer className="mt-1 text-sm text-ink-3">{firstName} за начина си на работа</footer>
-              </blockquote>
-            )}
-          </section>
+          <ProfilePrices
+            groups={priceGroups}
+            showGroupNames={catList.length >= 2}
+            firstName={firstName}
+            cityName={c.city?.name ?? null}
+            terms={{
+              callout: c.callout_fee,
+              travel: c.travel_fee,
+              materials: c.materials_included,
+              quoteOnInspection: c.quote_on_inspection,
+              policy: c.inspection_policy,
+              inspectionFee: c.inspection_fee,
+              note: c.terms_note,
+            }}
+          />
 
           {/* About */}
           <section aria-labelledby="about-heading">
@@ -537,31 +536,4 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
 /** JSON for a ld+json script. `<` is escaped so profile text like "</script>" can't break out of the tag. */
 function safeJsonLd(data: unknown) {
   return JSON.stringify(data).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
-}
-
-function TermRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="grid gap-1 border-b border-line py-3 sm:grid-cols-[12rem_1fr] sm:gap-4">
-      <dt className="text-ink-3">{label}</dt>
-      <dd className="font-semibold">{children}</dd>
-    </div>
-  );
-}
-
-function inspectionText(policy: string | null, fee: number | null, quote: boolean) {
-  const eur = fee != null ? formatEur(fee) : "";
-  switch (policy) {
-    case "free":
-      return "Безплатен оглед";
-    case "paid":
-      return eur ? `Платен оглед: ${eur}` : "Платен оглед (цената се уточнява в чата)";
-    case "deducted":
-      return eur
-        ? `${eur}, приспада се от цената, ако работата се възложи`
-        : "Платен, приспада се от цената, ако работата се възложи";
-    case "none":
-      return "Без оглед: идва направо за работа";
-    default:
-      return quote ? "За по-големи работи: цена след оглед" : "Уточнява се в чата";
-  }
 }
