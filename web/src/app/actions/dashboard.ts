@@ -2,10 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
-  boxSchema,
   clientProfileSchema,
   craftsmanProfileSchema,
   fieldErrors,
@@ -13,8 +11,7 @@ import {
   toMoney,
 } from "@/lib/validation";
 import type { FormState } from "@/app/actions/auth";
-import type { PriceUnit } from "@/lib/format";
-import type { BoxKind } from "@/lib/prices";
+import { writeBoxes, type BoxInput } from "@/lib/write-boxes";
 
 async function me() {
   const supabase = await createClient();
@@ -144,7 +141,7 @@ export async function updateCraftsmanProfile(_: FormState, formData: FormData): 
   return { ok: true, message: "Профилът е записан." };
 }
 
-export type BoxInput = { categoryId: number; kind: BoxKind; price: string; unit: PriceUnit };
+export type { BoxInput } from "@/lib/write-boxes";
 export type TermsInput = {
   callout: string;
   travel: string;
@@ -157,41 +154,14 @@ export type TermsInput = {
 
 export async function savePrices(input: { boxes: BoxInput[]; terms: TermsInput }): Promise<{ ok: boolean; message: string }> {
   const { supabase, id } = await me();
-  const boxes = z.array(boxSchema).safeParse(input.boxes);
   const terms = termsSchema.safeParse(input.terms);
-  if (!boxes.success || !terms.success) return { ok: false, message: "Цените не бяха записани. Провери сумите." };
+  // Terms are checked before any write: a rejected save writes nothing
+  if (!terms.success) return { ok: false, message: "Цените не бяха записани. Провери сумите." };
 
-  // Every box must belong to a subcategory the craftsman has ticked
-  const ids = [...new Set(boxes.data.map((b) => b.categoryId))];
-  if (ids.length) {
-    const [{ data: mine }, { data: leaves }] = await Promise.all([
-      supabase.from("craftsman_categories").select("category_id").eq("craftsman_id", id).in("category_id", ids),
-      supabase.from("categories").select("id").in("id", ids).not("parent_id", "is", null),
-    ]);
-    const ticked = new Set((mine ?? []).map((r) => r.category_id));
-    const leafIds = new Set((leaves ?? []).map((r) => r.id));
-    if (ids.some((c) => !ticked.has(c) || !leafIds.has(c))) {
-      return { ok: false, message: "Категориите в профила са сменени. Презареди страницата." };
-    }
-  }
+  const written = await writeBoxes(supabase, id, input.boxes);
+  if (!written.ok) return written;
 
   const failed = { ok: false, message: "Цените не бяха записани. Опитайте отново." };
-  if (boxes.data.length) {
-    const now = new Date().toISOString();
-    const { error: e1 } = await supabase.from("category_prices").upsert(
-      boxes.data.map((b) => ({
-        craftsman_id: id,
-        category_id: b.categoryId,
-        kind: b.kind,
-        price: b.kind === "quote" ? null : toMoney(b.price),
-        unit: b.kind === "hour" ? ("hour" as const) : b.kind === "quote" ? ("job" as const) : b.unit,
-        updated_at: now,
-      })),
-      { onConflict: "craftsman_id,category_id" },
-    );
-    if (e1) return failed;
-  }
-
   const t = terms.data;
   const { error: e2 } = await supabase
     .from("craftsman_profiles")
