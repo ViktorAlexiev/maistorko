@@ -9,7 +9,6 @@ import {
   clientProfileSchema,
   craftsmanProfileSchema,
   fieldErrors,
-  pricingSchema,
   termsSchema,
   toMoney,
 } from "@/lib/validation";
@@ -143,46 +142,6 @@ export async function updateCraftsmanProfile(_: FormState, formData: FormData): 
 
   revalidatePath("/", "layout");
   return { ok: true, message: "Профилът е записан." };
-}
-
-export async function updatePricing(_: FormState, formData: FormData): Promise<FormState> {
-  const { supabase, id } = await me();
-  const raw = {
-    calloutFee: String(formData.get("calloutFee") ?? ""),
-    travelFee: String(formData.get("travelFee") ?? ""),
-    materialsIncluded: formData.get("materialsIncluded") === "on",
-    quoteOnInspection: formData.get("quoteOnInspection") === "on",
-    inspectionPolicy: String(formData.get("inspectionPolicy") ?? "") as "" | "free" | "paid" | "deducted" | "none",
-    inspectionFee: String(formData.get("inspectionFee") ?? ""),
-    termsNote: String(formData.get("termsNote") ?? ""),
-  };
-  const values = {
-    calloutFee: raw.calloutFee,
-    travelFee: raw.travelFee,
-    inspectionPolicy: raw.inspectionPolicy,
-    inspectionFee: raw.inspectionFee,
-    termsNote: raw.termsNote,
-  };
-  const parsed = pricingSchema.safeParse(raw);
-  if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
-  const { error } = await supabase
-    .from("craftsman_profiles")
-    .update({
-      callout_fee: toMoney(parsed.data.calloutFee),
-      travel_fee: toMoney(parsed.data.travelFee),
-      materials_included: parsed.data.materialsIncluded,
-      quote_on_inspection: parsed.data.quoteOnInspection,
-      inspection_policy: parsed.data.inspectionPolicy || null,
-      inspection_fee:
-        parsed.data.inspectionPolicy === "paid" || parsed.data.inspectionPolicy === "deducted"
-          ? toMoney(parsed.data.inspectionFee)
-          : null,
-      terms_note: parsed.data.termsNote || null,
-    })
-    .eq("id", id);
-  if (error) return { message: "Цените не бяха записани. Опитайте отново.", values };
-  revalidatePath("/", "layout");
-  return { ok: true, message: "Цените са записани." };
 }
 
 export type BoxInput = { categoryId: number; kind: BoxKind; price: string; unit: PriceUnit };

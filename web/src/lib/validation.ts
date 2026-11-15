@@ -74,21 +74,6 @@ const money = z
   .trim()
   .refine((v) => v === "" || (/^\d+([.,]\d{1,2})?$/.test(v) && Number(v.replace(",", ".")) <= 100000), "Въведете сума, напр. 25 или 12,50.");
 
-export const pricingSchema = z
-  .object({
-    calloutFee: money,
-    travelFee: money,
-    materialsIncluded: z.boolean(),
-    quoteOnInspection: z.boolean(),
-    inspectionPolicy: z.enum(["", "free", "paid", "deducted", "none"]),
-    inspectionFee: money,
-    termsNote: z.string().trim().max(600, "Текстът е до 600 символа."),
-  })
-  .refine((v) => !(v.inspectionPolicy === "free" || v.inspectionPolicy === "none") || v.inspectionFee === "", {
-    message: "Цена на огледа се попълва само ако огледът е платен.",
-    path: ["inspectionFee"],
-  });
-
 // Terms saved together with the price boxes. No fee-vs-policy check: the server clears the fee unless paid/deducted.
 export const termsSchema = z.object({
   callout: money,

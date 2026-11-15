@@ -1,23 +1,26 @@
 import type { Metadata } from "next";
 import { requireCraftsman } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { PricingForm, type Initial } from "./pricing-form";
-import Link from "next/link";
-import { Lock } from "lucide-react";
 import { getMyPlan, hasFeature } from "@/lib/plan";
+import type { PriceUnit } from "@/lib/format";
+import type { BoxKind } from "@/lib/prices";
+import type { TermsInput } from "@/app/actions/dashboard";
+import { PricesBoard, type BoardBox, type BoardGroup, type BoardHint } from "./prices-board";
 import { ServicesEditor } from "./services-editor";
 import { TemplatePicker, type Range, type Template } from "./template-picker";
 
 export const metadata: Metadata = { title: "Цени и услуги", robots: { index: false } };
 
+const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
+
 export default async function PricesPage() {
   const viewer = await requireCraftsman();
   const supabase = await createClient();
   const plan = await getMyPlan();
-  const [{ data: cp }, { data: services }, { data: links }] = await Promise.all([
+  const [{ data: cp }, { data: services }, { data: links }, { data: priceRows }] = await Promise.all([
     supabase
       .from("craftsman_profiles")
-      .select("callout_fee, travel_fee, materials_included, quote_on_inspection, inspection_policy, inspection_fee, terms_note, city:cities(slug)")
+      .select("callout_fee, travel_fee, materials_included, quote_on_inspection, inspection_policy, inspection_fee, terms_note, city:cities(slug, name)")
       .eq("id", viewer.id)
       .single(),
     supabase
@@ -27,23 +30,16 @@ export default async function PricesPage() {
       .order("sort"),
     supabase
       .from("craftsman_categories")
-      .select("category:categories(id, name, slug, parent_id, parent:parent_id(id, name, slug))")
+      .select("category:categories(id, name, slug, sort, parent_id, parent:parent_id(id, name, slug, sort))")
       .eq("craftsman_id", viewer.id),
+    supabase.from("category_prices").select("category_id, kind, price, unit").eq("craftsman_id", viewer.id),
   ]);
 
-  const cats = (links ?? [])
-    .map((l) => (Array.isArray(l.category) ? l.category[0] : l.category))
-    .filter((c): c is NonNullable<typeof c> => Boolean(c));
-  // Price guidance per top-level category, computed from existing profiles
-  const tops = new Map<number, string>();
-  for (const c of cats) {
-    const parent = Array.isArray(c.parent) ? c.parent[0] : c.parent;
-    tops.set(parent?.id ?? c.id, parent?.name ?? c.name);
-  }
+  const cats = (links ?? []).map((l) => one(l.category)).filter((c): c is NonNullable<typeof c> => Boolean(c));
   // Ready-made typical jobs of the top-level categories he works in
   const topSlugs = new Map<string, string>();
   for (const c of cats) {
-    const parent = Array.isArray(c.parent) ? c.parent[0] : c.parent;
+    const parent = one(c.parent);
     topSlugs.set(parent?.slug ?? c.slug, parent?.name ?? c.name);
   }
   const { data: tplRows } = topSlugs.size
@@ -51,7 +47,7 @@ export default async function PricesPage() {
     : { data: [] };
   const templates = (tplRows ?? []) as Template[];
   const proHints = hasFeature(plan, "price_hints");
-  const city = Array.isArray(cp?.city) ? cp?.city[0] : cp?.city;
+  const city = one(cp?.city);
   const { data: rangeRows } =
     proHints && templates.length
       ? await supabase.rpc("template_price_ranges", { p_templates: templates.map((t) => t.id), p_city: city?.slug ?? undefined })
@@ -59,78 +55,67 @@ export default async function PricesPage() {
   const ranges: Record<number, Range> = Object.fromEntries(
     (rangeRows ?? []).map((r) => [r.template_id, { p25: Number(r.p25), p75: Number(r.p75), scope: r.scope as Range["scope"] }]),
   );
-  const guides = proHints
+
+  // One box per ticked subcategory (a ticked top-level category has no box), grouped under its top-level category
+  const priceOf = new Map((priceRows ?? []).map((r) => [r.category_id, r]));
+  const topMap = new Map<number, { id: number; name: string; sort: number; boxes: { sort: number; box: BoardBox }[] }>();
+  for (const c of cats) {
+    const parent = one(c.parent);
+    if (c.parent_id == null || !parent) continue;
+    const row = priceOf.get(c.id);
+    const box: BoardBox = {
+      id: c.id,
+      name: c.name,
+      kind: (row?.kind ?? null) as BoxKind | null,
+      price: row?.price != null ? String(row.price) : "",
+      unit: (row?.unit ?? "job") as PriceUnit,
+    };
+    const top = topMap.get(parent.id) ?? { id: parent.id, name: parent.name, sort: parent.sort, boxes: [] };
+    top.boxes.push({ sort: c.sort, box });
+    topMap.set(parent.id, top);
+  }
+  const tops = [...topMap.values()].sort((a, b) => a.sort - b.sort || a.id - b.id);
+  const hints = proHints
     ? await Promise.all(
-        [...tops.entries()].map(async ([id, name]) => {
-          const { data } = await supabase.rpc("category_price_hint", { p_category: id });
-          return { id, name, g: data?.[0] };
+        tops.map(async (t) => {
+          const { data } = await supabase.rpc("category_price_hint", { p_category: t.id });
+          const g = data?.[0];
+          if (!g) return null;
+          const hint: BoardHint = {
+            hourly: g.hourly_p25 != null ? [Number(g.hourly_p25), Number(g.hourly_p75)] : null,
+            job: g.job_p25 != null ? [Number(g.job_p25), Number(g.job_p75)] : null,
+            scope: g.scope === "city" ? "city" : "all",
+          };
+          return hint;
         }),
       )
-    : [];
+    : tops.map(() => null);
+  const groups: BoardGroup[] = tops.map((t, i) => ({
+    id: t.id,
+    name: t.name,
+    boxes: t.boxes.sort((a, b) => a.sort - b.sort || a.box.id - b.box.id).map((x) => x.box),
+    hint: hints[i],
+  }));
+
+  const terms: TermsInput = {
+    callout: cp?.callout_fee != null ? String(cp.callout_fee) : "",
+    travel: cp?.travel_fee != null ? String(cp.travel_fee) : "",
+    materials: cp?.materials_included ?? false,
+    quoteOnInspection: cp?.quote_on_inspection ?? false,
+    policy: (cp?.inspection_policy ?? "") as TermsInput["policy"],
+    inspectionFee: cp?.inspection_fee != null ? String(cp.inspection_fee) : "",
+    note: cp?.terms_note ?? "",
+  };
 
   return (
-    <div className="grid gap-10">
-      <div>
-        <h1 className="display text-5xl sm:text-6xl">Цени и услуги</h1>
-        <p className="mt-2 max-w-2xl text-lg text-ink-2">
-          Клиентите виждат началната ти цена в търсенето и целия ценоразпис в профила. Ясните цени носят повече
-          запитвания.
-        </p>
-      </div>
-
-      {!proHints ? (
-        <p className="flex items-start gap-3 rounded-[10px] border border-dashed border-line-strong p-5 text-ink-2">
-          <Lock className="mt-0.5 size-5 shrink-0" aria-hidden />
-          <span>
-            Ценови подсказки („колегите в твоя град вземат от … до …“) са в Pro.{" "}
-            <Link href="/tabla/plan" className="link font-bold">
-              Виж плановете
-            </Link>
-          </span>
-        </p>
-      ) : (
-        guides.some((x) => x.g) && (
-          <section aria-labelledby="guide-heading" className="rounded-[10px] bg-rule-soft p-5">
-            <h2 id="guide-heading" className="text-lg font-extrabold">
-              Какво вземат колегите
-            </h2>
-            <p className="mt-1 text-sm text-ink-2">Изчислено от цените на други майстори в Майсторлъка. Показва се само когато има достатъчно данни. Само за ориентир.</p>
-            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-              {guides
-                .filter((x) => x.g)
-                .map(({ id, name, g }) => (
-                  <li key={id} className="rounded-[8px] bg-surface p-3">
-                    <p className="font-bold">{name}</p>
-                    <p className="text-xs text-ink-3">{g!.scope === "city" ? "В твоя град" : "В цялата страна"}</p>
-                    {g!.hourly_p25 != null && (
-                      <p className="text-sm">
-                        На час: <span className="numerals text-lg">{g!.hourly_p25}–{g!.hourly_p75} €</span>
-                      </p>
-                    )}
-                    {g!.job_p25 != null && (
-                      <p className="text-sm">
-                        На услуга: <span className="numerals text-lg">{g!.job_p25}–{g!.job_p75} €</span>
-                      </p>
-                    )}
-                  </li>
-                ))}
-            </ul>
-          </section>
-        )
-      )}
-
-      <PricingForm
-        initial={{
-          calloutFee: cp?.callout_fee != null ? String(cp.callout_fee) : "",
-          travelFee: cp?.travel_fee != null ? String(cp.travel_fee) : "",
-          materialsIncluded: cp?.materials_included ?? false,
-          quoteOnInspection: cp?.quote_on_inspection ?? false,
-          inspectionPolicy: (cp?.inspection_policy ?? "") as Initial["inspectionPolicy"],
-          inspectionFee: cp?.inspection_fee != null ? String(cp.inspection_fee) : "",
-          termsNote: cp?.terms_note ?? "",
-        }}
-      />
-
+    <PricesBoard
+      groups={groups}
+      terms={terms}
+      cityName={city?.name ?? null}
+      proHints={proHints}
+      limit={plan.limits.services ?? null}
+      used={(services ?? []).length}
+    >
       <TemplatePicker
         userId={viewer.id}
         templates={templates}
@@ -146,6 +131,6 @@ export default async function PricesPage() {
         categories={cats.map((c) => ({ id: c.id, name: c.name }))}
         limit={plan.limits.services ?? null}
       />
-    </div>
+    </PricesBoard>
   );
 }
