@@ -2,12 +2,10 @@ import type { Metadata } from "next";
 import { requireCraftsman } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getMyPlan, hasFeature } from "@/lib/plan";
-import type { PriceUnit } from "@/lib/format";
+import type { PriceKind, PriceUnit } from "@/lib/format";
 import type { BoxKind } from "@/lib/prices";
 import type { TermsInput } from "@/app/actions/dashboard";
-import { PricesBoard, type BoardBox, type BoardGroup, type BoardHint } from "./prices-board";
-import { ServicesEditor } from "./services-editor";
-import { TemplatePicker, type Range, type Template } from "./template-picker";
+import { PricesBoard, type BoardBox, type BoardGroup, type BoardHint, type BoardService, type BoardTemplate } from "./prices-board";
 
 export const metadata: Metadata = { title: "Цени и услуги", robots: { index: false } };
 
@@ -25,7 +23,9 @@ export default async function PricesPage() {
       .single(),
     supabase
       .from("services")
-      .select("id, name, description, price_kind, price, unit, category_id, sort, template_id")
+      .select(
+        "id, name, description, price_kind, price, unit, category_id, sort, template_id, category:categories(name), template:job_templates(typical_hours)",
+      )
       .eq("craftsman_id", viewer.id)
       .order("sort"),
     supabase
@@ -36,25 +36,40 @@ export default async function PricesPage() {
   ]);
 
   const cats = (links ?? []).map((l) => one(l.category)).filter((c): c is NonNullable<typeof c> => Boolean(c));
-  // Ready-made typical jobs of the top-level categories he works in
-  const topSlugs = new Map<string, string>();
-  for (const c of cats) {
-    const parent = one(c.parent);
-    topSlugs.set(parent?.slug ?? c.slug, parent?.name ?? c.name);
-  }
-  const { data: tplRows } = topSlugs.size
-    ? await supabase.from("job_templates").select("id, name, unit, category_slug").in("category_slug", [...topSlugs.keys()]).order("category_slug").order("sort")
+  // Ready-made typical jobs of the ticked subcategories (the ones that have a box)
+  const subIds = cats.filter((c) => c.parent_id != null).map((c) => c.id);
+  const { data: tplRows } = subIds.length
+    ? await supabase.from("job_templates").select("id, name, unit, category_id, typical_hours").in("category_id", subIds).order("sort")
     : { data: [] };
-  const templates = (tplRows ?? []) as Template[];
   const proHints = hasFeature(plan, "price_hints");
   const city = one(cp?.city);
   const { data: rangeRows } =
-    proHints && templates.length
-      ? await supabase.rpc("template_price_ranges", { p_templates: templates.map((t) => t.id), p_city: city?.slug ?? undefined })
+    proHints && (tplRows ?? []).length
+      ? await supabase.rpc("template_price_ranges", { p_templates: (tplRows ?? []).map((t) => t.id), p_city: city?.slug ?? undefined })
       : { data: [] };
-  const ranges: Record<number, Range> = Object.fromEntries(
-    (rangeRows ?? []).map((r) => [r.template_id, { p25: Number(r.p25), p75: Number(r.p75), scope: r.scope as Range["scope"] }]),
+  const ranges = new Map<number, NonNullable<BoardTemplate["range"]>>(
+    (rangeRows ?? []).map((r) => [r.template_id, { p25: Number(r.p25), p75: Number(r.p75), scope: r.scope === "city" ? "city" : "all" }]),
   );
+  const templates: BoardTemplate[] = (tplRows ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    unit: t.unit as PriceUnit,
+    categoryId: t.category_id,
+    typicalHours: Number(t.typical_hours),
+    range: proHints ? (ranges.get(t.id) ?? null) : null,
+  }));
+  const boardServices: BoardService[] = (services ?? []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    description: s.description,
+    kind: s.price_kind as PriceKind,
+    price: s.price != null ? String(s.price) : "",
+    unit: s.unit as PriceUnit,
+    categoryId: s.category_id,
+    categoryName: one(s.category)?.name ?? null,
+    templateId: s.template_id,
+    typicalHours: one(s.template)?.typical_hours != null ? Number(one(s.template)?.typical_hours) : null,
+  }));
 
   // One box per ticked subcategory (a ticked top-level category has no box), grouped under its top-level category
   const priceOf = new Map((priceRows ?? []).map((r) => [r.category_id, r]));
@@ -114,23 +129,9 @@ export default async function PricesPage() {
       cityName={city?.name ?? null}
       proHints={proHints}
       limit={plan.limits.services ?? null}
-      used={(services ?? []).length}
-    >
-      <TemplatePicker
-        userId={viewer.id}
-        templates={templates}
-        categoryNames={Object.fromEntries(topSlugs)}
-        taken={(services ?? []).map((s) => s.template_id).filter((x): x is number => x != null)}
-        ranges={ranges}
-        isPro={proHints}
-      />
-
-      <ServicesEditor
-        userId={viewer.id}
-        initial={(services ?? []).map((s) => ({ ...s, price: s.price != null ? String(s.price) : "" }))}
-        categories={cats.map((c) => ({ id: c.id, name: c.name }))}
-        limit={plan.limits.services ?? null}
-      />
-    </PricesBoard>
+      userId={viewer.id}
+      services={boardServices}
+      templates={templates}
+    />
   );
 }

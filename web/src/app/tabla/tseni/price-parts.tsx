@@ -1,18 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { Lock, LoaderCircle } from "lucide-react";
+import { useState } from "react";
+import { Lock, LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react";
 import { toMoney } from "@/lib/validation";
-import { BOX_KINDS, BOX_UNITS, priceText, type BoxKind } from "@/lib/prices";
-import type { PriceUnit } from "@/lib/format";
+import { BOX_KINDS, BOX_UNITS, hourEstimate, priceText, type BoxKind } from "@/lib/prices";
+import { servicePrice, UNIT_LABEL, UNIT_OPTIONS, type PriceKind, type PriceUnit } from "@/lib/format";
 import type { TermsInput } from "@/app/actions/dashboard";
-import type { BoardBox, BoardHint } from "./prices-board";
+import type { BoardBox, BoardHint, BoardService, BoardTemplate } from "./prices-board";
 
 /* Pieces of the „Цени и услуги“ board. Separation without lines: strips on the card surface, 4px apart,
  * boxes under a yellow band, the quiet part one step back on the paper. */
 
 export const st = {
   group: "display mb-2 text-[1.7rem]",
+  groupSm: "display mb-2 text-[1.45rem]",
+  list: "grid gap-1",
+  panel: "grid gap-1 rounded-[8px] bg-paper p-1.5",
+  act: "btn btn-sm max-sm:min-h-11",
   shell: "grid overflow-hidden rounded-[10px] bg-surface",
   head: "flex items-center justify-between gap-3 bg-rule px-5 py-2.5",
   title: "display text-3xl",
@@ -21,7 +26,7 @@ export const st = {
   rivet: "inline-block size-2.5 shrink-0 rounded-full bg-brass shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]",
 };
 
-const isMoney = (v: string) => {
+export const isMoney = (v: string) => {
   const n = toMoney(v);
   return n !== null && Number.isFinite(n) && n >= 0 && n < 100000;
 };
@@ -181,6 +186,343 @@ export function PriceTag({ box, className = "text-[1.7rem]" }: { box: BoardBox; 
   if (!p) return <span className="text-[0.95rem] font-semibold text-ink-2">без цена</span>;
   if (p === "по оглед") return <span className="text-[0.95rem] font-bold">по оглед</span>;
   return <span className={`numerals whitespace-nowrap leading-none ${className}`}>{p}</span>;
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Services and ready-made jobs, inside the boxes
+ * ---------------------------------------------------------------------------------------------- */
+
+const SVC_KINDS: { k: PriceKind; label: string }[] = [
+  { k: "fixed", label: "Точна цена" },
+  { k: "from", label: "От … €" },
+  { k: "quote", label: "По оглед" },
+];
+
+/** What a service is saved with (the form's result). `id` is set when an existing service is changed. */
+export type ServiceDraft = {
+  id?: string;
+  name: string;
+  kind: PriceKind;
+  price: string;
+  unit: PriceUnit;
+  description: string;
+  categoryId: number | null;
+  templateId: number | null;
+};
+
+/** One service as a strip: name, its note, the price, edit and delete. */
+export function ServiceRow({
+  s,
+  onEdit,
+  onDelete,
+  disabled,
+  className = "bg-surface",
+}: {
+  s: BoardService;
+  onEdit: () => void;
+  onDelete: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const quote = s.kind === "quote";
+  return (
+    <li className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[6px] py-2 pl-3 pr-1.5 ${className}`}>
+      <div className="min-w-0 flex-1 py-1">
+        <p className="font-bold leading-snug">{s.name}</p>
+        {s.description && <p className="text-sm text-ink-3">{s.description}</p>}
+      </div>
+      <p className={quote ? "text-[0.95rem] font-semibold text-ink-2" : "numerals whitespace-nowrap text-2xl"}>
+        {servicePrice(s.kind, s.price.trim() === "" ? null : s.price, s.unit)}
+      </p>
+      <div className="flex">
+        <button type="button" className={`${st.act} btn-ghost`} onClick={onEdit} aria-label={`Промени „${s.name}“`}>
+          <Pencil className="size-4" aria-hidden />
+        </button>
+        <button
+          type="button"
+          className={`${st.act} btn-ghost text-danger`}
+          disabled={disabled}
+          onClick={onDelete}
+          aria-label={`Изтрий „${s.name}“`}
+        >
+          <Trash2 className="size-4" aria-hidden />
+        </button>
+      </div>
+    </li>
+  );
+}
+
+/**
+ * The service form, drawn where the button (or the row being changed) was. `box` is the box it was opened in (null for a
+ * service under „Други услуги“); `boxes` are the ticked subcategories. A service that is in no box keeps its own category
+ * as the first choice, so it is not changed without need.
+ */
+export function ServiceForm({
+  editing,
+  box,
+  boxes,
+  templates,
+  proHints,
+  cityName,
+  onSave,
+  onDone,
+  surface = "bg-paper",
+}: {
+  editing?: BoardService;
+  box: BoardBox | null;
+  boxes: BoardBox[];
+  templates: BoardTemplate[];
+  proHints: boolean;
+  cityName: string | null;
+  onSave: (d: ServiceDraft) => Promise<boolean>;
+  onDone: () => void;
+  surface?: string;
+}) {
+  const [d, setD] = useState<ServiceDraft>(
+    editing
+      ? {
+          id: editing.id,
+          name: editing.name,
+          kind: editing.kind,
+          price: editing.price,
+          unit: editing.unit,
+          description: editing.description ?? "",
+          categoryId: editing.categoryId,
+          templateId: editing.templateId,
+        }
+      : { name: "", kind: "fixed", price: "", unit: "job", description: "", categoryId: box?.id ?? null, templateId: null },
+  );
+  const [errors, setErrors] = useState<{ name?: string; price?: string }>({});
+  const [pending, setPending] = useState(false);
+  const idp = `svc-${editing?.id ?? `new-${box?.id}`}`;
+  const own = editing && !boxes.some((b) => b.id === editing.categoryId) ? editing : null;
+  const range = d.templateId != null ? templates.find((t) => t.id === d.templateId)?.range : null;
+  const est = d.templateId != null && editing ? hourEstimate(boxes.find((b) => b.id === editing.categoryId), editing.typicalHours) : null;
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const err: typeof errors = {};
+    if (d.name.trim().length < 2) err.name = "Напиши име на услугата.";
+    if (d.kind !== "quote" && !isMoney(d.price)) {
+      err.price = d.price.trim() ? "Напиши цената с числа, например 35." : "Напиши цена или избери „По оглед“.";
+    }
+    setErrors(err);
+    if (err.name || err.price) return;
+    setPending(true);
+    try {
+      const ok = await onSave({ ...d, name: d.name.trim(), price: d.kind === "quote" ? "" : d.price.trim(), description: d.description.trim() });
+      if (ok) onDone();
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} noValidate className={`grid gap-4 rounded-[8px] p-4 ${surface}`}>
+      <p className="text-lg font-extrabold">{editing ? `Промяна на „${editing.name}“` : `Нова услуга в „${box?.name}“`}</p>
+      <div>
+        <label htmlFor={`${idp}-name`} className="label">
+          Име на услугата
+        </label>
+        <input
+          id={`${idp}-name`}
+          className="field"
+          value={d.name}
+          maxLength={120}
+          placeholder="напр. Смяна на бушон"
+          aria-invalid={Boolean(errors.name) || undefined}
+          onChange={(e) => setD({ ...d, name: e.target.value, templateId: null })}
+        />
+        {errors.name && <p className="error-text">{errors.name}</p>}
+      </div>
+      <fieldset>
+        <legend className="label">Цена</legend>
+        <div className="flex flex-wrap gap-2">
+          {SVC_KINDS.map(({ k, label }) => (
+            <button key={k} type="button" className="chip max-sm:min-h-11" aria-pressed={d.kind === k} onClick={() => setD({ ...d, kind: k })}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {d.kind !== "quote" ? (
+          <div className="mt-3 flex flex-wrap items-start gap-2">
+            <div className="relative w-36">
+              <input
+                className="field numerals !text-[1.35rem] pr-10"
+                inputMode="decimal"
+                value={d.price}
+                aria-label={d.kind === "from" ? "Начална цена в евро" : "Цена в евро"}
+                aria-invalid={Boolean(errors.price) || undefined}
+                onChange={(e) => setD({ ...d, price: e.target.value })}
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-bold text-ink-3">€</span>
+            </div>
+            <select
+              className="field w-auto min-w-40"
+              aria-label="Мерна единица"
+              value={d.unit}
+              onChange={(e) => setD({ ...d, unit: e.target.value as PriceUnit })}
+            >
+              {UNIT_OPTIONS.map((u) => (
+                <option key={u.value} value={u.value}>
+                  {u.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <p className="hint">Клиентите виждат „по оглед“{est ? ` и ориентировъчно ≈ ${est} € от цената ти на час.` : "."}</p>
+        )}
+        {errors.price && <p className="error-text">{errors.price}</p>}
+        {proHints && range && (
+          <p className="hint">
+            Колегите {range.scope === "city" && cityName ? `в ${cityName}` : "в страната"} вземат {range.p25}–{range.p75} € за тази работа.
+          </p>
+        )}
+      </fieldset>
+      {editing && (
+        <div>
+          <label htmlFor={`${idp}-cat`} className="label">
+            Категория
+          </label>
+          <select
+            id={`${idp}-cat`}
+            className="field"
+            value={d.categoryId ?? ""}
+            onChange={(e) => setD({ ...d, categoryId: e.target.value === "" ? null : Number(e.target.value) })}
+          >
+            {own && <option value={own.categoryId ?? ""}>{own.categoryName ?? "Без категория"}</option>}
+            {boxes.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      <div>
+        <label htmlFor={`${idp}-desc`} className="label">
+          Уточнение <span className="font-normal text-ink-3">(по желание)</span>
+        </label>
+        <input
+          id={`${idp}-desc`}
+          className="field"
+          maxLength={300}
+          placeholder="напр. без материалите"
+          value={d.description}
+          onChange={(e) => setD({ ...d, description: e.target.value })}
+        />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" className="btn btn-primary" disabled={pending}>
+          {pending ? "Записваме…" : editing ? "Запази" : "Добави"}
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={onDone}>
+          Откажи
+        </button>
+      </div>
+    </form>
+  );
+}
+
+const templateUnit = (u: PriceUnit) => BOX_UNITS.find((x) => x.value === u)?.label ?? UNIT_LABEL[u];
+
+/** A ready-made job: write a price and add it. Empty = „по оглед“ (with „≈ X €“ when the box is per hour). */
+export function SuggestionRow({
+  t,
+  box,
+  full,
+  proHints,
+  onAdd,
+  className = "bg-surface",
+}: {
+  t: BoardTemplate;
+  box: BoardBox | null;
+  full: boolean;
+  proHints: boolean;
+  onAdd: (t: BoardTemplate, price: string) => Promise<boolean>;
+  className?: string;
+}) {
+  const [price, setPrice] = useState("");
+  const [pending, setPending] = useState(false);
+  const est = hourEstimate(box, t.typicalHours);
+  const add = async () => {
+    if (pending || full) return;
+    setPending(true);
+    try {
+      if (await onAdd(t, price)) setPrice("");
+    } finally {
+      setPending(false);
+    }
+  };
+  return (
+    <li className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[6px] px-3 py-2 ${className}`}>
+      <div className="min-w-0 flex-[1_1_14rem]">
+        <p className="font-semibold leading-snug">{t.name}</p>
+        <p className="text-sm text-ink-3">
+          {price.trim() === "" ? (est ? `Без цена: по оглед, ≈ ${est} €` : "Без цена: по оглед") : templateUnit(t.unit)}
+          {proHints && t.range && (
+            <>
+              {" · "}
+              <span className="font-semibold text-ink-2">
+                колегите вземат {t.range.p25}–{t.range.p75} €
+              </span>
+            </>
+          )}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="relative w-24">
+          <input
+            className="field numerals !text-[1.2rem] pr-8"
+            inputMode="decimal"
+            value={price}
+            aria-label={`Цена за „${t.name}“`}
+            onChange={(e) => setPrice(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void add();
+              }
+            }}
+          />
+          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-bold text-ink-3">€</span>
+        </div>
+        <button type="button" className="btn btn-outline btn-sm max-sm:min-h-11" disabled={full || pending} onClick={() => void add()}>
+          <Plus className="size-4" aria-hidden /> Добави
+        </button>
+      </div>
+    </li>
+  );
+}
+
+/** „Добави услуга“. */
+export function AddServiceButton({ onClick, label = "Добави услуга", className = "btn-outline" }: { onClick: () => void; label?: string; className?: string }) {
+  return (
+    <button type="button" className={`btn ${className}`} onClick={onClick}>
+      <Plus className="size-4" aria-hidden /> {label}
+    </button>
+  );
+}
+
+/** In place of „Добави услуга“ when the free plan is full: the reason and the way out, right where the button was. */
+export function FullNote({ used, limit }: { used: number; limit: number | null }) {
+  return (
+    <p className="flex items-start gap-2 rounded-[6px] bg-paper px-3 py-2.5 text-[0.95rem] text-ink">
+      <Lock className="mt-1 size-4 shrink-0" aria-hidden />
+      <span>
+        Планът е пълен:{" "}
+        <span className="font-semibold">
+          {used} от {limit} услуги
+        </span>
+        . Изтрий услуга или{" "}
+        <Link href="/tabla/plan" className="link font-bold">
+          виж Pro
+        </Link>
+        .
+      </span>
+    </p>
+  );
 }
 
 /* ------------------------------------------------------------------------------------------------

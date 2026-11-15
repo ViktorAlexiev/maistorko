@@ -44,7 +44,7 @@ export function hourEstimate(
   if (box.price === null || box.price === "" || typicalHours === null || typicalHours === undefined || typicalHours === "") {
     return null;
   }
-  const rate = Number(box.price);
+  const rate = typeof box.price === "string" ? Number(box.price.replace(",", ".")) : box.price;
   const hours = Number(typicalHours);
   if (!Number.isFinite(rate) || !Number.isFinite(hours)) return null;
   const est = Math.round((rate * hours) / 5) * 5;
