@@ -143,7 +143,6 @@ export async function updateCraftsmanProfile(_: FormState, formData: FormData): 
 export async function updatePricing(_: FormState, formData: FormData): Promise<FormState> {
   const { supabase, id } = await me();
   const raw = {
-    hourlyRate: String(formData.get("hourlyRate") ?? ""),
     calloutFee: String(formData.get("calloutFee") ?? ""),
     travelFee: String(formData.get("travelFee") ?? ""),
     materialsIncluded: formData.get("materialsIncluded") === "on",
@@ -153,7 +152,6 @@ export async function updatePricing(_: FormState, formData: FormData): Promise<F
     termsNote: String(formData.get("termsNote") ?? ""),
   };
   const values = {
-    hourlyRate: raw.hourlyRate,
     calloutFee: raw.calloutFee,
     travelFee: raw.travelFee,
     inspectionPolicy: raw.inspectionPolicy,
@@ -162,14 +160,9 @@ export async function updatePricing(_: FormState, formData: FormData): Promise<F
   };
   const parsed = pricingSchema.safeParse(raw);
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
-  const hourly = toMoney(parsed.data.hourlyRate);
-  if (hourly !== null && (hourly < 1 || hourly > 1000)) {
-    return { errors: { hourlyRate: "Цената на час е между 1 и 1000 €." }, values };
-  }
   const { error } = await supabase
     .from("craftsman_profiles")
     .update({
-      hourly_rate: hourly,
       callout_fee: toMoney(parsed.data.calloutFee),
       travel_fee: toMoney(parsed.data.travelFee),
       materials_included: parsed.data.materialsIncluded,

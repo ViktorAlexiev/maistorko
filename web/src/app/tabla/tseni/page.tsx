@@ -17,7 +17,7 @@ export default async function PricesPage() {
   const [{ data: cp }, { data: services }, { data: links }] = await Promise.all([
     supabase
       .from("craftsman_profiles")
-      .select("hourly_rate, callout_fee, travel_fee, materials_included, quote_on_inspection, inspection_policy, inspection_fee, terms_note, city:cities(slug)")
+      .select("callout_fee, travel_fee, materials_included, quote_on_inspection, inspection_policy, inspection_fee, terms_note, city:cities(slug)")
       .eq("id", viewer.id)
       .single(),
     supabase
@@ -121,7 +121,6 @@ export default async function PricesPage() {
 
       <PricingForm
         initial={{
-          hourlyRate: cp?.hourly_rate != null ? String(cp.hourly_rate) : "",
           calloutFee: cp?.callout_fee != null ? String(cp.callout_fee) : "",
           travelFee: cp?.travel_fee != null ? String(cp.travel_fee) : "",
           materialsIncluded: cp?.materials_included ?? false,

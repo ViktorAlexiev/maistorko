@@ -39,7 +39,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
     const [{ data: cp }, { data: strip }, cats, services, rules, photos, { data: busyRows }, { data: dueClients }] = await Promise.all([
       supabase
         .from("craftsman_profiles")
-        .select("id, bio, hourly_rate, last_confirmed_at, rating_avg, rating_count, is_verified, is_hidden")
+        .select("id, bio, last_confirmed_at, rating_avg, rating_count, is_verified, is_hidden")
         .eq("id", viewer.id)
         .single(),
       supabase.rpc("availability_strip", { p_craftsman: viewer.id, p_from: todayISO(), p_days: 14 }),
@@ -69,7 +69,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
     const steps = [
       { done: (cats.count ?? 0) > 0, label: "Избери какво работиш", href: "/tabla/profil" },
       { done: Boolean(cp?.bio && cp.bio.length > 40), label: "Напиши няколко изречения за себе си", href: "/tabla/profil" },
-      { done: (services.count ?? 0) > 0 || Boolean(cp?.hourly_rate), label: "Добави цени", href: "/tabla/tseni" },
+      { done: (services.count ?? 0) > 0, label: "Добави цени", href: "/tabla/tseni" },
       { done: (rules.count ?? 0) > 0, label: "Отбележи кога си свободен", href: "/tabla/kalendar" },
       { done: (photos.count ?? 0) > 0, label: "Качи снимки от работа", href: "/tabla/snimki" },
     ];
@@ -101,7 +101,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
               </p>
             </div>
             <p className="mt-1 text-ink-2">
-              {(cats.count ?? 0) === 0 || (rules.count ?? 0) === 0 || !((services.count ?? 0) > 0 || cp?.hourly_rate)
+              {(cats.count ?? 0) === 0 || (rules.count ?? 0) === 0 || (services.count ?? 0) === 0
                 ? "Профилът ти се показва в търсенето, след като избереш категории, добавиш цени (или „по оглед“) и отбележиш кога си свободен."
                 : "Пълният профил получава повече запитвания."}
             </p>

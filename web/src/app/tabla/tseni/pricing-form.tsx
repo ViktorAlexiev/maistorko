@@ -6,7 +6,6 @@ import type { FormState } from "@/app/actions/auth";
 import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
 
 export type Initial = {
-  hourlyRate: string;
   calloutFee: string;
   travelFee: string;
   materialsIncluded: boolean;
@@ -29,7 +28,7 @@ export function PricingForm({ initial }: { initial: Initial }) {
   const [policy, setPolicy] = useState<Initial["inspectionPolicy"]>(initial.inspectionPolicy);
   const paid = policy === "paid" || policy === "deducted";
 
-  const money = (name: "hourlyRate" | "calloutFee" | "travelFee" | "inspectionFee", label: string, hint: string, suffix = "€") => (
+  const money = (name: "calloutFee" | "travelFee" | "inspectionFee", label: string, hint: string, suffix = "€") => (
     <div>
       <label htmlFor={name} className="label">
         {label}
@@ -60,7 +59,6 @@ export function PricingForm({ initial }: { initial: Initial }) {
       </h2>
       <form action={action} className="mt-4 grid gap-5 rounded-[10px] border border-line bg-surface p-5" noValidate>
         <div className="grid gap-5 sm:grid-cols-3">
-          {money("hourlyRate", "Цена на час", "По желание. Показва се като „от X €/ч“.", "€/ч")}
           {money("calloutFee", "Такса посещение", "По желание. Минимална сума за идване.")}
           {money("travelFee", "Транспорт извън града", "По желание.")}
         </div>

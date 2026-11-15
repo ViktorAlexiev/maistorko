@@ -44,7 +44,7 @@ const getCraftsman = cache(async (slug: string) => {
     .from("craftsman_profiles")
     .select(
       `id, slug, display_name, business_name, bio, years_experience, languages, avatar_url,
-       hourly_rate, callout_fee, travel_fee, materials_included, quote_on_inspection,
+       callout_fee, travel_fee, materials_included, quote_on_inspection,
        inspection_policy, inspection_fee, terms_note, other_services,
        price_from, price_from_unit, short_notice, last_confirmed_at, contact_hours, reply_within_hours,
        is_verified, rating_avg, rating_count, created_at,
@@ -301,22 +301,8 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
                   </tr>
                 </thead>
                 <tbody>
-                  {c.hourly_rate && (
-                    <tr className="border-b border-line">
-                      <th scope="row" className="py-3 pr-4 font-semibold">
-                        Час работа
-                      </th>
-                      <td className="numerals whitespace-nowrap py-3 text-right text-2xl">{formatEur(c.hourly_rate)}/ч</td>
-                    </tr>
-                  )}
                   {services.map((s) => {
                     const range = s.template_id != null ? rangeOf.get(s.template_id) : undefined;
-                    const tpl = one(s.template);
-                    // a job left "по оглед" still gets an indicative price: hourly rate x the usual time
-                    const estimate =
-                      s.price_kind === "quote" && c.hourly_rate && tpl?.typical_hours
-                        ? Math.round((Number(c.hourly_rate) * Number(tpl.typical_hours)) / 5) * 5
-                        : null;
                     const unitSuffix = s.unit === "m2" ? "/м²" : s.unit === "hour" ? "/ч" : "";
                     return (
                       <tr key={s.id} className="border-b border-line">
@@ -333,9 +319,6 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
                           className={`whitespace-nowrap py-3 text-right ${s.price_kind === "quote" ? "font-semibold text-ink-2" : "numerals text-2xl"}`}
                         >
                           {servicePrice(s.price_kind as PriceKind, s.price, s.unit as PriceUnit)}
-                          {estimate != null && estimate > 0 && (
-                            <span className="block text-sm font-normal text-ink-3">≈ {estimate} €{unitSuffix}, ориентировъчно</span>
-                          )}
                         </td>
                       </tr>
                     );
@@ -343,9 +326,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
                 </tbody>
               </table>
             ) : (
-              <p className="mt-3 text-ink-2">
-                {c.hourly_rate ? `${formatEur(c.hourly_rate)} на час. ` : ""}Питайте {firstName} за цена в чата.
-              </p>
+              <p className="mt-3 text-ink-2">Питайте {firstName} за цена в чата.</p>
             )}
             <h3 className="mt-8 text-lg font-extrabold">Условия</h3>
             <dl className="mt-2 grid border-t border-line text-[0.95rem]">

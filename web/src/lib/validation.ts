@@ -76,7 +76,6 @@ const money = z
 
 export const pricingSchema = z
   .object({
-    hourlyRate: money,
     calloutFee: money,
     travelFee: money,
     materialsIncluded: z.boolean(),
