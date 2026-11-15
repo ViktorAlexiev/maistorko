@@ -18,7 +18,7 @@ export default async function PricesPage() {
   const [{ data: cp }, { data: services }, { data: links }, { data: priceRows }] = await Promise.all([
     supabase
       .from("craftsman_profiles")
-      .select("callout_fee, travel_fee, materials_included, quote_on_inspection, inspection_policy, inspection_fee, terms_note, city:cities(slug, name)")
+      .select("callout_fee, travel_fee, materials_included, quote_on_inspection, inspection_policy, inspection_fee, terms_note, city:city_id(slug, name)")
       .eq("id", viewer.id)
       .single(),
     supabase
