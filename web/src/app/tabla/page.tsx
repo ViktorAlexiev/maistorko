@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, Circle } from "lucide-react";
 import { requireViewer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { daysSince, formatDate, todayISO, timeAgo } from "@/lib/format";
@@ -14,6 +13,8 @@ import { UpcomingBookings } from "@/components/upcoming-bookings";
 import { BusyUntil, BUSY_UNTIL_NOTE } from "@/components/busy-until";
 import { DemoProButton } from "@/components/demo-pro-button";
 import { getMyPlan } from "@/lib/plan";
+import { getSetupStatus } from "@/lib/setup-status";
+import { FirstSteps, firstSteps } from "./first-steps";
 
 export const metadata: Metadata = { title: "Моето табло", robots: { index: false } };
 
@@ -36,17 +37,14 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
   );
 
   if (viewer.craftsmanSlug) {
-    const [{ data: cp }, { data: strip }, { data: cats }, { data: boxes }, services, rules, photos, { data: busyRows }, { data: dueClients }] = await Promise.all([
+    const [{ data: cp }, { data: strip }, status, photos, { data: busyRows }, { data: dueClients }] = await Promise.all([
       supabase
         .from("craftsman_profiles")
         .select("id, bio, last_confirmed_at, rating_avg, rating_count, is_verified, is_hidden")
         .eq("id", viewer.id)
         .single(),
       supabase.rpc("availability_strip", { p_craftsman: viewer.id, p_from: todayISO(), p_days: 14 }),
-      supabase.from("craftsman_categories").select("category_id").eq("craftsman_id", viewer.id),
-      supabase.from("category_prices").select("category_id").eq("craftsman_id", viewer.id),
-      supabase.from("services").select("id", { count: "exact", head: true }).eq("craftsman_id", viewer.id),
-      supabase.from("availability_rules").select("id", { count: "exact", head: true }).eq("craftsman_id", viewer.id),
+      getSetupStatus(supabase, viewer.id),
       supabase.from("work_photos").select("id", { count: "exact", head: true }).eq("craftsman_id", viewer.id),
       supabase
         .from("availability_exceptions")
@@ -66,18 +64,14 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
         .limit(5),
     ]);
     const myPlan = process.env.DEMO_PRO_BUTTON === "1" ? await getMyPlan() : null;
-    const ticked = new Set((cats ?? []).map((c) => c.category_id));
-    const catCount = ticked.size;
-    const pricesDone = (services.count ?? 0) > 0 || (boxes ?? []).some((b) => ticked.has(b.category_id));
     const daysAgo = cp ? daysSince(cp.last_confirmed_at) : 0;
-    const steps = [
-      { done: catCount > 0, label: "Избери какво работиш", href: "/tabla/profil" },
-      { done: Boolean(cp?.bio && cp.bio.length > 40), label: "Напиши няколко изречения за себе си", href: "/tabla/profil" },
-      { done: pricesDone, label: "Добави цени", href: "/tabla/tseni" },
-      { done: (rules.count ?? 0) > 0, label: "Отбележи кога си свободен", href: "/tabla/kalendar" },
-      { done: (photos.count ?? 0) > 0, label: "Качи снимки от работа", href: "/tabla/snimki" },
-    ];
-    const done = steps.filter((s) => s.done).length;
+    const steps = firstSteps({
+      hasCategory: status.hasCategory,
+      hasPrice: status.hasPrice,
+      hasSchedule: status.hasSchedule,
+      bioDone: Boolean(cp?.bio && cp.bio.length > 40),
+      hasPhoto: (photos.count ?? 0) > 0,
+    });
     const unread = convs.filter((c) => c.unread_count > 0);
 
     return (
@@ -94,43 +88,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
 
         {myPlan && myPlan.plan !== "company" && <DemoProButton isPro={myPlan.plan === "pro"} />}
 
-        {done < steps.length && (
-          <section aria-labelledby="setup-heading" className="rounded-[10px] border border-line bg-surface p-5">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 id="setup-heading" className="text-xl font-extrabold">
-                {sp.nov === "1" ? "Първи стъпки" : "Довърши профила си"}
-              </h2>
-              <p className="numerals text-2xl">
-                {done}/{steps.length}
-              </p>
-            </div>
-            <p className="mt-1 text-ink-2">
-              {catCount === 0 || (rules.count ?? 0) === 0 || !pricesDone
-                ? "Профилът ти се показва в търсенето, след като избереш категории, добавиш цени (или „по оглед“) и отбележиш кога си свободен."
-                : "Пълният профил получава повече запитвания."}
-            </p>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-2">
-              <div className="h-full rounded-full bg-free transition-[width]" style={{ width: `${(done / steps.length) * 100}%` }} />
-            </div>
-            <ul className="mt-4 grid gap-1">
-              {steps.map((s) => (
-                <li key={s.label}>
-                  <Link href={s.href} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-surface-2">
-                    {s.done ? (
-                      <Check className="size-5 text-free" aria-hidden />
-                    ) : (
-                      <Circle className="size-5 text-line-strong" aria-hidden />
-                    )}
-                    <span className={s.done ? "text-ink-3 line-through" : "font-semibold"}>{s.label}</span>
-                    <span className="sr-only">{s.done ? "(готово)" : "(предстои)"}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        {steps.some((s) => !s.done) && <FirstSteps steps={steps} />}
 
-        {(rules.count ?? 0) > 0 && daysAgo >= 7 && <ConfirmCalendarBanner daysAgo={daysAgo} />}
+        {status.hasSchedule && daysAgo >= 7 && <ConfirmCalendarBanner daysAgo={daysAgo} />}
 
         <BusyUntil userId={viewer.id} today={todayISO()} current={busyRows?.[0] ?? null} />
 
@@ -171,7 +131,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
               <RuleStrip strip={strip} size="lg" className="min-w-[34rem]" label="Твоите свободни дни" />
             </div>
           ) : null}
-          {daysAgo < 7 && (rules.count ?? 0) > 0 && (
+          {daysAgo < 7 && status.hasSchedule && (
             <p className="mt-2 text-sm text-ink-3">Графикът е потвърден {timeAgo(cp!.last_confirmed_at)}.</p>
           )}
         </section>
