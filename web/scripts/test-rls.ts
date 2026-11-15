@@ -1143,6 +1143,81 @@ async function main() {
       hint,
     );
 
+    // search shows which service or box answers the text, with its price
+    const listed = async (name: string, cats: number[]) => {
+      const m = await user("craftsman", name);
+      extra.push(m.id);
+      await admin.from("craftsman_categories").insert(cats.map((c) => ({ craftsman_id: m.id, category_id: c })));
+      await admin.from("availability_rules").insert({ craftsman_id: m.id, weekday: 1, start_time: "08:00", end_time: "17:00" });
+      return m;
+    };
+    const svc = (m: { id: string }, category_id: number, name: string, price_kind: "fixed" | "quote", price: number | null, unit: "piece" | "job") =>
+      admin.from("services").insert({ craftsman_id: m.id, category_id, name, price_kind, price, unit });
+    const find = async (ids: string[], args: Record<string, unknown> = {}) => {
+      const { data } = await anon.rpc("search_craftsmen", { p_ids: ids, ...args });
+      return data ?? [];
+    };
+
+    const mA = await listed("tsenia", [elInst]);
+    await admin.from("category_prices").insert({ craftsman_id: mA.id, category_id: elInst, ...hour(25) });
+    await svc(mA, elInst, "Смяна на тестов контакт", "fixed", 15, "piece");
+    const m1 = (await find([mA.id], { p_q: "смяна тестов контакт" }))[0];
+    ok(
+      "търсене: услуга с всички думи → името и цената ѝ",
+      m1?.match_name === "Смяна на тестов контакт" && m1.match_kind === "fixed" && Number(m1.match_price) === 15 && m1.match_unit === "piece",
+      m1,
+    );
+
+    await svc(mA, elInst, "Тестова лампа по оглед", "quote", null, "job");
+    await svc(mA, elInst, "Тестова лампа малка", "fixed", 20, "piece");
+    await svc(mA, elInst, "Тестова лампа голяма", "fixed", 30, "job");
+    const m2a = (await find([mA.id], { p_q: "тестова лампа" }))[0];
+    await admin.from("services").delete().eq("craftsman_id", mA.id).eq("name", "Тестова лампа голяма");
+    const m2b = (await find([mA.id], { p_q: "тестова лампа" }))[0];
+    ok(
+      "търсене: няколко услуги → първо за работа, после най-евтината, „по оглед“ последна",
+      m2a?.match_name === "Тестова лампа голяма" && Number(m2a.match_price) === 30 && m2a.match_unit === "job" &&
+        m2b?.match_name === "Тестова лампа малка" && Number(m2b.match_price) === 20 && m2b.match_unit === "piece",
+      { m2a, m2b },
+    );
+
+    const mB = await listed("tsenib", [techove]);
+    await admin.from("category_prices").insert({ craftsman_id: mB.id, category_id: techove, ...hour(28) });
+    const m3 = (await find([mB.id], { p_q: "течове" }))[0];
+    ok(
+      "търсене: без услуга → кутията на подкатегорията",
+      m3?.match_name === "Течове" && m3.match_kind === "hour" && Number(m3.match_price) === 28 && m3.match_unit === "hour",
+      m3,
+    );
+
+    const m4 = (await find([mB.id], { p_q: "tsenib" }))[0];
+    ok("търсене: без съвпадение → общата цена", Boolean(m4) && m4.match_name == null && Number(m4.price_from) === 28, m4);
+
+    const mC = await listed("tsenic", [elInst]);
+    const mD = await listed("tsenid", [elInst]);
+    await svc(mC, elInst, "Тестово окачване", "fixed", 15, "piece");
+    await svc(mC, elInst, "Друга работа", "fixed", 40, "job");
+    await svc(mD, elInst, "Тестово окачване", "fixed", 30, "job");
+    const m5a = await find([mC.id, mD.id], { p_q: "тестово окачване", p_price_max: 20 });
+    const m5b = await find([mC.id, mD.id], { p_q: "тестово окачване", p_sort: "price" });
+    ok(
+      "търсене: „цена до“ и „по цена“ ползват показаната цена",
+      m5a.length === 1 && m5a[0].id === mC.id && m5b.length === 2 && m5b[0].id === mC.id && m5b[1].id === mD.id,
+      { m5a, m5b },
+    );
+
+    const m6 = (await find([mA.id], { p_q: "смяна тестов контакт", p_any: true }))[0];
+    ok("търсене: при „която и да е дума“ няма съвпадение", Boolean(m6) && m6.match_name == null, m6);
+
+    const mE = await listed("tsenie", [techove]);
+    await admin.from("category_prices").insert({ craftsman_id: mE.id, category_id: techove, kind: "quote", price: null, unit: "job" });
+    const m7 = await find([mE.id]);
+    ok(
+      "видимост: само кутия „по оглед“ → майсторът излиза в търсенето с „по оглед“",
+      m7.length === 1 && m7[0].price_from == null && m7[0].quote_on_inspection === true,
+      m7,
+    );
+
     for (const id of extra) await admin.auth.admin.deleteUser(id);
   }
 

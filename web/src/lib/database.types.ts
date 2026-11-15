@@ -2406,6 +2406,10 @@ export type Database = {
           id: string
           is_pro: boolean
           is_verified: boolean
+          match_kind: string
+          match_name: string
+          match_price: number
+          match_unit: Database["public"]["Enums"]["price_unit"]
           matched_date: string
           next_free: string
           price_from: number
