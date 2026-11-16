@@ -197,10 +197,23 @@ export function useKalendar({ today, chas, nov }: { today: string; chas: string;
     setShortNotice(v);
     toast.success(v ? "Вече излизаш и „Свободен днес“." : "Вече не излизаш „Свободен днес“.");
   };
-  const saveRules = (lists: Interval[][]) => {
+  /** Saves the weekly schedule; with `undo` the message offers „Върни“, which saves those rules back */
+  const saveRules = (lists: Interval[][], opts?: { text?: string; undo?: Interval[][] }) => {
     setRules(lists);
     setHasSchedule(true);
-    toast.success("Редовният график е записан.");
+    const undo = opts?.undo;
+    toast.success(
+      opts?.text ?? "Редовният график е записан.",
+      undo && {
+        action: {
+          label: "Върни",
+          onClick: () => {
+            setRules(undo);
+            toast.success("Графикът е върнат.");
+          },
+        },
+      },
+    );
   };
   const confirm = () => {
     setDaysAgo(0);
@@ -658,37 +671,54 @@ export const presetDay = (p: SchedulePreset) => (wd: number) =>
 /** A ready schedule as seven lists of intervals, Пн…Нд */
 export const presetWeek = (p: SchedulePreset): Interval[][] => Array.from({ length: 7 }, (_, i) => presetDay(p)(i + 1));
 
-/** The draft of the whole week in rows. Nothing reaches the calendar until save(). */
+/**
+ * The week in rows while it is being edited.
+ * Календар (a saved schedule): only the open day sheet edits it; „Готово“ saves, a quick schedule saves the whole week at once.
+ * First schedule (empty Календар, setup): nothing is saved until „Запази графика“.
+ */
 export function useWeekDraft(k: Kalendar, first: boolean) {
-  const initial = k.rules;
-  const [week, setWeek] = useState<Row[][]>(() => initial.map(toRows));
+  const [week, setWeek] = useState<Row[][]>(() => k.rules.map(toRows));
+  // A save or „Върни“ changes the saved rules: the rows follow them
+  const [base, setBase] = useState(k.rules);
+  if (base !== k.rules) {
+    setBase(k.rules);
+    setWeek(k.rules.map(toRows));
+  }
   const lists = week.map(fromRows);
   const invalid = week.some((rows) => rows.some((r) => !rowOk(r)));
-  const dirty = invalid || JSON.stringify(lists) !== JSON.stringify(initial);
   return {
     week,
     lists,
-    invalid,
-    dirty,
     setDayRows: (i: number, rows: Row[]) => setWeek((w) => w.map((d, n) => (n === i ? rows : d))),
-    applyPreset: (p: SchedulePreset) => setWeek(presetWeek(p).map(toRows)),
-    clear: () => setWeek(emptyWeek().map(toRows)),
     /** the same hours on Пн–Пт */
     copyToWeekdays: (i: number) => setWeek((w) => w.map((d, n) => (n < 5 && n !== i ? toRows(fromRows(w[i])) : d))),
-    /** the hours of day `from` on day `to` */
-    copyDay: (from: number, to: number) => setWeek((w) => w.map((d, n) => (n === to ? toRows(fromRows(w[from])) : d))),
-    reset: () => setWeek(initial.map(toRows)),
+    /** back to an earlier state of the rows (a day sheet closed without „Готово“) */
+    restore: (w: Row[][]) => setWeek(w),
+    applyPreset: (p: SchedulePreset) =>
+      first
+        ? setWeek(presetWeek(p).map(toRows))
+        : k.saveRules(presetWeek(p), { text: `Графикът е сменен на „${p.label}“.`, undo: k.rules }),
+    clear: () => setWeek(emptyWeek().map(toRows)),
+    /** „Готово“ in the day sheet; false keeps the sheet open */
+    done: () => {
+      if (invalid) {
+        toast.error("Има интервал, в който краят е преди началото.");
+        return false;
+      }
+      if (!first && JSON.stringify(lists) !== JSON.stringify(k.rules)) k.saveRules(lists);
+      return true;
+    },
+    /** „Запази графика“ of the first schedule */
     save: () => {
       if (invalid) return void toast.error("Има интервал, в който краят е преди началото.");
-      if (first && lists.every((l) => l.length === 0)) return void toast.error("Отбележи поне един работен ден.");
+      if (lists.every((l) => l.length === 0)) return void toast.error("Отбележи поне един работен ден.");
       k.saveRules(lists);
-      setWeek(lists.map(toRows));
     },
   };
 }
 
-/** „Бързо: Пн–Пт 8–17 · Пн–Сб 8–18 · Вечери и уикенд · Изчисти“ */
-export function PresetBar({ onPick, onClear }: { onPick: (p: SchedulePreset) => void; onClear: () => void }) {
+/** „Бързо: Пн–Пт 8–17 · Пн–Сб 8–18 · Вечери и уикенд“, and „Изчисти“ where nothing is saved yet */
+export function PresetBar({ onPick, onClear }: { onPick: (p: SchedulePreset) => void; onClear?: () => void }) {
   return (
     <div className="flex flex-wrap gap-2" role="group" aria-label="Готови графици">
       <span className="self-center text-sm font-bold">Бързо:</span>
@@ -697,24 +727,11 @@ export function PresetBar({ onPick, onClear }: { onPick: (p: SchedulePreset) => 
           {p.label}
         </button>
       ))}
-      <button type="button" className="chip min-h-11" onClick={onClear}>
-        Изчисти
-      </button>
-    </div>
-  );
-}
-
-/** The sticky ink bar of unsaved changes */
-export function SaveBar({ invalid, onCancel, onSave, text }: { invalid: boolean; onCancel: () => void; onSave: () => void; text?: string }) {
-  return (
-    <div className="sticky bottom-3 z-10 flex items-center gap-3 rounded-[10px] bg-ink p-3 text-white shadow-[var(--shadow-lg)] max-lg:bottom-[calc(4.25rem+env(safe-area-inset-bottom))]">
-      <p className="flex-1 pl-1 text-sm">{invalid ? "Поправи часовете, в които краят е преди началото." : (text ?? "Имате незаписани промени.")}</p>
-      <button type="button" className="btn text-white hover:bg-white/10" onClick={onCancel}>
-        Откажи
-      </button>
-      <button type="button" className="btn btn-rule" disabled={invalid} onClick={onSave}>
-        Запази графика
-      </button>
+      {onClear && (
+        <button type="button" className="chip min-h-11" onClick={onClear}>
+          Изчисти
+        </button>
+      )}
     </div>
   );
 }

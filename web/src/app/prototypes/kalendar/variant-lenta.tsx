@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { RowList, SlotChips } from "@/app/tabla/kalendar/interval-editor";
 import { WEEKDAYS } from "@/lib/format";
-import { summary, type Interval } from "@/lib/intervals";
-import { FirstScheduleFrame, PresetBar, SaveBar, ScheduleSection, useWeekDraft, type Kalendar } from "./shared";
+import { summary, type Interval, type Row } from "@/lib/intervals";
+import { FirstScheduleFrame, PresetBar, ScheduleSection, useWeekDraft, type Kalendar } from "./shared";
 
 const H0 = 6 * 60;
 const H1 = 22 * 60;
@@ -20,18 +20,23 @@ export function LentaSchedule({ k }: { k: Kalendar }) {
 function LentaBody({ k, first }: { k: Kalendar; first: boolean }) {
   const d = useWeekDraft(k, first);
   const [open, setOpen] = useState<number | null>(null);
+  // The rows when the sheet opened: closing it without „Готово“ goes back to them
+  const before = useRef<Row[][]>(d.week);
   const tone = first ? "bg-surface" : "bg-paper";
 
   const strips = (
     <div className="grid gap-4">
-      <PresetBar onPick={d.applyPreset} onClear={d.clear} />
+      <PresetBar onPick={d.applyPreset} onClear={first ? d.clear : undefined} />
       <ul className="grid gap-1">
         {d.lists.map((list, i) => (
           <li key={i}>
             <button
               type="button"
               className={`block w-full min-w-0 rounded-[6px] ${tone} p-3 text-left transition-shadow hover:shadow-[var(--shadow-md)] sm:p-4`}
-              onClick={() => setOpen(i)}
+              onClick={() => {
+                before.current = d.week;
+                setOpen(i);
+              }}
               aria-label={`${WEEKDAYS[i]}: ${summary(list)}. Промени`}
             >
               <span className="flex items-baseline justify-between gap-3">
@@ -46,7 +51,16 @@ function LentaBody({ k, first }: { k: Kalendar; first: boolean }) {
     </div>
   );
 
-  const sheet = <DaySheetGrafik d={d} open={open} onClose={() => setOpen(null)} />;
+  const sheet = (
+    <DaySheetGrafik
+      d={d}
+      open={open}
+      onClose={(done) => {
+        if (!done) d.restore(before.current);
+        setOpen(null);
+      }}
+    />
+  );
 
   if (first) {
     return (
@@ -57,10 +71,9 @@ function LentaBody({ k, first }: { k: Kalendar; first: boolean }) {
     );
   }
   return (
-    <ScheduleSection help="Докоснете ден, за да промените часовете му. Промените се записват с „Запази графика“.">
+    <ScheduleSection help="Докосни ден, за да промениш часовете му.">
       {strips}
       {sheet}
-      {d.dirty && <SaveBar invalid={d.invalid} onCancel={d.reset} onSave={d.save} />}
     </ScheduleSection>
   );
 }
@@ -91,19 +104,24 @@ function Track({ list, marks }: { list: Interval[]; marks: boolean }) {
   );
 }
 
-function DaySheetGrafik({ d, open, onClose }: { d: ReturnType<typeof useWeekDraft>; open: number | null; onClose: () => void }) {
+/** The sheet of one weekday: „Готово“ keeps the change (and saves it in Календар), the cross or a tap outside drops it. */
+function DaySheetGrafik({ d, open, onClose }: { d: ReturnType<typeof useWeekDraft>; open: number | null; onClose: (done: boolean) => void }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const isDone = useRef(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (open !== null && !el.open) el.showModal();
+    if (open !== null && !el.open) {
+      isDone.current = false;
+      el.showModal();
+    }
     if (open === null && el.open) el.close();
   }, [open]);
   const i = open ?? 0;
   const rows = d.week[i];
 
   return (
-    <dialog ref={ref} className="sheet" aria-labelledby="lenta-day" onClose={onClose} onClick={(e) => e.target === ref.current && ref.current?.close()}>
+    <dialog ref={ref} className="sheet" aria-labelledby="lenta-day" onClose={() => onClose(isDone.current)} onClick={(e) => e.target === ref.current && ref.current?.close()}>
       {open !== null && (
         <div className="safe-bottom grid gap-4 p-5">
           <div className="flex items-start justify-between gap-3">
@@ -137,7 +155,15 @@ function DaySheetGrafik({ d, open, onClose }: { d: ReturnType<typeof useWeekDraf
               Същите часове за всички делнични дни
             </button>
           )}
-          <button type="button" className="btn btn-primary btn-lg" onClick={() => ref.current?.close()}>
+          <button
+            type="button"
+            className="btn btn-primary btn-lg"
+            onClick={() => {
+              if (!d.done()) return;
+              isDone.current = true;
+              ref.current?.close();
+            }}
+          >
             Готово
           </button>
         </div>
