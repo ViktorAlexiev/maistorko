@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { RowList, SlotChips } from "@/app/tabla/kalendar/interval-editor";
 import { WEEKDAYS } from "@/lib/format";
 import { summary, type Interval } from "@/lib/intervals";
-import { FirstScheduleFrame, PresetBar, SaveBar, ScheduleSection, useWeekDraft, type Kalendar } from "../shared";
+import { FirstScheduleFrame, PresetBar, SaveBar, ScheduleSection, useWeekDraft, type Kalendar } from "./shared";
 
 const H0 = 6 * 60;
 const H1 = 22 * 60;

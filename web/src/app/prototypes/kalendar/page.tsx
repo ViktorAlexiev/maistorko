@@ -9,14 +9,13 @@ import { KalendarProto } from "./proto";
 export const metadata: Metadata = { title: "Проба: „Календар“", robots: { index: false } };
 
 /**
- * Planning prototype for the craftsman's „Календар“: three designs, all state local, nothing saved.
+ * Planning prototype for the craftsman's „Календар“: the approved „Метър“ with the „Лента“ schedule, all state local, nothing saved.
  * Not reachable in production.
- * ?v=1..3 starts on a variant, ?nov=1 shows a new craftsman without a schedule, ?chas=HH:MM sets the demo „now“ (default 16:40).
+ * ?nov=1 shows a new craftsman without a schedule, ?chas=HH:MM sets the demo „now“ (default 16:40).
  */
-export default async function Page({ searchParams }: { searchParams: Promise<{ v?: string; nov?: string; chas?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ nov?: string; chas?: string }> }) {
   if (process.env.NODE_ENV === "production") notFound();
   const sp = await searchParams;
-  const v = Math.min(3, Math.max(1, Number(sp.v) || 1));
   const chas = sp.chas && /^([01]?\d|2[0-3]):[0-5]\d$/.test(sp.chas) ? sp.chas : "16:40";
   // The real dashboard frame; „Календар“ points here so it is the current item
   const here = (it: NavItem) => (it.href === "/tabla/kalendar" ? { ...it, href: "/prototypes/kalendar" } : it);
@@ -26,7 +25,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ v
       <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10">
         <DashboardNav groups={nav.groups.map((g) => g.map(here))} publicHref={nav.publicHref} unread={null} phoneRow={false} />
         <div className="min-w-0">
-          <KalendarProto v={v} nov={sp.nov === "1"} chas={chas} today={todayISO()} />
+          <KalendarProto nov={sp.nov === "1"} chas={chas} today={todayISO()} />
         </div>
       </div>
       <DashboardBottomBar bar={nav.bar.map(here)} more={nav.more.map((g) => g.map(here))} publicHref={nav.publicHref} unread={null} />

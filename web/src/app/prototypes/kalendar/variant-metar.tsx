@@ -2,37 +2,34 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { ReactNode } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { RuleLegend, RuleStrip } from "@/components/rule-strip";
 import { addDaysISO, formatDate, isoWeekday, MONTHS_SHORT, parseISO, WEEKDAYS_SHORT } from "@/lib/format";
 import {
   BusyPeriods,
   ConfirmField,
-  FirstSchedule,
   fullRange,
   MonthGrid,
   PageTitle,
   QuickActions,
   Rivet,
   SameDayToggle,
-  ScheduleEditor,
   STATUS_WORD,
   TITLE_LINE,
-  weekSummary,
   type Kalendar,
 } from "./shared";
+import { LentaSchedule } from "./variant-lenta";
 
 const CODE = { free: "F", partial: "P", busy: "B" } as const;
 
-/** „Метър“: the 14-day folding rule leads, bookings in their own box, the week view is kept. */
-export function VariantMetar({ k, schedule }: { k: Kalendar; /** another „Редовен график“ section (the planning page of that section); the default is the closed box */ schedule?: (k: Kalendar) => ReactNode }) {
+/** „Метър“: the 14-day folding rule leads, bookings in their own box, the week view is kept; „Редовен график“ is „Лента“. */
+export function VariantMetar({ k }: { k: Kalendar }) {
   const [view, setView] = useState<"month" | "week">("month");
   if (!k.hasSchedule) {
     return (
       <div className="grid min-w-0 gap-8">
         <PageTitle />
-        {schedule ? schedule(k) : <FirstSchedule k={k} />}
+        <LentaSchedule k={k} />
       </div>
     );
   }
@@ -97,7 +94,7 @@ export function VariantMetar({ k, schedule }: { k: Kalendar; /** another „Ре
 
       <BusyPeriods k={k} />
       <ConfirmField k={k} />
-      {schedule ? schedule(k) : <ScheduleBox k={k} />}
+      <LentaSchedule k={k} />
     </div>
   );
 }
@@ -235,46 +232,6 @@ function BookingsBox({ k }: { k: Kalendar }) {
           })}
         </ul>
       )}
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// „Редовен график“ as a closed box that opens
-// ---------------------------------------------------------------------------
-function ScheduleBox({ k }: { k: Kalendar }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <section aria-labelledby="schedule-h" className="min-w-0 rounded-[10px] bg-surface">
-      <div className="flex items-center justify-between gap-3 rounded-t-[10px] bg-rule px-5 py-2.5">
-        <h2 id="schedule-h" className="display text-3xl">
-          Редовен график
-        </h2>
-        {open && (
-          <button type="button" className="btn btn-ghost size-11 p-0" onClick={() => setOpen(false)} aria-label="Затвори редовния график">
-            <X className="size-6" aria-hidden />
-          </button>
-        )}
-      </div>
-      <div className="p-4 sm:p-5">
-        {!open && (
-          <div className="grid gap-4">
-            <ul className="grid gap-1">
-              {weekSummary(k.rules).map((line) => (
-                <li key={line} className="numerals rounded-[6px] bg-paper px-4 py-2.5 text-lg">
-                  {line}
-                </li>
-              ))}
-            </ul>
-            <button type="button" className="btn btn-outline btn-lg justify-self-start" onClick={() => setOpen(true)}>
-              Промени редовния график
-            </button>
-          </div>
-        )}
-        <div className={open ? "" : "hidden"}>
-          <ScheduleEditor k={k} tone="paper" />
-        </div>
-      </div>
     </section>
   );
 }

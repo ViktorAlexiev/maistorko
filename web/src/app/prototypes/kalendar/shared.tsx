@@ -7,16 +7,13 @@ import { CalendarCheck, CalendarOff, ChevronLeft, ChevronRight, Palmtree, Trash2
 import { toast } from "sonner";
 import { RowList, SlotChips } from "@/app/tabla/kalendar/interval-editor";
 import { DateField } from "@/components/date-time-fields";
-import { addDaysISO, formatDate, isoWeekday, MONTHS_SHORT, parseISO, startOfWeekISO, WEEKDAYS, WEEKDAYS_SHORT } from "@/lib/format";
+import { addDaysISO, formatDate, isoWeekday, MONTHS_SHORT, parseISO, startOfWeekISO, WEEKDAYS_SHORT } from "@/lib/format";
 import {
   add,
-  firstGap,
   fromRows,
-  newRow,
   normalize,
   rowOk,
   subtract,
-  summary,
   toMin,
   toRows,
   toTime,
@@ -252,18 +249,6 @@ export function todayLine(k: Kalendar) {
   return `Днес не излизаш „Свободен днес“: ${k.todayNote.text}${k.todayNote.reason === "short" ? " от работния ден" : ""}.`;
 }
 
-/** "пн–пт 08:00–18:00", "сб 09:00–13:00", "нд почивка" */
-export function weekSummary(rules: Interval[][]): string[] {
-  const groups: { from: number; to: number; s: string }[] = [];
-  rules.forEach((l, i) => {
-    const s = summary(l);
-    const last = groups[groups.length - 1];
-    if (last && last.s === s) last.to = i;
-    else groups.push({ from: i, to: i, s });
-  });
-  return groups.map((g) => `${g.from === g.to ? WEEKDAYS_SHORT[g.from] : `${WEEKDAYS_SHORT[g.from]}–${WEEKDAYS_SHORT[g.to]}`} ${g.s}`);
-}
-
 // ---------------------------------------------------------------------------
 // Small pieces
 // ---------------------------------------------------------------------------
@@ -402,7 +387,7 @@ export function ConfirmField({ k }: { k: Kalendar }) {
 }
 
 // ---------------------------------------------------------------------------
-// Month grid (variants 1 and 2). Cells are fields without borders.
+// Month grid. Cells are fields without borders.
 // ---------------------------------------------------------------------------
 export function MonthGrid({ k, marks }: { k: Kalendar; marks: boolean }) {
   const [page, setPage] = useState(0);
@@ -484,7 +469,7 @@ export function MonthGrid({ k, marks }: { k: Kalendar; marks: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// Day sheet (opened from every variant)
+// Day sheet
 // ---------------------------------------------------------------------------
 export function DaySheet({ k }: { k: Kalendar }) {
   const date = k.openDay;
@@ -665,143 +650,7 @@ export function VacationDialog({ k }: { k: Kalendar }) {
 }
 
 // ---------------------------------------------------------------------------
-// Regular weekly schedule, without lines: each weekday is its own strip
-// ---------------------------------------------------------------------------
-export function ScheduleEditor({
-  k,
-  first = false,
-  tone = "surface",
-  footer,
-}: {
-  k: Kalendar;
-  /** a craftsman without a schedule: an inline save button instead of the sticky bar */
-  first?: boolean;
-  /** the strips' ground: card surface on the page, concrete paper inside a box */
-  tone?: "surface" | "paper";
-  /** shown under the days, above the save button */
-  footer?: ReactNode;
-}) {
-  const initial = k.rules;
-  const [week, setWeek] = useState<Row[][]>(() => initial.map(toRows));
-  const [custom, setCustom] = useState<number | null>(null);
-  const lists = week.map(fromRows);
-  const invalid = week.some((rows) => rows.some((r) => !rowOk(r)));
-  const dirty = invalid || JSON.stringify(lists) !== JSON.stringify(initial);
-
-  const setDayRows = (i: number, rows: Row[]) => setWeek((w) => w.map((d, n) => (n === i ? rows : d)));
-  const preset = (fn: (wd: number) => Interval[]) => setWeek(Array.from({ length: 7 }, (_, i) => toRows(normalize(fn(i + 1)))));
-  const copyToWeekdays = (i: number) => setWeek((w) => w.map((d, n) => (n < 5 && n !== i ? toRows(fromRows(w[i])) : d)));
-
-  function save() {
-    if (invalid) return void toast.error("Има интервал, в който краят е преди началото.");
-    if (first && lists.every((l) => l.length === 0)) return void toast.error("Отбележи поне един работен ден.");
-    k.saveRules(lists);
-    setWeek(lists.map(toRows));
-  }
-
-  const strip = tone === "surface" ? "bg-surface" : "bg-paper";
-  const inner = tone === "surface" ? "bg-paper" : "bg-surface";
-
-  return (
-    <div className="grid gap-5">
-      <p className="text-ink-2">
-        Кои дни и часове обикновено работиш. В един ден може да има няколко интервала, напр. 08–12 и 15–19. Отделни дни и
-        отпуски променяш от календара или с бързите бутони.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <span className="self-center text-sm font-bold">Бързо:</span>
-        {SCHEDULE_PRESETS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className="chip"
-            onClick={() =>
-              preset((d) => p.rules.filter((r) => r.weekday === d).map((r): Interval => [toMin(r.start_time), toMin(r.end_time)]))
-            }
-          >
-            {p.label}
-          </button>
-        ))}
-        <button type="button" className="chip" onClick={() => preset(() => [])}>
-          Изчисти
-        </button>
-      </div>
-
-      <ul className="grid gap-1">
-        {week.map((rows, i) => (
-          <li key={i} className={`rounded-[6px] ${strip} p-3 sm:p-4`}>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="w-32 shrink-0">
-                <p className="font-extrabold capitalize">{WEEKDAYS[i]}</p>
-                <p className="numerals text-base text-ink-3">{summary(lists[i])}</p>
-              </div>
-              <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-1">
-                <SlotChips rows={rows} onChange={(r) => setDayRows(i, r)} label={WEEKDAYS[i]} />
-                <button
-                  type="button"
-                  className="btn btn-ghost min-h-11 underline underline-offset-4"
-                  aria-expanded={custom === i}
-                  onClick={() => setCustom(custom === i ? null : i)}
-                >
-                  Точни часове
-                </button>
-              </div>
-            </div>
-            {custom === i && (
-              <div className={`mt-3 grid gap-3 rounded-[8px] ${inner} p-3`}>
-                <RowList rows={rows} onChange={(r) => setDayRows(i, r)} idPrefix={`s${i}`} />
-                {i < 5 && (
-                  <button
-                    type="button"
-                    className="btn btn-ghost min-h-11 justify-self-start underline underline-offset-4"
-                    onClick={() => copyToWeekdays(i)}
-                  >
-                    Същите часове за всички делнични дни
-                  </button>
-                )}
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      {footer}
-
-      {first ? (
-        <button type="button" className="btn btn-primary btn-lg justify-self-start" onClick={save}>
-          Запази графика
-        </button>
-      ) : !dirty ? (
-        <p className="text-sm text-ink-3">Графикът е записан. Промените се виждат веднага в профила ти.</p>
-      ) : (
-        <div className="sticky bottom-3 z-10 flex items-center gap-3 rounded-[10px] bg-ink p-3 text-white shadow-[var(--shadow-lg)] max-lg:bottom-[calc(4.25rem+env(safe-area-inset-bottom))]">
-          <p className="flex-1 pl-1 text-sm">{invalid ? "Поправи часовете, в които краят е преди началото." : "Имате незаписани промени."}</p>
-          <button type="button" className="btn text-white hover:bg-white/10" onClick={() => setWeek(initial.map(toRows))}>
-            Откажи
-          </button>
-          <button type="button" className="btn btn-rule" disabled={invalid} onClick={save}>
-            Запази графика
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** A new craftsman: the schedule first, nothing else until it is saved */
-export function FirstSchedule({ k }: { k: Kalendar }) {
-  return (
-    <section className="grid gap-5" aria-labelledby="first-h">
-      <h2 id="first-h" className="display text-3xl sm:text-4xl">
-        Още нямаш график. Кога обикновено работиш?
-      </h2>
-      <ScheduleEditor k={k} first footer={<SameDayToggle k={k} />} />
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Pieces shared by the three „Редовен график“ variants (grafik/)
+// „Редовен график“ („Лента“, variant-lenta.tsx)
 // ---------------------------------------------------------------------------
 /** A ready schedule as „the intervals of weekday wd (1 = Пн)“ */
 export const presetDay = (p: SchedulePreset) => (wd: number) =>
@@ -809,7 +658,7 @@ export const presetDay = (p: SchedulePreset) => (wd: number) =>
 /** A ready schedule as seven lists of intervals, Пн…Нд */
 export const presetWeek = (p: SchedulePreset): Interval[][] => Array.from({ length: 7 }, (_, i) => presetDay(p)(i + 1));
 
-/** The draft of the whole week in rows, for the variants that edit day by day. Nothing reaches the calendar until save(). */
+/** The draft of the whole week in rows. Nothing reaches the calendar until save(). */
 export function useWeekDraft(k: Kalendar, first: boolean) {
   const initial = k.rules;
   const [week, setWeek] = useState<Row[][]>(() => initial.map(toRows));
@@ -836,13 +685,6 @@ export function useWeekDraft(k: Kalendar, first: boolean) {
       setWeek(lists.map(toRows));
     },
   };
-}
-
-/** A new interval in the first free gap of the day, with the same message as the exact-hours list */
-export function addRowTo(rows: Row[], onChange: (rows: Row[]) => void) {
-  const gap = firstGap(fromRows(rows));
-  if (!gap) return void toast.error("Няма място за още интервал между 06 и 23 ч. Промени някой от съществуващите.");
-  onChange([...rows, newRow(gap)]);
 }
 
 /** „Бързо: Пн–Пт 8–17 · Пн–Сб 8–18 · Вечери и уикенд · Изчисти“ */
@@ -908,30 +750,4 @@ export function FirstScheduleFrame({ k, onSave, children }: { k: Kalendar; onSav
       </button>
     </section>
   );
-}
-
-export type WeekGroup = { days: number[]; list: Interval[] };
-/** Days with equal hours together (days off too), in the order of their first day */
-export function groupWeek(rules: Interval[][]): WeekGroup[] {
-  const out: (WeekGroup & { s: string })[] = [];
-  rules.forEach((l, i) => {
-    const s = summary(l);
-    const g = out.find((x) => x.s === s);
-    if (g) g.days.push(i);
-    else out.push({ days: [i], list: l, s });
-  });
-  return out.map(({ days, list }) => ({ days, list }));
-}
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-/** [0,1,2,3,4] → „Пн–Пт“, [5,6] → „Сб–Нд“, [0,2] → „Пн, Ср“ */
-export function daysLabel(days: number[]): string {
-  const d = [...days].sort((a, b) => a - b);
-  const parts: string[] = [];
-  for (let i = 0; i < d.length; ) {
-    let j = i;
-    while (j + 1 < d.length && d[j + 1] === d[j] + 1) j++;
-    parts.push(j > i ? `${cap(WEEKDAYS_SHORT[d[i]])}–${cap(WEEKDAYS_SHORT[d[j]])}` : cap(WEEKDAYS_SHORT[d[i]]));
-    i = j + 1;
-  }
-  return parts.join(", ");
 }
