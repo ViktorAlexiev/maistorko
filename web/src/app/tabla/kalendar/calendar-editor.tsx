@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -92,7 +92,11 @@ export function CalendarEditor({
   const [notice, setNotice] = useState(shortNotice);
   const [daysAgo, setDaysAgo] = useState(() => daysSince(lastConfirmedAt));
   const byDay = useMemo(() => new Map(days.map((d) => [d.day, d])), [days]);
-  const saved = useMemo(() => rulesToWeek(initialRules), [initialRules]);
+  // Stable by content: a refresh brings a new array every time, and a new `saved` would reset the unsaved first schedule
+  const rulesKey = JSON.stringify(initialRules.map((r) => [r.weekday, r.start_time, r.end_time]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const saved = useMemo(() => rulesToWeek(initialRules), [rulesKey]);
+  const savingWeek = useRef(false);
   const hasSchedule = initialRules.length > 0;
 
   const refresh = useCallback(async () => {
@@ -189,20 +193,29 @@ export function CalendarEditor({
 
   /** Replace the regular schedule with `week`; `msg.undo` offers „Върни“ with the earlier week */
   function saveWeek(week: Week, msg?: { text: string; undo?: Week }) {
+    // two overlapping delete-and-insert runs could leave duplicate rows
+    if (savingWeek.current) return;
+    savingWeek.current = true;
     startBusy(async () => {
-      const rows = weekToRules(week).map((r) => ({ craftsman_id: userId, ...r }));
-      const del = await supabase.from("availability_rules").delete().eq("craftsman_id", userId);
-      if (del.error) return void toast.error("Графикът не беше записан.");
-      if (rows.length) {
-        const ins = await supabase.from("availability_rules").insert(rows);
-        if (ins.error) return void toast.error("Графикът не беше записан.");
+      try {
+        const rows = weekToRules(week).map((r) => ({ craftsman_id: userId, ...r }));
+        const del = await supabase.from("availability_rules").delete().eq("craftsman_id", userId);
+        if (del.error) return void toast.error("Графикът не беше записан.");
+        if (rows.length) {
+          const ins = await supabase.from("availability_rules").insert(rows);
+          if (ins.error) return void toast.error("Графикът не беше записан.");
+        }
+        await refresh();
+        const undo = msg?.undo;
+        toast.success(
+          msg?.text ?? "Редовният график е записан.",
+          undo ? { action: { label: "Върни", onClick: () => saveWeek(undo, { text: "Графикът е върнат." }) } } : undefined,
+        );
+      } catch {
+        toast.error("Графикът не беше записан.");
+      } finally {
+        savingWeek.current = false;
       }
-      await refresh();
-      const undo = msg?.undo;
-      toast.success(
-        msg?.text ?? "Редовният график е записан.",
-        undo ? { action: { label: "Върни", onClick: () => saveWeek(undo, { text: "Графикът е върнат." }) } } : undefined,
-      );
     });
   }
 
