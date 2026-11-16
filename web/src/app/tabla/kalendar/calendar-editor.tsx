@@ -15,7 +15,6 @@ import {
   ConfirmField,
   DaySheet,
   Meter,
-  MonthGrid,
   QuickActions,
   REASON_OFF,
   REASON_SHORT,
@@ -24,6 +23,7 @@ import {
   type Kalendar,
   type Period,
 } from "./calendar-parts";
+import { MonthGrid } from "./month-grid";
 
 type Rule = { id: string; weekday: number; start_time: string; end_time: string };
 type Exception = {

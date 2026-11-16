@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { CalendarCheck, CalendarOff, ChevronLeft, ChevronRight, Palmtree, Trash2, X } from "lucide-react";
+import type { CSSProperties } from "react";
+import { CalendarCheck, CalendarOff, Palmtree, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { confirmCalendar } from "@/app/actions/dashboard";
 import { DateField } from "@/components/date-time-fields";
@@ -12,7 +13,6 @@ import {
   formatDate,
   MONTHS_SHORT,
   parseISO,
-  WEEKDAYS_SHORT,
 } from "@/lib/format";
 import { endMin, fromRows, rowOk, toMin, toRows, toTime, type Interval, type Row } from "@/lib/intervals";
 import { RowList, SlotChips } from "./interval-editor";
@@ -76,9 +76,6 @@ export const STATUS_WORD: Record<Visit["kind"], string> = {
   job: "поръчка",
 };
 
-const sh = (m: number) => (m % 60 === 0 ? String(m / 60).padStart(2, "0") : toTime(m));
-/** "08–18" for the small month cells */
-const shortHours = (list: Interval[]) => list.map(([a, b]) => `${sh(a)}–${sh(b)}`).join(", ");
 /** "08:00–18:00" */
 const fullRange = (a: number, b: number) => `${toTime(a)}–${b >= 1440 ? "24:00" : toTime(b)}`;
 const fullHours = (list: Interval[]) => list.map(([a, b]) => fullRange(a, b)).join(", ");
@@ -101,14 +98,11 @@ function todayLine(k: Kalendar) {
   return `Днес не излизаш „Свободен днес“: ${k.todayNote.text}${k.todayNote.reason === "short" ? " от работния ден" : ""}.`;
 }
 
-/** A status mark without a number is a rivet: filled for agreed, an inset ring for waiting */
-function Rivet({ kind, className = "" }: { kind: Visit["kind"]; className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={`inline-block size-2.5 shrink-0 rounded-full ${kind === "proposed" ? "shadow-[inset_0_0_0_1.5px_var(--ink)]" : "bg-ink"} ${className}`}
-    />
-  );
+/** A status mark without a number: a confirmed visit is a filled rivet, one waiting for an answer an open ring, an order a square */
+export function Mark({ kind, className = "size-2.5", style }: { kind: Visit["kind"]; className?: string; style?: CSSProperties }) {
+  const shape =
+    kind === "job" ? "rounded-[2px] bg-ink" : kind === "proposed" ? "rounded-full bg-surface shadow-[inset_0_0_0_1.5px_var(--ink)]" : "rounded-full bg-ink";
+  return <span aria-hidden style={style} className={`inline-block shrink-0 ${shape} ${className}`} />;
 }
 
 const CODE = { free: "F", partial: "P", busy: "B" } as const;
@@ -168,7 +162,7 @@ export function BookingsBox({ k }: { k: Kalendar }) {
                     <span className="block font-extrabold leading-snug">{v.title}</span>
                     <span className="block text-sm text-ink-2">{v.who}</span>
                     <span className="mt-1 flex items-center gap-1.5 text-sm font-bold text-ink-2">
-                      <Rivet kind={v.kind} /> {STATUS_WORD[v.kind]}
+                      <Mark kind={v.kind} /> {STATUS_WORD[v.kind]}
                     </span>
                   </span>
                 </Link>
@@ -283,89 +277,6 @@ export function ConfirmField({ k }: { k: Kalendar }) {
 }
 
 // ---------------------------------------------------------------------------
-// Month grid: five weeks per page from the Monday of this week. Cells are fields without borders.
-// ---------------------------------------------------------------------------
-export function MonthGrid({ k, marks }: { k: Kalendar; marks: boolean }) {
-  const [page, setPage] = useState(0);
-  const start = addDaysISO(k.weekStart, page * 35);
-  const end = addDaysISO(start, 34);
-  const cells = Array.from({ length: 35 }, (_, i) => addDaysISO(start, i));
-
-  return (
-    <div>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <button type="button" className="btn btn-ghost size-11 p-0" disabled={page === 0} onClick={() => setPage(0)} aria-label="Предишните 5 седмици">
-          <ChevronLeft className="size-6" aria-hidden />
-        </button>
-        <h2 className="display text-center text-2xl sm:text-3xl" aria-live="polite">
-          {formatDate(start)} – {formatDate(end)}
-        </h2>
-        <button type="button" className="btn btn-ghost size-11 p-0" disabled={page >= 1} onClick={() => setPage(1)} aria-label="Следващите 5 седмици">
-          <ChevronRight className="size-6" aria-hidden />
-        </button>
-      </div>
-      <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
-        {WEEKDAYS_SHORT.map((w) => (
-          <div key={w} className="pb-1 text-center text-xs font-bold uppercase text-ink-3">
-            {w}
-          </div>
-        ))}
-        {cells.map((iso, i) => {
-          const info = k.dayInfo(iso);
-          const hidden = info.past || info.far;
-          const date = parseISO(iso);
-          const day = date.getUTCDate();
-          const list = marks && !hidden ? k.visitsOn(iso).slice(0, 3) : [];
-          const tone = hidden
-            ? "text-ink-3/50"
-            : info.status === "free"
-              ? "bg-free-soft hover:shadow-[var(--shadow-md)]"
-              : info.status === "partial"
-                ? "bg-surface hover:shadow-[var(--shadow-md)]"
-                : "bg-surface-2 hover:shadow-[var(--shadow-md)]";
-          const small = info.manual ? "ръчно" : day === 1 || (i === 0 && !info.isToday) ? MONTHS_SHORT[date.getUTCMonth()] : "";
-          const word = info.status === "free" ? "свободен" : info.status === "partial" ? "частично свободен" : info.notToday ? "днес не излизаш свободен" : "зает";
-          return (
-            <button
-              key={iso}
-              type="button"
-              disabled={hidden}
-              onClick={() => k.setOpenDay(iso)}
-              aria-label={`${formatDate(iso, true)}: ${info.past ? "минал" : info.far ? "извън периода" : word}${info.manual ? ", ръчно променен" : ""}${list.length ? ", има посещения" : ""}`}
-              className={`relative flex h-[4.5rem] min-w-0 flex-col justify-between rounded-[6px] p-1.5 text-left transition-shadow motion-reduce:transition-none sm:h-[5.75rem] sm:p-2 ${tone}`}
-            >
-              <span className="flex items-start justify-between gap-1">
-                <span className={`numerals text-lg leading-none sm:text-xl ${info.isToday ? "text-red" : ""}`}>{day}</span>
-                {list.length > 0 && (
-                  <span className="flex gap-1 pt-0.5">
-                    {list.map((v) => (
-                      <Rivet key={v.id} kind={v.kind} />
-                    ))}
-                  </span>
-                )}
-              </span>
-              {!hidden && (
-                <span className="block w-full min-w-0">
-                  <span className="block h-3 truncate text-[0.62rem] font-semibold leading-3 text-ink-3">{small}</span>
-                  {info.status === "busy" ? (
-                    <span className="block whitespace-nowrap text-[0.65rem] font-bold leading-tight text-ink-3">{info.notToday ? "днес не" : "зает"}</span>
-                  ) : (
-                    <span className={`block h-1.5 w-full rounded-full ${info.status === "free" ? "bg-free" : "hatch"}`} />
-                  )}
-                  <span className="mt-0.5 hidden truncate text-[0.7rem] text-ink-2 sm:block">
-                    {info.status === "busy" ? " " : shortHours(info.ranges)}
-                  </span>
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Day sheet
 // ---------------------------------------------------------------------------
 export function DaySheet({ k }: { k: Kalendar }) {
@@ -441,7 +352,7 @@ export function DaySheet({ k }: { k: Kalendar }) {
                     <p className="flex flex-wrap items-baseline gap-x-3">
                       <span className="numerals text-xl">{visitWhen(v)}</span>
                       <span className="flex items-center gap-1.5 text-sm font-bold text-ink-2">
-                        <Rivet kind={v.kind} /> {STATUS_WORD[v.kind]}
+                        <Mark kind={v.kind} /> {STATUS_WORD[v.kind]}
                       </span>
                     </p>
                     <p className="font-extrabold">{v.title}</p>
