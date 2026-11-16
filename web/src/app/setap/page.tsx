@@ -6,7 +6,7 @@ import { getCategoryTree, getCities } from "@/lib/data";
 import { getMyPlan } from "@/lib/plan";
 import type { PriceUnit } from "@/lib/format";
 import type { BoxKind } from "@/lib/prices";
-import { matchPreset } from "@/lib/schedule-presets";
+import { rulesToWeek } from "@/lib/schedule-presets";
 import { getSetupStatus } from "@/lib/setup-status";
 import type { BoardBox } from "@/app/tabla/tseni/prices-board";
 import { SetupFlow } from "./setup-flow";
@@ -27,7 +27,7 @@ export default async function SetupPage({ searchParams }: PageProps<"/setap">) {
     getCategoryTree(),
     getCities(),
     supabase.from("craftsman_categories").select("category_id").eq("craftsman_id", viewer.id),
-    supabase.from("craftsman_profiles").select("other_services, city_id").eq("id", viewer.id).maybeSingle(),
+    supabase.from("craftsman_profiles").select("other_services, city_id, short_notice").eq("id", viewer.id).maybeSingle(),
     supabase.from("craftsman_service_areas").select("city_id").eq("craftsman_id", viewer.id),
     supabase.from("category_prices").select("category_id, kind, price, unit").eq("craftsman_id", viewer.id),
     supabase.from("availability_rules").select("weekday, start_time, end_time").eq("craftsman_id", viewer.id),
@@ -64,7 +64,8 @@ export default async function SetupPage({ searchParams }: PageProps<"/setap">) {
         city,
         areas: (areas ?? []).map((a) => cityOf(a.city_id)).filter((s) => s && s !== city),
         boxes,
-        schedule: matchPreset(rules ?? []),
+        schedule: rulesToWeek(rules ?? []),
+        shortNotice: cp?.short_notice ?? false,
         status,
         slug: viewer.craftsmanSlug,
       }}

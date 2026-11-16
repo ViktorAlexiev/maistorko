@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { SCHEDULE_PRESETS, type SchedulePresetId } from "@/lib/schedule-presets";
+import { weekToRules, type Week } from "@/lib/schedule-presets";
 import { getSetupStatus, type SetupStatus } from "@/lib/setup-status";
 import { writeBoxes, type BoxInput } from "@/lib/write-boxes";
 
@@ -29,7 +29,9 @@ const placeSchema = z.object({
   city: z.string().min(1, "Изберете град."),
   areas: z.array(z.string()).max(40),
 });
-const presetSchema = z.enum(["weekdays", "monsat", "evenings"]);
+const minute = z.number().int().min(0).max(1440);
+const interval = z.tuple([minute, minute]).refine(([a, b]) => a < b);
+const weekSchema = z.object({ week: z.array(z.array(interval)).length(7), shortNotice: z.boolean() });
 
 async function done(supabase: Awaited<ReturnType<typeof me>>["supabase"], id: string): Promise<SetupResult> {
   revalidatePath("/", "layout");
@@ -107,20 +109,26 @@ export async function saveSetupPrices(input: { boxes: BoxInput[] }): Promise<Set
   return done(supabase, id);
 }
 
-export async function saveSetupSchedule(input: { preset: SchedulePresetId }): Promise<SetupResult> {
+export async function saveSetupSchedule(input: { week: Week; shortNotice: boolean }): Promise<SetupResult> {
   const { supabase, id } = await me();
-  const preset = presetSchema.safeParse(input.preset);
-  if (!preset.success) return { ok: false, message: "Графикът не беше записан." };
-  const rules = SCHEDULE_PRESETS.find((p) => p.id === preset.data)?.rules;
-  if (!rules) return { ok: false, message: "Графикът не беше записан." };
+  const parsed = weekSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "Графикът не беше записан." };
+  const rules = weekToRules(parsed.data.week);
 
   const failed = { ok: false as const, message: "Графикът не беше записан." };
   const { error: e1 } = await supabase.from("availability_rules").delete().eq("craftsman_id", id);
   if (e1) return failed;
-  const { error: e2 } = await supabase
-    .from("availability_rules")
-    .insert(rules.map((r) => ({ craftsman_id: id, ...r })));
-  if (e2) return failed;
+  if (rules.length) {
+    const { error: e2 } = await supabase
+      .from("availability_rules")
+      .insert(rules.map((r) => ({ craftsman_id: id, ...r })));
+    if (e2) return failed;
+  }
+  const { error: e3 } = await supabase
+    .from("craftsman_profiles")
+    .update({ short_notice: parsed.data.shortNotice })
+    .eq("id", id);
+  if (e3) return failed;
 
   return done(supabase, id);
 }

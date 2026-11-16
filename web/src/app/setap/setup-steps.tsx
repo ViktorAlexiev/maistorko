@@ -9,7 +9,8 @@ import { st } from "@/app/tabla/profil/profile-parts";
 import { PriceEditor, PriceTag } from "@/app/tabla/tseni/price-parts";
 import type { BoardBox } from "@/app/tabla/tseni/prices-board";
 import type { CategoryNode, City } from "@/lib/data";
-import { SCHEDULE_PRESETS, type SchedulePresetId } from "@/lib/schedule-presets";
+import { SameDayToggle, ScheduleWeek, type WeekDraft } from "@/components/schedule-week";
+import type { Week } from "@/lib/schedule-presets";
 import type { SetupStatus } from "@/lib/setup-status";
 
 /* ------------------------------------------------------------------------------------------------
@@ -27,7 +28,10 @@ export type SetupData = {
   areas: string[];
   /** price boxes by subcategory id */
   boxes: Record<number, BoardBox>;
-  schedule: SchedulePresetId | null;
+  /** the saved days of the week; the days being edited live in `SetupState.week` */
+  schedule: Week;
+  /** „Мога да дойда и в същия ден“ */
+  shortNotice: boolean;
 };
 
 export type Sub = { id: number; name: string; topId: number; topName: string; leaf: boolean };
@@ -47,7 +51,9 @@ export type SetupState = {
   setOtherServices: (v: string) => void;
   setPlace: (city: string, areas: string[]) => void;
   setBox: (box: BoardBox) => void;
-  setSchedule: (s: SchedulePresetId) => void;
+  setShortNotice: (on: boolean) => void;
+  /** the days of step 4; kept in the frame so they survive „Назад“ and „Напред“ */
+  week: WeekDraft;
   /** saved ticked subcategories that can hold a price box, in the order of the tree */
   savedSubs: Sub[];
   /** the box of a subcategory in the given data (an empty one when none yet) */
@@ -80,8 +86,6 @@ export function otherPicked(tree: CategoryNode[], categories: ReadonlySet<number
  * Step bodies
  * ---------------------------------------------------------------------------------------------- */
 
-const DAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
-
 /** The line under the step heading. */
 export function StepLead({ state, step, className }: { state: SetupState; step: 1 | 2 | 3 | 4; className: string }) {
   if (step === 1) {
@@ -97,7 +101,7 @@ export function StepLead({ state, step, className }: { state: SetupState; step: 
   const text: Record<2 | 3 | 4, string> = {
     2: "Градът е от регистрацията. Добави и местата наоколо, където ходиш.",
     3: "Сложи цена на всяка категория, която работиш. Може и „По оглед“. Конкретни услуги с тяхна цена добавяш после в „Цени и услуги“.",
-    4: "Избери обичайната си седмица. Отделни дни и отпуски променяш после в Календар.",
+    4: "Докосни ден и избери часовете или вземи готов график. Отделни дни и отпуски променяш после в Календар.",
   };
   return <p className={className}>{text[step]}</p>;
 }
@@ -264,45 +268,9 @@ function StepTseni({ state }: { state: SetupState }) {
 
 function StepKoga({ state }: { state: SetupState }) {
   return (
-    <div className="grid gap-4">
-      <fieldset className="grid gap-1">
-        <legend className="sr-only">Обичаен график</legend>
-        {SCHEDULE_PRESETS.map((o) => (
-          <label
-            key={o.id}
-            className="grid cursor-pointer gap-3 rounded-[8px] bg-surface p-4 transition-colors has-[:checked]:bg-rule-soft motion-reduce:transition-none"
-          >
-            <span className="flex items-center gap-3">
-              <input
-                type="radio"
-                name="schedule"
-                value={o.id}
-                className="check"
-                checked={state.draft.schedule === o.id}
-                onChange={() => state.setSchedule(o.id)}
-              />
-              <span className="font-bold">{o.label}</span>
-            </span>
-            <span className="grid grid-cols-7 gap-1" aria-hidden>
-              {DAY_LABELS.map((d, i) => (
-                <span
-                  key={d}
-                  className={`rounded-[4px] py-1.5 text-center text-sm font-bold ${o.days[i] ? "bg-rule text-ink" : "bg-surface-2 text-ink-3"}`}
-                >
-                  {d}
-                </span>
-              ))}
-            </span>
-            <span className="text-sm text-ink-2">{o.hours}</span>
-          </label>
-        ))}
-      </fieldset>
-      <p className="text-ink-2">
-        Работиш по друг график? Нагласяш го подробно в{" "}
-        <Link href="/tabla/kalendar" className="link font-bold">
-          Календар
-        </Link>
-      </p>
+    <div className="grid gap-5">
+      <ScheduleWeek d={state.week} first tone="bg-surface" />
+      <SameDayToggle on={state.draft.shortNotice} onChange={state.setShortNotice} />
     </div>
   );
 }

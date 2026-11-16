@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
+import { useWeekDraft } from "@/components/schedule-week";
 import {
   saveSetupCategories,
   saveSetupPlace,
@@ -13,7 +14,8 @@ import {
 } from "@/app/actions/setup";
 import type { BoardBox } from "@/app/tabla/tseni/prices-board";
 import type { CategoryNode, City } from "@/lib/data";
-import type { SchedulePresetId } from "@/lib/schedule-presets";
+import { rowOk } from "@/lib/intervals";
+import type { Week } from "@/lib/schedule-presets";
 import type { SetupStatus } from "@/lib/setup-status";
 import type { BoxInput } from "@/lib/write-boxes";
 import {
@@ -40,7 +42,8 @@ export type SetupInitial = {
   city: string; // slug
   areas: string[]; // slugs, without the main city
   boxes: Record<number, BoardBox>; // every saved box of the craftsman, by subcategory id
-  schedule: SchedulePresetId | null; // matchPreset of the saved schedule
+  schedule: Week; // the saved days
+  shortNotice: boolean;
   status: SetupStatus;
   slug: string;
 };
@@ -56,7 +59,7 @@ function sliceOf(d: SetupData, n: number, tree: CategoryNode[]): Partial<SetupDa
   if (n === 1) return { categories: d.categories, otherServices: otherPicked(tree, d.categories) ? d.otherServices.trim() : "" };
   if (n === 2) return { city: d.city, areas: d.areas };
   if (n === 3) return { boxes: d.boxes };
-  return { schedule: d.schedule };
+  return { schedule: d.schedule, shortNotice: d.shortNotice };
 }
 
 /** „Фокус“: one thing per screen, no dashboard around it, the actions fixed at the bottom. */
@@ -69,6 +72,7 @@ export function SetupFlow({ initial }: { initial: SetupInitial }) {
     areas: initial.areas,
     boxes: initial.boxes,
     schedule: initial.schedule,
+    shortNotice: initial.shortNotice,
   }));
   const [saved, setSaved] = useState<SetupData>(init);
   const [draft, setDraft] = useState<SetupData>(init);
@@ -77,6 +81,9 @@ export function SetupFlow({ initial }: { initial: SetupInitial }) {
   const [step, setStep] = useState<StepNo>(initial.step);
   const [whereKey, setWhereKey] = useState(0);
   const [pending, setPending] = useState(false);
+  // The days of step 4 live here, so the frame stays mounted and the change survives „Назад“ / „Напред“; „Готово“ below saves
+  const savedWeek = useMemo(() => saved.schedule, [saved.schedule]);
+  const week = useWeekDraft({ first: true, saved: savedWeek, saveWeek: () => {} });
 
   const subs = tree.flatMap(subsOf);
   const subById = new Map(subs.map((s) => [s.id, s]));
@@ -106,12 +113,13 @@ export function SetupFlow({ initial }: { initial: SetupInitial }) {
       }
       return saveSetupPrices({ boxes });
     }
-    return saveSetupSchedule({ preset: draft.schedule as SchedulePresetId });
+    return saveSetupSchedule({ week: week.lists, shortNotice: draft.shortNotice });
   };
 
   const skip = () => {
     if (pending || step === 5) return;
     setDraft((d) => ({ ...d, ...sliceOf(saved, step, tree) }));
+    if (step === 4) week.reset();
     if (step === 2) setWhereKey((k) => k + 1);
     goTo((step + 1) as StepNo);
   };
@@ -119,8 +127,14 @@ export function SetupFlow({ initial }: { initial: SetupInitial }) {
   const next = async () => {
     if (pending || step === 5) return;
     const n = step;
-    // no schedule chosen: nothing to save, on to the last screen like „Пропусни“
-    if (n === 4 && !draft.schedule) return skip();
+    if (n === 4) {
+      // no working day: nothing to save, on to the last screen like „Пропусни“
+      if (week.lists.every((l) => l.length === 0)) return skip();
+      if (week.week.some((rows) => rows.some((r) => !rowOk(r)))) {
+        toast.error("Има интервал, в който краят е преди началото.");
+        return;
+      }
+    }
     setPending(true);
     let res: SetupResult;
     try {
@@ -134,7 +148,8 @@ export function SetupFlow({ initial }: { initial: SetupInitial }) {
       return;
     }
     setStatus(res.status);
-    setSaved((s) => ({ ...s, ...sliceOf(draft, n, tree) }));
+    // the saved days are the lists just sent, so the days on the screen stay as entered
+    setSaved((s) => ({ ...s, ...(n === 4 ? { schedule: week.lists, shortNotice: draft.shortNotice } : sliceOf(draft, n, tree)) }));
     setPressed((p) => new Set(p).add(n));
     goTo((n + 1) as StepNo);
   };
@@ -164,7 +179,8 @@ export function SetupFlow({ initial }: { initial: SetupInitial }) {
     setOtherServices: (otherServices) => setDraft((d) => ({ ...d, otherServices })),
     setPlace: (city, areas) => setDraft((d) => ({ ...d, city, areas: areas.filter((a) => a !== city) })),
     setBox: (box) => setDraft((d) => ({ ...d, boxes: { ...d.boxes, [box.id]: box } })),
-    setSchedule: (schedule) => setDraft((d) => ({ ...d, schedule })),
+    setShortNotice: (shortNotice) => setDraft((d) => ({ ...d, shortNotice })),
+    week,
     savedSubs,
     boxIn,
     cityName: cities.find((c) => c.slug === saved.city)?.name ?? null,

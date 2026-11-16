@@ -37,23 +37,6 @@ export const SCHEDULE_PRESETS: readonly SchedulePreset[] = [
   ]),
 ];
 
-// "08:00:00" (from the database) and "08:00" are the same time.
-const key = (r: { weekday: number; start_time: string; end_time: string }) =>
-  `${r.weekday} ${r.start_time.slice(0, 5)}-${r.end_time.slice(0, 5)}`;
-
-// Which ready-made schedule these rows are exactly, regardless of row order and seconds; null if none.
-export function matchPreset(
-  rules: readonly { weekday: number; start_time: string; end_time: string }[],
-): SchedulePresetId | null {
-  if (rules.length === 0) return null;
-  const got = rules.map(key).sort();
-  for (const p of SCHEDULE_PRESETS) {
-    const want = p.rules.map(key).sort();
-    if (want.length === got.length && want.every((k, i) => k === got[i])) return p.id;
-  }
-  return null;
-}
-
 /** The week as seven lists of intervals: index 0 = Пн … 6 = Нд */
 export type Week = Interval[][];
 
