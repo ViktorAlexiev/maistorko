@@ -1,0 +1,653 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { CalendarCheck, CalendarOff, ChevronLeft, ChevronRight, Palmtree, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
+import { confirmCalendar } from "@/app/actions/dashboard";
+import { DateField } from "@/components/date-time-fields";
+import { RuleLegend, RuleStrip } from "@/components/rule-strip";
+import {
+  addDaysISO,
+  formatDate,
+  isoWeekday,
+  MONTHS_SHORT,
+  parseISO,
+  WEEKDAYS_SHORT,
+} from "@/lib/format";
+import { endMin, fromRows, rowOk, toMin, toRows, toTime, type Interval, type Row } from "@/lib/intervals";
+import { RowList, SlotChips } from "./interval-editor";
+import type { Visit } from "./calendar-editor";
+
+// ---------------------------------------------------------------------------
+// Types and small helpers
+// ---------------------------------------------------------------------------
+export type Status = "free" | "partial" | "busy";
+export type Period = { id: string; from: string; to: string; note: string };
+
+export type DayInfo = {
+  iso: string;
+  /** a day before today: not shown and not editable */
+  past: boolean;
+  /** the database sent nothing for this day (beyond the 70 days) */
+  far: boolean;
+  isToday: boolean;
+  /** free intervals by the database: after the schedule, changes, periods, bookings, jobs and today's rule */
+  ranges: Interval[];
+  status: Status;
+  /** the day was changed by hand */
+  manual: boolean;
+  /** today, with a working day, but not shown as „Свободен днес“ */
+  notToday: boolean;
+  /** only when `notToday`: the working time the day would have (soft green in the week view) */
+  soft: Interval[];
+};
+
+/** The state of the page and what it can do; built in `calendar-editor.tsx` */
+export type Kalendar = {
+  userId: string;
+  today: string;
+  nowMin: number;
+  weekStart: string;
+  busy: boolean;
+  shortNotice: boolean;
+  daysAgo: number;
+  openDay: string | null;
+  setOpenDay: (iso: string | null) => void;
+  vacationOpen: boolean;
+  setVacationOpen: (open: boolean) => void;
+  /** the list „Заети периоди“ */
+  periods: Period[];
+  /** the multi-day periods that cover the day */
+  periodsOn: (iso: string) => Period[];
+  upcoming: Visit[];
+  visitsOn: (iso: string) => Visit[];
+  /** what the day offers before bookings (the weekly schedule and changes) */
+  planFor: (iso: string) => Interval[];
+  dayInfo: (iso: string) => DayInfo;
+  todayNote: { reason: "short" | "off"; text: string } | null;
+  busyRange: (from: string, to: string, note: string, label: string) => void;
+  setDay: (date: string, mode: "free" | "busy" | "reset") => void;
+  saveDay: (date: string, list: Interval[]) => void;
+  removePeriod: (id: string) => void;
+  onConfirmed: () => void;
+};
+
+export const STATUS_WORD: Record<Visit["kind"], string> = {
+  confirmed: "потвърдено",
+  proposed: "чака отговор",
+  job: "поръчка",
+};
+
+const sh = (m: number) => (m % 60 === 0 ? String(m / 60).padStart(2, "0") : toTime(m));
+/** "08–18" for the small month cells */
+const shortHours = (list: Interval[]) => list.map(([a, b]) => `${sh(a)}–${sh(b)}`).join(", ");
+/** "08:00–18:00" */
+const fullRange = (a: number, b: number) => `${toTime(a)}–${b >= 1440 ? "24:00" : toTime(b)}`;
+const fullHours = (list: Interval[]) => list.map(([a, b]) => fullRange(a, b)).join(", ");
+
+/** The minutes a visit takes in its day; a visit without hours takes the whole day */
+export const visitSpan = (v: Visit): [number, number] => [v.start ? toMin(v.start) : 0, v.end ? endMin(v.end) : 1440];
+/** "10:00–12:00", or „цял ден“ without hours */
+export const visitWhen = (v: Visit) => {
+  if (!v.start || !v.end) return v.endDate ? `цели дни до ${formatDate(v.endDate)}` : "цял ден";
+  const [a, b] = visitSpan(v);
+  return fullRange(a, b);
+};
+
+export const REASON_SHORT = "остава по-малко от 2 часа";
+export const REASON_OFF = "без отметката „Мога да дойда и в същия ден“";
+
+/** The long form of today's note in the day sheet: „Днес не излизаш „Свободен днес“: …“ */
+function todayLine(k: Kalendar) {
+  if (!k.todayNote) return "";
+  return `Днес не излизаш „Свободен днес“: ${k.todayNote.text}${k.todayNote.reason === "short" ? " от работния ден" : ""}.`;
+}
+
+/** A status mark without a number is a rivet: filled for agreed, an inset ring for waiting */
+function Rivet({ kind, className = "" }: { kind: Visit["kind"]; className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`inline-block size-2.5 shrink-0 rounded-full ${kind === "proposed" ? "shadow-[inset_0_0_0_1.5px_var(--ink)]" : "bg-ink"} ${className}`}
+    />
+  );
+}
+
+const CODE = { free: "F", partial: "P", busy: "B" } as const;
+
+// ---------------------------------------------------------------------------
+// The meter: the next 14 days as the folding rule, with its legend
+// ---------------------------------------------------------------------------
+export function Meter({ k }: { k: Kalendar }) {
+  const strip = Array.from({ length: 14 }, (_, i) => CODE[k.dayInfo(addDaysISO(k.today, i)).status]).join("");
+  return (
+    <div className="min-w-0">
+      <RuleLegend className="mb-3" />
+      <div className="overflow-x-auto">
+        <RuleStrip
+          strip={strip}
+          start={k.today}
+          size="lg"
+          onPick={(iso) => k.setOpenDay(iso)}
+          selected={k.openDay}
+          label="Следващите 14 дни: докоснете ден, за да го промените"
+          className="min-w-[32rem]"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The box „Уговорени посещения“ (The Yellow Band Rule)
+// ---------------------------------------------------------------------------
+export function BookingsBox({ k }: { k: Kalendar }) {
+  return (
+    <section aria-labelledby="bookings-h" className="rounded-[10px] bg-surface">
+      <div className="rounded-t-[10px] bg-rule px-5 py-2.5">
+        <h2 id="bookings-h" className="display text-3xl">
+          Уговорени посещения
+        </h2>
+      </div>
+      {k.upcoming.length === 0 ? (
+        <p className="p-5 text-ink-2">Няма уговорени посещения.</p>
+      ) : (
+        <ul className="grid gap-1 p-3">
+          {k.upcoming.map((v) => {
+            const date = parseISO(v.date);
+            return (
+              <li key={v.id}>
+                <Link
+                  href={v.href}
+                  className="grid min-h-11 grid-cols-[3rem_minmax(0,1fr)] gap-3 rounded-[6px] bg-paper p-3 transition-shadow motion-reduce:transition-none hover:shadow-[var(--shadow-md)]"
+                >
+                  <span className="text-center">
+                    <span className={`numerals block text-3xl leading-none ${v.date === k.today ? "text-red" : ""}`}>{date.getUTCDate()}</span>
+                    <span className="block text-xs font-bold uppercase text-ink-3">{MONTHS_SHORT[date.getUTCMonth()]}</span>
+                  </span>
+                  <span className="min-w-0">
+                    <span className="numerals block text-lg leading-tight">{visitWhen(v)}</span>
+                    <span className="block font-extrabold leading-snug">{v.title}</span>
+                    <span className="block text-sm text-ink-2">{v.who}</span>
+                    <span className="mt-1 flex items-center gap-1.5 text-sm font-bold text-ink-2">
+                      <Rivet kind={v.kind} /> {STATUS_WORD[v.kind]}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Quick actions
+// ---------------------------------------------------------------------------
+export function QuickActions({ k }: { k: Kalendar }) {
+  const next = addDaysISO(k.weekStart, 7);
+  const btn = "btn btn-outline btn-lg justify-start whitespace-normal py-2 text-left leading-tight";
+  return (
+    <div className="grid gap-2" role="group" aria-label="Бързи действия">
+      <button
+        type="button"
+        className={btn}
+        disabled={k.busy}
+        onClick={() => k.busyRange(k.today, addDaysISO(k.weekStart, 6), "Зает тази седмица", "Отбелязан си като зает до неделя.")}
+      >
+        <CalendarOff className="size-5 shrink-0" aria-hidden /> Зает съм тази седмица
+      </button>
+      <button
+        type="button"
+        className={btn}
+        disabled={k.busy}
+        onClick={() => k.busyRange(next, addDaysISO(next, 6), "Зает следващата седмица", "Следващата седмица е отбелязана като заета.")}
+      >
+        <CalendarOff className="size-5 shrink-0" aria-hidden /> Зает съм следващата седмица
+      </button>
+      <button type="button" className={btn} disabled={k.busy} onClick={() => k.setVacationOpen(true)}>
+        <Palmtree className="size-5 shrink-0" aria-hidden /> Отпуск или по-дълъг период
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Busy periods
+// ---------------------------------------------------------------------------
+export function BusyPeriods({ k }: { k: Kalendar }) {
+  if (!k.periods.length) return null;
+  return (
+    <ul className="grid gap-1" aria-label="Заети периоди">
+      {k.periods.map((p) => (
+        <li key={p.id} className="flex items-center gap-3 rounded-[6px] bg-surface py-1.5 pl-4 pr-2">
+          <CalendarOff className="size-4 shrink-0 text-ink-2" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <strong>{p.note}</strong>{" "}
+            <span className="numerals text-lg text-ink-2">
+              {formatDate(p.from)}
+              {p.to !== p.from ? ` – ${formatDate(p.to)}` : ""}
+            </span>
+          </span>
+          <button
+            type="button"
+            className="btn btn-ghost min-h-11"
+            disabled={k.busy}
+            onClick={() => k.removePeriod(p.id)}
+            aria-label={`Премахни ${p.note} ${formatDate(p.from)}`}
+          >
+            <Trash2 className="size-4" aria-hidden /> Премахни
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// „Графикът ти актуален ли е?“, without a border (the banner of /tabla keeps its own)
+// ---------------------------------------------------------------------------
+export function ConfirmField({ k }: { k: Kalendar }) {
+  const [pending, start] = useTransition();
+  const urgent = k.daysAgo >= 14;
+  return (
+    <div className={`flex flex-col gap-3 rounded-[10px] p-4 sm:flex-row sm:items-center sm:p-5 ${urgent ? "bg-rule-soft" : "bg-surface-2"}`}>
+      <CalendarCheck className="size-7 shrink-0" strokeWidth={1.75} aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="text-lg font-extrabold">{urgent ? "Потвърди графика си за следващата седмица" : "Графикът ти актуален ли е?"}</p>
+        <p className="text-[0.95rem] text-ink-2">
+          {k.daysAgo < 1
+            ? "Потвърден днес."
+            : `Последно потвърден преди ${Math.floor(k.daysAgo)} ${Math.floor(k.daysAgo) === 1 ? "ден" : "дни"}.`}{" "}
+          {urgent ? "Докато не го потвърдиш, показваме те по-назад в търсенето." : "Потвърденият график те показва по-напред в търсенето."}
+        </p>
+      </div>
+      <button
+        type="button"
+        className="btn btn-primary"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            const res = await confirmCalendar(k.userId);
+            if (res.ok) {
+              k.onConfirmed();
+              toast.success(res.message);
+            } else toast.error(res.message);
+          })
+        }
+      >
+        {pending ? "Потвърждаваме…" : "Всичко е вярно"}
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Month grid: five weeks per page from the Monday of this week. Cells are fields without borders.
+// ---------------------------------------------------------------------------
+export function MonthGrid({ k, marks }: { k: Kalendar; marks: boolean }) {
+  const [page, setPage] = useState(0);
+  const start = addDaysISO(k.weekStart, page * 35);
+  const end = addDaysISO(start, 34);
+  const cells = Array.from({ length: 35 }, (_, i) => addDaysISO(start, i));
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <button type="button" className="btn btn-ghost size-11 p-0" disabled={page === 0} onClick={() => setPage(0)} aria-label="Предишните 5 седмици">
+          <ChevronLeft className="size-6" aria-hidden />
+        </button>
+        <h2 className="display text-center text-2xl sm:text-3xl" aria-live="polite">
+          {formatDate(start)} – {formatDate(end)}
+        </h2>
+        <button type="button" className="btn btn-ghost size-11 p-0" disabled={page >= 1} onClick={() => setPage(1)} aria-label="Следващите 5 седмици">
+          <ChevronRight className="size-6" aria-hidden />
+        </button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+        {WEEKDAYS_SHORT.map((w) => (
+          <div key={w} className="pb-1 text-center text-xs font-bold uppercase text-ink-3">
+            {w}
+          </div>
+        ))}
+        {cells.map((iso, i) => {
+          const info = k.dayInfo(iso);
+          const hidden = info.past || info.far;
+          const date = parseISO(iso);
+          const day = date.getUTCDate();
+          const list = marks && !hidden ? k.visitsOn(iso).slice(0, 3) : [];
+          const tone = hidden
+            ? "text-ink-3/50"
+            : info.status === "free"
+              ? "bg-free-soft hover:shadow-[var(--shadow-md)]"
+              : info.status === "partial"
+                ? "bg-surface hover:shadow-[var(--shadow-md)]"
+                : "bg-surface-2 hover:shadow-[var(--shadow-md)]";
+          const small = info.manual ? "ръчно" : day === 1 || (i === 0 && !info.isToday) ? MONTHS_SHORT[date.getUTCMonth()] : "";
+          const word = info.status === "free" ? "свободен" : info.status === "partial" ? "частично свободен" : info.notToday ? "днес не излизаш свободен" : "зает";
+          return (
+            <button
+              key={iso}
+              type="button"
+              disabled={hidden}
+              onClick={() => k.setOpenDay(iso)}
+              aria-label={`${formatDate(iso, true)}: ${info.past ? "минал" : info.far ? "извън периода" : word}${info.manual ? ", ръчно променен" : ""}${list.length ? ", има посещения" : ""}`}
+              className={`relative flex h-[4.5rem] min-w-0 flex-col justify-between rounded-[6px] p-1.5 text-left transition-shadow motion-reduce:transition-none sm:h-[5.75rem] sm:p-2 ${tone}`}
+            >
+              <span className="flex items-start justify-between gap-1">
+                <span className={`numerals text-lg leading-none sm:text-xl ${info.isToday ? "text-red" : ""}`}>{day}</span>
+                {list.length > 0 && (
+                  <span className="flex gap-1 pt-0.5">
+                    {list.map((v) => (
+                      <Rivet key={v.id} kind={v.kind} />
+                    ))}
+                  </span>
+                )}
+              </span>
+              {!hidden && (
+                <span className="block w-full min-w-0">
+                  <span className="block h-3 truncate text-[0.62rem] font-semibold leading-3 text-ink-3">{small}</span>
+                  {info.status === "busy" ? (
+                    <span className="block whitespace-nowrap text-[0.65rem] font-bold leading-tight text-ink-3">{info.notToday ? "днес не" : "зает"}</span>
+                  ) : (
+                    <span className={`block h-1.5 w-full rounded-full ${info.status === "free" ? "bg-free" : "hatch"}`} />
+                  )}
+                  <span className="mt-0.5 hidden truncate text-[0.7rem] text-ink-2 sm:block">
+                    {info.status === "busy" ? " " : shortHours(info.ranges)}
+                  </span>
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Week: vertical time bars 06 to 22, alternate soft bands instead of hour lines
+// ---------------------------------------------------------------------------
+const H0 = 6 * 60;
+const H1 = 22 * 60;
+const pct = (m: number) => ((Math.min(Math.max(m, H0), H1) - H0) / (H1 - H0)) * 100;
+const BANDS = [8, 12, 16, 20];
+
+export function WeekView({ k }: { k: Kalendar }) {
+  const [week, setWeek] = useState(0);
+  const start = addDaysISO(k.weekStart, week * 7);
+  const dates = Array.from({ length: 7 }, (_, i) => addDaysISO(start, i));
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <button type="button" className="btn btn-ghost size-11 p-0" disabled={week === 0} onClick={() => setWeek((w) => w - 1)} aria-label="Предишна седмица">
+          <ChevronLeft className="size-6" aria-hidden />
+        </button>
+        <h2 className="display text-center text-2xl sm:text-3xl" aria-live="polite">
+          {formatDate(dates[0])} – {formatDate(dates[6])}
+        </h2>
+        <button type="button" className="btn btn-ghost size-11 p-0" disabled={week >= 9} onClick={() => setWeek((w) => w + 1)} aria-label="Следваща седмица">
+          <ChevronRight className="size-6" aria-hidden />
+        </button>
+      </div>
+      <div className="grid grid-cols-[1.75rem_repeat(7,minmax(0,1fr))] gap-1 sm:grid-cols-[2.25rem_repeat(7,minmax(0,1fr))] sm:gap-2">
+        <div />
+        {dates.map((d) => (
+          <div key={d} className="text-center">
+            <div className="text-xs font-bold uppercase text-ink-3">{WEEKDAYS_SHORT[isoWeekday(d) - 1]}</div>
+            <div className={`numerals text-xl ${d === k.today ? "text-red" : ""}`}>{parseISO(d).getUTCDate()}</div>
+          </div>
+        ))}
+        <div className="relative h-80">
+          {[6, 8, 10, 12, 14, 16, 18, 20, 22].map((h) => (
+            <span key={h} className="numerals absolute right-0.5 -translate-y-1/2 text-xs text-ink-3" style={{ top: `${pct(h * 60)}%` }}>
+              {String(h).padStart(2, "0")}
+            </span>
+          ))}
+        </div>
+        {dates.map((d) => {
+          const info = k.dayInfo(d);
+          const hidden = info.past || info.far;
+          const booked = hidden ? [] : k.visitsOn(d);
+          return (
+            <button
+              key={d}
+              type="button"
+              disabled={hidden}
+              onClick={() => k.setOpenDay(d)}
+              aria-label={`${formatDate(d, true)}: ${info.ranges.length ? info.ranges.map(([a, b]) => fullRange(a, b)).join(", ") : "зает"}`}
+              className="relative h-80 min-w-0 overflow-hidden rounded-[6px] bg-surface-2 transition-shadow motion-reduce:transition-none hover:shadow-[var(--shadow-md)] disabled:opacity-40"
+            >
+              {BANDS.map((h) => (
+                <span key={h} aria-hidden className="absolute inset-x-0 bg-surface/70" style={{ top: `${pct(h * 60)}%`, height: `${pct((h + 2) * 60) - pct(h * 60)}%` }} />
+              ))}
+              {[...info.soft.map((r) => ({ r, soft: true })), ...info.ranges.map((r) => ({ r, soft: false }))].map(({ r: [a, b], soft }) => (
+                <span
+                  key={`${soft ? "s" : "f"}${a}`}
+                  className={`absolute inset-x-1 rounded-[4px] ${soft ? "bg-free/40" : "bg-free"}`}
+                  style={{ top: `${pct(a)}%`, height: `${Math.max(pct(b) - pct(a), 2)}%` }}
+                />
+              ))}
+              {booked.map((v) => {
+                const [a, b] = visitSpan(v);
+                return (
+                  <span
+                    key={v.id}
+                    className={`absolute inset-x-0.5 z-10 overflow-hidden rounded-[4px] p-0.5 text-left text-[0.65rem] font-bold leading-tight ${
+                      v.kind === "proposed" ? "text-ink shadow-[inset_0_0_0_1.5px_var(--ink)]" : "bg-ink text-white"
+                    }`}
+                    style={{
+                      top: `${pct(a)}%`,
+                      height: `${Math.max(pct(b) - pct(a), 4)}%`,
+                      ...(v.kind === "proposed"
+                        ? { backgroundImage: "repeating-linear-gradient(-45deg, rgb(22 20 15 / 0.3) 0 1.5px, transparent 1.5px 5px)" }
+                        : {}),
+                    }}
+                  >
+                    <span className={`hidden sm:block ${v.kind === "proposed" ? "rounded-[2px] bg-surface/85 px-0.5" : ""}`}>{v.title}</span>
+                  </span>
+                );
+              })}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-sm text-ink-3">
+        Зелено: свободни часове. Тъмно: уговорено посещение. Щриховано: чака отговор. Докоснете ден, за да го промените.
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Day sheet
+// ---------------------------------------------------------------------------
+export function DaySheet({ k }: { k: Kalendar }) {
+  const date = k.openDay;
+  const ref = useRef<HTMLDialogElement>(null);
+  const plan = date ? k.planFor(date) : [];
+  // Rows are reset from the day's plan whenever another day is opened
+  const [forDate, setForDate] = useState<string | null>(null);
+  const [rows, setRows] = useState<Row[]>([]);
+  if (date !== forDate) {
+    setForDate(date);
+    setRows(toRows(plan));
+  }
+  const invalid = rows.some((r) => !rowOk(r));
+  const changed = invalid || JSON.stringify(fromRows(rows)) !== JSON.stringify(plan);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (date && !d.open) d.showModal();
+    if (!date && d.open) d.close();
+  }, [date]);
+
+  const info = date ? k.dayInfo(date) : null;
+  const covering = date ? k.periodsOn(date) : [];
+  const list = date ? k.visitsOn(date) : [];
+
+  return (
+    <dialog
+      ref={ref}
+      className="sheet"
+      onClose={() => k.setOpenDay(null)}
+      aria-labelledby="day-title"
+      onClick={(e) => e.target === ref.current && ref.current?.close()}
+    >
+      {date && info && (
+        <div className="safe-bottom p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 id="day-title" className="display text-4xl first-letter:uppercase">
+                {formatDate(date, true)}
+              </h2>
+              <p className="mt-1 text-ink-2">
+                {info.ranges.length === 0 ? "Сега: зает" : `Сега: свободен ${fullHours(info.ranges)}`}
+                {info.manual && " (ръчно променен)"}
+              </p>
+            </div>
+            <button type="button" className="btn btn-ghost size-11 p-0" onClick={() => ref.current?.close()} aria-label="Затвори">
+              <X className="size-6" aria-hidden />
+            </button>
+          </div>
+
+          {info.isToday && k.todayNote && <p className="mt-4 rounded-[10px] bg-rule-soft px-3 py-2.5 text-sm">{todayLine(k)}</p>}
+
+          {covering.map((c) => (
+            <div key={c.id} className="mt-4 flex flex-col gap-2 rounded-[10px] bg-rule-soft px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:gap-3">
+              <span className="flex-1">
+                Денят е в период „{c.note}“ ({formatDate(c.from)} – {formatDate(c.to)}). Ако промениш часовете по-долу, те важат
+                за този ден вместо периода.
+              </span>
+              <button type="button" className="btn btn-outline btn-sm min-h-11" disabled={k.busy} onClick={() => k.removePeriod(c.id)}>
+                Премахни периода
+              </button>
+            </div>
+          ))}
+
+          {list.length > 0 && (
+            <div className="mt-5">
+              <h3 className="display mb-2 text-[1.45rem]">Посещения този ден</h3>
+              <ul className="grid gap-1">
+                {list.map((v) => (
+                  <li key={v.id} className="rounded-[6px] bg-paper px-4 py-3">
+                    <p className="flex flex-wrap items-baseline gap-x-3">
+                      <span className="numerals text-xl">{visitWhen(v)}</span>
+                      <span className="flex items-center gap-1.5 text-sm font-bold text-ink-2">
+                        <Rivet kind={v.kind} /> {STATUS_WORD[v.kind]}
+                      </span>
+                    </p>
+                    <p className="font-extrabold">{v.title}</p>
+                    <p className="text-sm text-ink-2">{v.who}</p>
+                    <Link href={v.href} className="link inline-flex min-h-11 items-center text-sm font-bold">
+                      {v.kind === "job" ? "Виж в Поръчки" : "Отвори разговора"}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            <button type="button" className="btn btn-lg bg-free text-white hover:bg-free/90" disabled={k.busy} onClick={() => k.setDay(date, "free")}>
+              Свободен цял ден
+            </button>
+            <button type="button" className="btn btn-primary btn-lg" disabled={k.busy} onClick={() => k.setDay(date, "busy")}>
+              Зает цял ден
+            </button>
+          </div>
+          <div className="mt-5 grid gap-3 rounded-[8px] bg-paper p-3">
+            <p className="text-sm font-bold">Свободни часове този ден</p>
+            <div className="flex flex-wrap gap-2">
+              <SlotChips rows={rows} onChange={setRows} />
+            </div>
+            <RowList rows={rows} onChange={setRows} idPrefix="d" />
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={k.busy || invalid || !changed}
+              onClick={() => k.saveDay(date, fromRows(rows))}
+            >
+              {invalid ? "Поправи часовете" : "Запази часовете за деня"}
+            </button>
+            <p className="text-xs text-ink-3">Уговорените в чата посещения се изваждат от свободните часове автоматично.</p>
+          </div>
+          {info.manual && (
+            <button type="button" className="btn btn-ghost mt-4 w-full underline underline-offset-4" disabled={k.busy} onClick={() => k.setDay(date, "reset")}>
+              Върни деня по редовния график
+            </button>
+          )}
+        </div>
+      )}
+    </dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Vacation or a longer busy period
+// ---------------------------------------------------------------------------
+export function VacationDialog({ k }: { k: Kalendar }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [from, setFrom] = useState(k.today);
+  const [to, setTo] = useState(addDaysISO(k.today, 6));
+  const [note, setNote] = useState("Отпуск");
+  const invalid = to < from;
+  const open = k.vacationOpen;
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
+  return (
+    <dialog ref={ref} className="sheet" aria-labelledby="vac-title" onClose={() => k.setVacationOpen(false)} onClick={(e) => e.target === ref.current && ref.current?.close()}>
+      <form
+        className="safe-bottom grid gap-4 p-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (invalid) return;
+          k.busyRange(from, to, note.trim() || "Отпуск", "Периодът е отбелязан като зает.");
+          ref.current?.close();
+        }}
+      >
+        <div className="flex items-center justify-between">
+          <h2 id="vac-title" className="display text-4xl">
+            Зает период
+          </h2>
+          <button type="button" className="btn btn-ghost size-11 p-0" onClick={() => ref.current?.close()} aria-label="Затвори">
+            <X className="size-6" aria-hidden />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="min-w-0">
+            <label htmlFor="v-from" className="label">
+              От
+            </label>
+            <DateField id="v-from" min={k.today} value={from} onChange={setFrom} required />
+          </div>
+          <div className="min-w-0">
+            <label htmlFor="v-to" className="label">
+              До (включително)
+            </label>
+            <DateField id="v-to" min={from} max={addDaysISO(from, 366)} value={to} onChange={setTo} invalid={invalid} required />
+          </div>
+        </div>
+        {invalid && <p className="error-text">Крайната дата е преди началната.</p>}
+        <div>
+          <label htmlFor="v-note" className="label">
+            Бележка <span className="font-normal text-ink-3">(виждате само вие)</span>
+          </label>
+          <input id="v-note" className="field" maxLength={140} value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
+        <button type="submit" className="btn btn-primary btn-lg" disabled={invalid}>
+          Отбележи като зает
+        </button>
+      </form>
+    </dialog>
+  );
+}

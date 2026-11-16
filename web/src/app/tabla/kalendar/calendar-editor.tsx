@@ -1,24 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { CalendarOff, ChevronLeft, ChevronRight, Palmtree, Trash2, X, Zap } from "lucide-react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { ConfirmCalendarBanner } from "@/components/confirm-calendar";
-import { RuleLegend, RuleStrip } from "@/components/rule-strip";
-import {
-  addDaysISO,
-  daysSince,
-  formatDate,
-  isoWeekday,
-  MONTHS,
-  parseISO,
-  startOfWeekISO,
-  todayISO,
-  WEEKDAYS,
-  WEEKDAYS_SHORT,
-} from "@/lib/format";
+import { SameDayToggle } from "@/components/schedule-week";
+import { daysSince, isoWeekday, startOfWeekISO, todayISO, WEEKDAYS } from "@/lib/format";
 import {
   add,
   complement,
@@ -36,7 +23,22 @@ import {
 } from "@/lib/intervals";
 import { SCHEDULE_PRESETS } from "@/lib/schedule-presets";
 import { RowList, SlotChips } from "./interval-editor";
-import { DateField } from "@/components/date-time-fields";
+import {
+  BookingsBox,
+  BusyPeriods,
+  ConfirmField,
+  DaySheet,
+  Meter,
+  MonthGrid,
+  QuickActions,
+  REASON_OFF,
+  REASON_SHORT,
+  VacationDialog,
+  WeekView,
+  type DayInfo,
+  type Kalendar,
+  type Period,
+} from "./calendar-parts";
 
 type Rule = { id: string; weekday: number; start_time: string; end_time: string };
 type Exception = {
@@ -51,6 +53,19 @@ type Exception = {
 };
 type Day = { day: string; status: "free" | "partial" | "busy"; free_hours: number; ranges: { start: string; end: string }[] };
 
+/** An agreed or proposed visit from a chat, or a planned job of the craftsman */
+export type Visit = {
+  id: string;
+  date: string;
+  endDate: string | null;
+  start: string | null;
+  end: string | null;
+  kind: "confirmed" | "proposed" | "job";
+  title: string;
+  who: string;
+  href: string;
+};
+
 type Props = {
   userId: string;
   /** a manager editing the calendar of a craftsman in his company */
@@ -60,21 +75,36 @@ type Props = {
   initialDays: Day[];
   shortNotice: boolean;
   lastConfirmedAt: string;
+  /** [] when managing */
+  visits: Visit[];
+  /** minutes from 00:00 by the database clock (sofia_now) */
+  nowMin: number;
 };
 
-const CODE = { free: "F", partial: "P", busy: "B" } as const;
+const TITLE_LINE = "Клиентите виждат кога си свободен. Календарът е ориентировъчен: датата се потвърждава в чата.";
 
-export function CalendarEditor({ userId, managing = false, initialRules, initialExceptions, initialDays, shortNotice, lastConfirmedAt }: Props) {
+export function CalendarEditor({
+  userId,
+  managing = false,
+  initialRules,
+  initialExceptions,
+  initialDays,
+  shortNotice,
+  lastConfirmedAt,
+  visits,
+  nowMin,
+}: Props) {
   const supabase = createClient();
   const router = useRouter();
   const [today] = useState(todayISO);
   const [exceptions, setExceptions] = useState(initialExceptions);
   const [days, setDays] = useState(initialDays);
-  const [tab, setTab] = useState<"month" | "week" | "schedule">(initialRules.length ? "month" : "schedule");
+  const [view, setView] = useState<"month" | "week">("month");
   const [openDay, setOpenDay] = useState<string | null>(null);
+  const [vacationOpen, setVacationOpen] = useState(false);
   const [busy, startBusy] = useTransition();
   const [notice, setNotice] = useState(shortNotice);
-  const vacation = useRef<HTMLDialogElement>(null);
+  const [daysAgo, setDaysAgo] = useState(() => daysSince(lastConfirmedAt));
   const byDay = useMemo(() => new Map(days.map((d) => [d.day, d])), [days]);
 
   const refresh = useCallback(async () => {
@@ -176,513 +206,154 @@ export function CalendarEditor({ userId, managing = false, initialRules, initial
       if (error) {
         setNotice(!v);
         toast.error("Не успяхме да запишем промяната.");
-      } else toast.success(v ? "Клиентите виждат, че можеш да дойдеш и в същия ден." : "Спешните поръчки са изключени.");
+        return;
+      }
+      // today's state depends on the switch
+      await refresh();
+      toast.success(v ? "Вече излизаш и „Свободен днес“." : "Вече не излизаш „Свободен днес“.");
     });
   }
 
+  // -------------------------------------------------------------- derived
   const weekStart = startOfWeekISO(today);
-  const nextWeekStart = addDaysISO(weekStart, 7);
-  const ranges = exceptions.filter((e) => e.start_date !== e.end_date || (e.kind === "busy" && !e.start_time && e.note === "Отпуск"));
-  const [daysAgo] = useState(() => daysSince(lastConfirmedAt));
+  const periods: Period[] = exceptions
+    .filter((e) => e.start_date !== e.end_date || (e.kind === "busy" && !e.start_time && e.note === "Отпуск"))
+    .map((e) => ({ id: e.id, from: e.start_date, to: e.end_date, note: e.note ?? (e.kind === "busy" ? "Зает" : "Свободен") }));
+  const periodsOn = (iso: string): Period[] =>
+    exceptions
+      .filter((e) => e.start_date !== e.end_date && e.start_date <= iso && e.end_date >= iso)
+      .map((e) => ({ id: e.id, from: e.start_date, to: e.end_date, note: e.note ?? "Зает" }));
+
+  const visitsOn = (iso: string) =>
+    visits
+      .filter((v) => v.date <= iso && iso <= (v.endDate ?? v.date))
+      .sort((a, b) => (a.start ?? "").localeCompare(b.start ?? ""));
+  // a visit of today that is over by the database clock is not „upcoming“
+  const upcoming = visits
+    .filter((v) => !(v.date === today && !v.endDate && v.end && endMin(v.end) <= nowMin))
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.start ?? "").localeCompare(b.start ?? ""))
+    .slice(0, 20);
+
+  const plan = (iso: string) => planFor(iso, initialRules, exceptions);
+  // Today is not „Свободен днес“: a working day by the schedule, but the database offers no hours
+  const todayDb = byDay.get(today);
+  const todayNotFree = todayDb !== undefined && todayDb.ranges.length === 0 && plan(today).length > 0;
+  const todayNote = todayNotFree
+    ? notice
+      ? { reason: "short" as const, text: REASON_SHORT }
+      : { reason: "off" as const, text: REASON_OFF }
+    : null;
+
+  const dayInfo = (iso: string): DayInfo => {
+    const d = byDay.get(iso);
+    const isToday = iso === today;
+    const notToday = isToday && todayNotFree;
+    const soft = notToday
+      ? visitsOn(iso)
+          .filter((v) => v.kind !== "proposed")
+          .reduce((list, v) => subtract(list, [v.start ? toMin(v.start) : 0, v.end ? endMin(v.end) : 1440]), plan(iso))
+      : [];
+    return {
+      iso,
+      past: iso < today,
+      far: !d,
+      isToday,
+      ranges: (d?.ranges ?? []).map((r): Interval => [toMin(r.start), endMin(r.end)]),
+      status: notToday ? "busy" : (d?.status ?? "busy"),
+      manual: exceptions.some((e) => e.start_date === iso && e.end_date === iso),
+      notToday,
+      soft,
+    };
+  };
+
+  const k: Kalendar = {
+    userId,
+    today,
+    nowMin,
+    weekStart,
+    busy,
+    shortNotice: notice,
+    daysAgo,
+    openDay,
+    setOpenDay,
+    vacationOpen,
+    setVacationOpen,
+    periods,
+    periodsOn,
+    upcoming,
+    visitsOn,
+    planFor: plan,
+    dayInfo,
+    todayNote,
+    busyRange,
+    setDay,
+    saveDay,
+    removePeriod: removeException,
+    onConfirmed: () => setDaysAgo(0),
+  };
+
+  const Title = managing ? "h2" : "h1";
 
   return (
-    <div className="grid gap-8">
+    <div className="grid min-w-0 gap-10">
       <div>
-        <h1 className="display text-5xl sm:text-6xl">Календар</h1>
-        <p className="mt-2 max-w-2xl text-lg text-ink-2">
-          Клиентите виждат кога си свободен и ти пишат за тези дни. Календарът е ориентировъчен: датата се потвърждава в
-          чата.
-        </p>
+        <Title className="display text-5xl sm:text-6xl">Календар</Title>
+        <p className="mt-2 max-w-2xl text-lg text-ink-2">{TITLE_LINE}</p>
       </div>
 
-      <ConfirmCalendarBanner daysAgo={daysAgo} compact craftsmanId={managing ? userId : undefined} />
+      <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+        <div className="grid min-w-0 gap-5">
+          <Meter k={k} />
 
-      {/* Quick actions */}
-      <section aria-labelledby="quick-heading" className="grid gap-4">
-        <h2 id="quick-heading" className="sr-only">
-          Бързи действия
-        </h2>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <button
-            type="button"
-            className="btn btn-outline btn-lg justify-start"
-            disabled={busy}
-            onClick={() => busyRange(today, addDaysISO(weekStart, 6), "Зает тази седмица", "Отбелязан си като зает до неделя.")}
-          >
-            <CalendarOff className="size-5" aria-hidden /> Зает съм тази седмица
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline btn-lg justify-start"
-            disabled={busy}
-            onClick={() =>
-              busyRange(nextWeekStart, addDaysISO(nextWeekStart, 6), "Зает следващата седмица", "Следващата седмица е отбелязана като заета.")
-            }
-          >
-            <CalendarOff className="size-5" aria-hidden /> Зает съм следващата седмица
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline btn-lg justify-start"
-            disabled={busy}
-            onClick={() => vacation.current?.showModal()}
-          >
-            <Palmtree className="size-5" aria-hidden /> Отпуск или по-дълъг период
-          </button>
-        </div>
-
-        {!managing && (
-        <label className="flex cursor-pointer items-center gap-4 rounded-[10px] border border-line bg-surface p-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-[8px] bg-rule">
-            <Zap className="size-5" aria-hidden />
-          </span>
-          <span className="flex-1">
-            <span className="block font-extrabold">Мога да дойда и в същия ден</span>
-            <span className="block text-sm text-ink-2">Показваме значка „идва и в същия ден“ за спешни поръчки.</span>
-          </span>
-          <span className="relative inline-flex">
-            <input
-              type="checkbox"
-              role="switch"
-              className="peer sr-only"
-              checked={notice}
-              onChange={(e) => toggleNotice(e.target.checked)}
-            />
-            <span className="h-7 w-12 rounded-full bg-line-strong transition-colors peer-checked:bg-free peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink" />
-            <span className="absolute left-1 top-1 size-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
-          </span>
-        </label>
-        )}
-
-        {ranges.length > 0 && (
-          <ul className="grid gap-2" aria-label="Заети периоди">
-            {ranges.map((r) => (
-              <li key={r.id} className="flex items-center gap-3 rounded-[8px] bg-surface-2 px-4 py-2.5">
-                <CalendarOff className="size-4 shrink-0 text-ink-2" aria-hidden />
-                <span className="flex-1">
-                  <strong>{r.note ?? (r.kind === "busy" ? "Зает" : "Свободен")}</strong>{" "}
-                  <span className="text-ink-2">
-                    {formatDate(r.start_date)}
-                    {r.end_date !== r.start_date ? ` – ${formatDate(r.end_date)}` : ""}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => removeException(r.id)}
-                  disabled={busy}
-                  aria-label={`Премахни ${r.note ?? "период"} ${formatDate(r.start_date)}`}
-                >
-                  <Trash2 className="size-4" aria-hidden /> Премахни
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Views */}
-      <section aria-label="Изгледи на календара">
-        <div role="tablist" aria-label="Изглед" className="flex gap-1 border-b border-ink">
-          {(
-            [
-              ["month", "Месец"],
-              ["week", "Седмица"],
-              ["schedule", "Редовен график"],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              id={`tab-${key}`}
-              aria-controls={`panel-${key}`}
-              aria-selected={tab === key}
-              onClick={() => setTab(key)}
-              className={`relative px-4 py-3 font-bold transition-colors ${tab === key ? "text-ink" : "text-ink-3 hover:text-ink"}`}
-            >
-              {label}
-              {tab === key && <span aria-hidden className="absolute inset-x-2 -bottom-px h-[3px] rounded-t bg-red" />}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-5">
-          {tab !== "schedule" && (
-            <>
-              <RuleLegend className="mb-3" />
-              <div className="mb-6 overflow-x-auto">
-                <RuleStrip
-                  strip={days.slice(0, 14).map((d) => CODE[d.status]).join("")}
-                  start={today}
-                  size="md"
-                  onPick={(iso) => setOpenDay(iso)}
-                  selected={openDay}
-                  label="Следващите 14 дни: докоснете ден, за да го промените"
-                  className="min-w-[32rem]"
-                />
-              </div>
-            </>
+          {!managing && todayNote && (
+            <p className="rounded-[10px] bg-rule-soft px-4 py-3 text-[0.95rem]">
+              Днес вече не излизаш свободен ({todayNote.text}). За клиентите си свободен от утре.
+            </p>
           )}
-          {tab === "month" && (
-            <div role="tabpanel" id="panel-month" aria-labelledby="tab-month">
-              <MonthGrid byDay={byDay} today={today} onPick={setOpenDay} />
-            </div>
-          )}
-          {tab === "week" && (
-            <div role="tabpanel" id="panel-week" aria-labelledby="tab-week">
-              <WeekView byDay={byDay} today={today} onPick={setOpenDay} />
-            </div>
-          )}
-          {tab === "schedule" && (
-            <div role="tabpanel" id="panel-schedule" aria-labelledby="tab-schedule">
-              <ScheduleEditor userId={userId} initialRules={initialRules} onSaved={refresh} />
-            </div>
-          )}
-        </div>
-      </section>
 
-      <DaySheet
-        date={openDay}
-        info={openDay ? byDay.get(openDay) : undefined}
-        exceptions={exceptions}
-        plan={openDay ? planFor(openDay, initialRules, exceptions) : []}
-        busy={busy}
-        onClose={() => setOpenDay(null)}
-        onSet={setDay}
-        onSave={saveDay}
-        onRemoveRange={removeException}
-      />
-      <VacationDialog
-        ref={vacation}
-        today={today}
-        onSave={(from, to, note) => busyRange(from, to, note || "Отпуск", "Периодът е отбелязан като зает.")}
-      />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Month
-// ---------------------------------------------------------------------------
-function MonthGrid({ byDay, today, onPick }: { byDay: Map<string, Day>; today: string; onPick: (d: string) => void }) {
-  const [offset, setOffset] = useState(0);
-  const base = parseISO(today);
-  const monthStart = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + offset, 1, 12));
-  const startIso = monthStart.toISOString().slice(0, 10);
-  const lead = isoWeekday(startIso) - 1;
-  const n = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 0, 12)).getUTCDate();
-  const cells = [...Array.from({ length: lead }, () => null), ...Array.from({ length: n }, (_, i) => addDaysISO(startIso, i))];
-
-  return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <button type="button" className="btn btn-ghost btn-sm" disabled={offset === 0} onClick={() => setOffset((o) => o - 1)} aria-label="Предишен месец">
-          <ChevronLeft className="size-5" aria-hidden />
-        </button>
-        <h3 className="text-xl font-extrabold capitalize" aria-live="polite">
-          {MONTHS[monthStart.getUTCMonth()]} {monthStart.getUTCFullYear()}
-        </h3>
-        <button type="button" className="btn btn-ghost btn-sm" disabled={offset >= 2} onClick={() => setOffset((o) => o + 1)} aria-label="Следващ месец">
-          <ChevronRight className="size-5" aria-hidden />
-        </button>
-      </div>
-      <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
-        {WEEKDAYS_SHORT.map((w) => (
-          <div key={w} className="pb-1 text-center text-xs font-bold uppercase text-ink-3">
-            {w}
-          </div>
-        ))}
-        {cells.map((iso, i) => {
-          if (!iso) return <div key={`e${i}`} />;
-          const d = byDay.get(iso);
-          const past = iso < today;
-          const st = d?.status;
-          return (
-            <button
-              key={iso}
-              type="button"
-              disabled={past || !d}
-              onClick={() => onPick(iso)}
-              aria-label={`${formatDate(iso, true)}: ${past ? "минал" : st === "free" ? "свободен" : st === "partial" ? "частично свободен" : "зает"}`}
-              className={`relative flex h-16 flex-col items-start justify-between rounded-[8px] border p-1.5 text-left transition-colors sm:h-20 sm:p-2 ${
-                past || !d
-                  ? "border-transparent text-ink-3/50"
-                  : st === "free"
-                    ? "border-free/30 bg-free-soft hover:border-free"
-                    : st === "partial"
-                      ? "border-line bg-surface hover:border-ink"
-                      : "border-line bg-surface-2 hover:border-ink"
-              }`}
-            >
-              <span className={`numerals text-lg leading-none sm:text-xl ${iso === today ? "text-red" : ""}`}>
-                {parseISO(iso).getUTCDate()}
-              </span>
-              {d && !past && (
-                <span className="w-full">
-                  {st !== "busy" ? (
-                    <span className={`block h-1.5 w-full rounded-full ${st === "free" ? "bg-free" : "hatch"}`} />
-                  ) : (
-                    <span className="block text-[0.7rem] font-bold uppercase text-ink-3">зает</span>
-                  )}
-                  <span className="mt-0.5 hidden truncate text-[0.7rem] text-ink-2 sm:block">
-                    {d.ranges.map((r) => `${r.start.slice(0, 2)}–${r.end.slice(0, 2)}`).join(", ")}
-                  </span>
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Week: vertical time bars 06–22
-// ---------------------------------------------------------------------------
-function WeekView({ byDay, today, onPick }: { byDay: Map<string, Day>; today: string; onPick: (d: string) => void }) {
-  const [week, setWeek] = useState(0);
-  const start = addDaysISO(startOfWeekISO(today), week * 7);
-  const dates = Array.from({ length: 7 }, (_, i) => addDaysISO(start, i));
-  const H0 = 6 * 60;
-  const H1 = 22 * 60;
-  const pct = (m: number) => ((Math.min(Math.max(m, H0), H1) - H0) / (H1 - H0)) * 100;
-
-  return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <button type="button" className="btn btn-ghost btn-sm" disabled={week === 0} onClick={() => setWeek((w) => w - 1)} aria-label="Предишна седмица">
-          <ChevronLeft className="size-5" aria-hidden />
-        </button>
-        <h3 className="text-lg font-extrabold" aria-live="polite">
-          {formatDate(dates[0])} – {formatDate(dates[6])}
-        </h3>
-        <button type="button" className="btn btn-ghost btn-sm" disabled={week >= 8} onClick={() => setWeek((w) => w + 1)} aria-label="Следваща седмица">
-          <ChevronRight className="size-5" aria-hidden />
-        </button>
-      </div>
-      <div className="grid grid-cols-[2.25rem_repeat(7,minmax(0,1fr))] gap-1 sm:gap-2">
-        <div />
-        {dates.map((d) => (
-          <div key={d} className="text-center">
-            <div className="text-xs font-bold uppercase text-ink-3">{WEEKDAYS_SHORT[isoWeekday(d) - 1]}</div>
-            <div className={`numerals text-xl ${d === today ? "text-red" : ""}`}>{parseISO(d).getUTCDate()}</div>
-          </div>
-        ))}
-        <div className="relative h-80">
-          {[6, 9, 12, 15, 18, 21].map((h) => (
-            <span key={h} className="numerals absolute right-1 -translate-y-1/2 text-xs text-ink-3" style={{ top: `${pct(h * 60)}%` }}>
-              {h}
-            </span>
-          ))}
-        </div>
-        {dates.map((d) => {
-          const info = byDay.get(d);
-          const past = d < today;
-          return (
-            <button
-              key={d}
-              type="button"
-              disabled={past || !info}
-              onClick={() => onPick(d)}
-              aria-label={`${formatDate(d, true)}: ${info?.ranges.length ? info.ranges.map((r) => `${r.start}–${r.end}`).join(", ") : "зает"}`}
-              className="relative h-80 overflow-hidden rounded-[6px] bg-surface-2 ring-1 ring-inset ring-line transition hover:ring-ink disabled:opacity-40"
-            >
-              {[9, 12, 15, 18, 21].map((h) => (
-                <span key={h} aria-hidden className="absolute inset-x-0 h-px bg-line" style={{ top: `${pct(h * 60)}%` }} />
-              ))}
-              {info?.ranges.map((r) => {
-                const s = toMin(r.start);
-                const e = r.end === "24:00" ? 24 * 60 : toMin(r.end);
-                return (
-                  <span
-                    key={r.start}
-                    className="absolute inset-x-1 rounded-[4px] bg-free"
-                    style={{ top: `${pct(s)}%`, height: `${Math.max(pct(e) - pct(s), 2)}%` }}
-                  />
-                );
-              })}
-            </button>
-          );
-        })}
-      </div>
-      <p className="mt-3 text-sm text-ink-3">Зелено: свободни часове. Докоснете ден, за да го промените.</p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Day sheet
-// ---------------------------------------------------------------------------
-function DaySheet({
-  date,
-  info,
-  exceptions,
-  plan,
-  busy,
-  onClose,
-  onSet,
-  onSave,
-  onRemoveRange,
-}: {
-  date: string | null;
-  info?: Day;
-  exceptions: Exception[];
-  plan: Interval[];
-  busy: boolean;
-  onClose: () => void;
-  onSet: (date: string, mode: "free" | "busy" | "reset") => void;
-  onSave: (date: string, list: Interval[]) => void;
-  onRemoveRange: (id: string) => void;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  // Rows are reset from the day's plan whenever another day is opened
-  const [forDate, setForDate] = useState<string | null>(null);
-  const [rows, setRows] = useState<Row[]>([]);
-  if (date !== forDate) {
-    setForDate(date);
-    setRows(toRows(plan));
-  }
-  const invalid = rows.some((r) => !rowOk(r));
-  const changed = invalid || JSON.stringify(fromRows(rows)) !== JSON.stringify(plan);
-
-  useEffect(() => {
-    const d = ref.current;
-    if (!d) return;
-    if (date && !d.open) d.showModal();
-    if (!date && d.open) d.close();
-  }, [date]);
-
-  const single = date ? exceptions.filter((e) => e.start_date === date && e.end_date === date) : [];
-  const covering = date ? exceptions.filter((e) => e.start_date !== e.end_date && e.start_date <= date && e.end_date >= date) : [];
-
-  return (
-    <dialog ref={ref} className="sheet" onClose={onClose} aria-labelledby="day-title" onClick={(e) => e.target === ref.current && ref.current?.close()}>
-      {date && (
-        <div className="safe-bottom p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 id="day-title" className="display text-4xl first-letter:uppercase">
-                {formatDate(date, true)}
-              </h2>
-              <p className="mt-1 text-ink-2">
-                {info?.status === "busy" || !info?.ranges.length
-                  ? "Сега: зает"
-                  : `Сега: свободен ${info.ranges.map((r) => `${r.start}–${r.end}`).join(", ")}`}
-                {single.length > 0 && " (ръчно променен)"}
-              </p>
-            </div>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => ref.current?.close()} aria-label="Затвори">
-              <X className="size-6" aria-hidden />
-            </button>
-          </div>
-
-          {covering.map((c) => (
-            <div key={c.id} className="mt-4 flex items-center gap-3 rounded-[8px] bg-rule-soft px-3 py-2.5 text-sm">
-              <span className="flex-1">
-                Денят е в период „{c.note ?? "Зает"}“ ({formatDate(c.start_date)} – {formatDate(c.end_date)}). Ако
-                промениш часовете по-долу, те важат за този ден вместо периода.
-              </span>
-              <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => onRemoveRange(c.id)}>
-                Премахни периода
+          <div role="tablist" aria-label="Изглед" className="flex gap-1">
+            {(
+              [
+                ["month", "Месец"],
+                ["week", "Седмица"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={view === key}
+                onClick={() => setView(key)}
+                className={`min-h-11 rounded-[6px] px-6 font-bold ${view === key ? "bg-rule text-ink" : "bg-surface text-ink-2"}`}
+              >
+                {label}
               </button>
-            </div>
-          ))}
+            ))}
+          </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            <button type="button" className="btn btn-lg bg-free text-white hover:bg-free/90" disabled={busy} onClick={() => onSet(date, "free")}>
-              Свободен цял ден
-            </button>
-            <button type="button" className="btn btn-primary btn-lg" disabled={busy} onClick={() => onSet(date, "busy")}>
-              Зает цял ден
-            </button>
-          </div>
-          <div className="mt-5 grid gap-3 rounded-[8px] bg-surface-2 p-3">
-            <p className="text-sm font-bold">Свободни часове този ден</p>
-            <div className="flex flex-wrap gap-2">
-              <SlotChips rows={rows} onChange={setRows} />
-            </div>
-            <RowList rows={rows} onChange={setRows} idPrefix="d" />
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={busy || invalid || !changed}
-              onClick={() => onSave(date, fromRows(rows))}
-            >
-              {invalid ? "Поправи часовете" : "Запази часовете за деня"}
-            </button>
-            <p className="text-xs text-ink-3">Уговорените в чата посещения се изваждат от свободните часове автоматично.</p>
-          </div>
-          {single.length > 0 && (
-            <button type="button" className="btn btn-ghost mt-4 w-full underline underline-offset-4" disabled={busy} onClick={() => onSet(date, "reset")}>
-              Върни деня по редовния график
-            </button>
-          )}
+          <div className="min-w-0">{view === "month" ? <MonthGrid k={k} marks={!managing} /> : <WeekView k={k} />}</div>
         </div>
-      )}
-    </dialog>
-  );
-}
 
-function VacationDialog({
-  ref,
-  today,
-  onSave,
-}: {
-  ref: React.RefObject<HTMLDialogElement | null>;
-  today: string;
-  onSave: (from: string, to: string, note: string) => void;
-}) {
-  const [from, setFrom] = useState(today);
-  const [to, setTo] = useState(addDaysISO(today, 6));
-  const [note, setNote] = useState("Отпуск");
-  const invalid = to < from;
-  return (
-    <dialog ref={ref} className="sheet" aria-labelledby="vac-title" onClick={(e) => e.target === ref.current && ref.current?.close()}>
-      <form
-        className="safe-bottom grid gap-4 p-5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (invalid) return;
-          onSave(from, to, note.trim());
-          ref.current?.close();
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <h2 id="vac-title" className="display text-4xl">
-            Зает период
-          </h2>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => ref.current?.close()} aria-label="Затвори">
-            <X className="size-6" aria-hidden />
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="v-from" className="label">
-              От
-            </label>
-            <DateField id="v-from" min={today} value={from} onChange={setFrom} required />
-          </div>
-          <div>
-            <label htmlFor="v-to" className="label">
-              До (включително)
-            </label>
-            <DateField id="v-to" min={from} max={addDaysISO(from, 366)} value={to} onChange={setTo} invalid={invalid} required />
-          </div>
-        </div>
-        {invalid && <p className="error-text">Крайната дата е преди началната.</p>}
-        <div>
-          <label htmlFor="v-note" className="label">
-            Бележка <span className="font-normal text-ink-3">(виждате само вие)</span>
-          </label>
-          <input id="v-note" className="field" maxLength={140} value={note} onChange={(e) => setNote(e.target.value)} />
-        </div>
-        <button type="submit" className="btn btn-primary btn-lg" disabled={invalid}>
-          Отбележи като зает
-        </button>
-      </form>
-    </dialog>
+        <aside className="grid min-w-0 gap-4" aria-label={managing ? "Бързи действия" : "Уговорено и бързи действия"}>
+          {!managing && <BookingsBox k={k} />}
+          <QuickActions k={k} />
+          {!managing && <SameDayToggle on={notice} onChange={toggleNotice} disabled={busy} />}
+        </aside>
+      </div>
+
+      <BusyPeriods k={k} />
+      {initialRules.length > 0 && <ConfirmField k={k} />}
+
+      <section aria-labelledby="schedule-h" className="grid min-w-0 gap-4">
+        <h2 id="schedule-h" className="display text-3xl sm:text-4xl">
+          Редовен график
+        </h2>
+        <ScheduleEditor userId={userId} initialRules={initialRules} onSaved={refresh} />
+      </section>
+
+      <DaySheet k={k} />
+      <VacationDialog k={k} />
+    </div>
   );
 }
 
@@ -752,9 +423,9 @@ function ScheduleEditor({ userId, initialRules, onSaved }: { userId: string; ini
         </button>
       </div>
 
-      <ul className="grid border-t-[1.5px] border-ink">
+      <ul className="grid">
         {week.map((rows, i) => (
-          <li key={i} className="border-b border-line py-3">
+          <li key={i} className="py-3">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="w-28 shrink-0">
                 <p className="font-extrabold capitalize">{WEEKDAYS[i]}</p>

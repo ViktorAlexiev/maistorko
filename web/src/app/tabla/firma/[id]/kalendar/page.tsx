@@ -9,7 +9,7 @@ export default async function EmployeeCalendarPage({ params }: PageProps<"/tabla
   const { id } = await params;
   const supabase = await createClient();
   const today = todayISO();
-  const [{ data: rules }, { data: exceptions }, { data: days }, { data: cp }] = await Promise.all([
+  const [{ data: rules }, { data: exceptions }, { data: days }, { data: cp }, { data: now }] = await Promise.all([
     supabase.from("availability_rules").select("id, weekday, start_time, end_time").eq("craftsman_id", id),
     supabase
       .from("availability_exceptions")
@@ -19,7 +19,10 @@ export default async function EmployeeCalendarPage({ params }: PageProps<"/tabla
       .order("start_date"),
     supabase.rpc("availability_days", { p_craftsman: id, p_from: today, p_days: 70 }),
     supabase.from("craftsman_profiles").select("short_notice, last_confirmed_at").eq("id", id).single(),
+    supabase.rpc("sofia_now"),
   ]);
+  // minutes from 00:00 by the database clock: "2026-11-16T19:40:00"
+  const nowMin = typeof now === "string" ? Number(now.slice(11, 13)) * 60 + Number(now.slice(14, 16)) : 0;
 
   return (
     <CalendarEditor
@@ -30,6 +33,8 @@ export default async function EmployeeCalendarPage({ params }: PageProps<"/tabla
       initialDays={(days ?? []) as never}
       shortNotice={cp?.short_notice ?? false}
       lastConfirmedAt={cp?.last_confirmed_at ?? new Date().toISOString()}
+      visits={[]}
+      nowMin={nowMin}
     />
   );
 }
