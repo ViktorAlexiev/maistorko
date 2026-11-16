@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { Clock, Languages, MapPin, MessageCircle, Zap } from "lucide-react";
+import { Clock, Languages, MapPin, MessageCircle } from "lucide-react";
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/auth";
@@ -311,7 +311,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
       </header>
 
       <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14">
-        <div className="grid min-w-0 gap-14">
+        <div className="grid min-w-0 gap-14 max-lg:contents max-lg:[&>#kalendar~*]:order-2">
           {busyUntil && (
             <p role="status" className="rounded-[8px] bg-rule px-4 py-3 font-bold shadow-[inset_0_0_0_1.5px_var(--ink)]">
               {firstName} е зает до {formatDate(busyUntil)}. Можете да му пишете за след този период.
@@ -437,7 +437,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
         </div>
 
         {/* Side facts */}
-        <aside className="order-first lg:order-none">
+        <aside className="max-lg:order-1">
           <div className="grid gap-5 rounded-[10px] border border-line bg-surface p-5 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain">
             <section aria-labelledby="contacts-heading" className="grid gap-3 border-b border-line pb-5">
               <h2 id="contacts-heading" className="text-lg font-extrabold">
@@ -495,15 +495,6 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
                 <dt className="font-bold">Работи в</dt>
                 <dd className="mt-1 text-ink-2">{[c.city?.name, ...areas.map((a) => a.name)].filter(Boolean).join(", ")}</dd>
               </div>
-              {c.short_notice && (
-                <div className="flex gap-2">
-                  <Zap className="mt-0.5 size-4 shrink-0" aria-hidden />
-                  <div>
-                    <dt className="sr-only">Спешни поръчки</dt>
-                    <dd>Може да дойде и в същия ден</dd>
-                  </div>
-                </div>
-              )}
               <div className="flex gap-2">
                 <Languages className="mt-0.5 size-4 shrink-0" aria-hidden />
                 <div>

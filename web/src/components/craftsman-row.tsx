@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Handshake, MapPin, Zap } from "lucide-react";
+import { Handshake, MapPin } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { Rating, VerifiedBadge } from "@/components/bits";
 import { RuleStrip } from "@/components/rule-strip";
@@ -20,7 +20,6 @@ export type CraftsmanCardData = {
   rating_avg: number;
   rating_count: number;
   is_verified: boolean;
-  short_notice: boolean;
   years_experience: number | null;
   next_free: string | null;
   matched_date: string | null;
@@ -122,11 +121,6 @@ export function CraftsmanRow({
                   </span>
                 ) : (
                   <span className="font-semibold text-ink-3">Няма свободни дни скоро</span>
-                )}
-                {c.short_notice && (
-                  <span className="inline-flex items-center gap-1 font-semibold text-ink-2">
-                    <Zap className="size-3.5" aria-hidden /> идва и в същия ден
-                  </span>
                 )}
                 {c.freshness === "stale" && <span className="text-ink-3">графикът не е обновяван скоро</span>}
               </p>
