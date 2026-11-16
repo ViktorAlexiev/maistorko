@@ -1,6 +1,8 @@
 // The three ready-made weekly schedules, shared by the Calendar quick buttons and the setup page.
 // Used from client and server code alike, so no "server-only" here.
 
+import { endMin, normalize, toMin, toTime, type Interval } from "@/lib/intervals";
+
 export type SchedulePresetId = "weekdays" | "monsat" | "evenings";
 export type PresetRule = { weekday: number; start_time: string; end_time: string }; // weekday 1 = Пн … 7 = Нд; "08:00"
 export type SchedulePreset = {
@@ -51,3 +53,30 @@ export function matchPreset(
   }
   return null;
 }
+
+/** The week as seven lists of intervals: index 0 = Пн … 6 = Нд */
+export type Week = Interval[][];
+
+/** Schedule rows (weekday 1 = Пн, "HH:MM" or "HH:MM:SS", an end of "24:00" is the end of the day) as a week */
+export function rulesToWeek(rules: { weekday: number; start_time: string; end_time: string }[]): Week {
+  const week: Week = Array.from({ length: 7 }, () => []);
+  for (const r of rules) {
+    if (r.weekday < 1 || r.weekday > 7) continue;
+    week[r.weekday - 1].push([toMin(r.start_time.slice(0, 5)), endMin(r.end_time.slice(0, 5))]);
+  }
+  return week.map(normalize);
+}
+
+/** A week as schedule rows, one per interval; the end of the day is written "24:00" */
+export function weekToRules(week: Week): PresetRule[] {
+  return week.flatMap((list, i) =>
+    list.map(([a, b]) => ({ weekday: i + 1, start_time: toTime(a), end_time: b === 1440 ? "24:00" : toTime(b) })),
+  );
+}
+
+/** A ready schedule as „the intervals of weekday wd (1 = Пн)“ */
+const presetDay = (p: SchedulePreset) => (wd: number): Interval[] =>
+  normalize(p.rules.filter((r) => r.weekday === wd).map((r): Interval => [toMin(r.start_time), endMin(r.end_time)]));
+
+/** A ready schedule as seven lists of intervals, Пн…Нд */
+export const presetWeek = (p: SchedulePreset): Week => Array.from({ length: 7 }, (_, i) => presetDay(p)(i + 1));
