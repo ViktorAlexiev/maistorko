@@ -203,7 +203,11 @@ export function CalendarEditor({
         if (del.error) return void toast.error("Графикът не беше записан.");
         if (rows.length) {
           const ins = await supabase.from("availability_rules").insert(rows);
-          if (ins.error) return void toast.error("Графикът не беше записан.");
+          if (ins.error) {
+            // the old rules are already deleted: show what the database really holds
+            await refresh();
+            return void toast.error("Графикът не беше записан.");
+          }
         }
         await refresh();
         const undo = msg?.undo;
@@ -258,7 +262,7 @@ export function CalendarEditor({
   // Today is not „Свободен днес“: a working day by the schedule, but the database offers no hours
   const todayDb = byDay.get(today);
   const todayNotFree = todayDb !== undefined && todayDb.ranges.length === 0 && plan(today).length > 0;
-  const todayNote = todayNotFree
+  const todayNote = todayNotFree && !managing
     ? notice
       ? { reason: "short" as const, text: REASON_SHORT }
       : { reason: "off" as const, text: REASON_OFF }

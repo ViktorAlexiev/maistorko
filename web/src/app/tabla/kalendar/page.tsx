@@ -36,7 +36,7 @@ export default async function CalendarPage() {
 
   const visits: Visit[] = [
     ...(bookings ?? [])
-      .filter((b) => (b.status === "confirmed" || b.status === "proposed") && (b.end_date ?? b.booking_date) >= today)
+      .filter((b) => b.i_am === "craftsman" && (b.status === "confirmed" || b.status === "proposed") && (b.end_date ?? b.booking_date) >= today)
       .map(
         (b): Visit => ({
           id: b.id,

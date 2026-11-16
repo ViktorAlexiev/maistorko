@@ -205,7 +205,8 @@ export function BookingSheet({
     supabase.rpc("sofia_now").then(({ data, error }) => {
       if (!alive) return;
       if (error || typeof data !== "string") return void toast.error(error?.message ?? "Не успяхме да проверим часа. Опитай пак.");
-      const now = Number(data.slice(11, 13)) * 60 + Number(data.slice(14, 16));
+      // any seconds past the minute count as the next minute: the database refuses a start before sofia_now()
+      const now = Number(data.slice(11, 13)) * 60 + Number(data.slice(14, 16)) + (Number(data.slice(17, 19)) > 0 ? 1 : 0);
       const start = Math.ceil(now / 30) * 30;
       const t = todayISO();
       const min = start > 22 * 60 || (!iAmCraftsman && !craftsmanSameDay) ? addDaysISO(t, 1) : t;
@@ -240,6 +241,13 @@ export function BookingSheet({
   const isToday = date === today;
   const parts = partsFor(isToday, startMin);
 
+  /** For today the exact hours cannot start before `start`; the end stays after the start */
+  function clampHours(start: number) {
+    const f = Math.max(from ? toMin(from) : 0, start);
+    setFrom(toHM(f));
+    if (!to || toMin(to) <= f) setTo(toHM(Math.min(f + 60, 23 * 60 + 59)));
+  }
+
   /** Part and hours for a day: today follows the rules for what is left of it, any other day starts at the morning. */
   function applyDay(d: string, t: string, start: number) {
     if (d !== t) {
@@ -248,11 +256,13 @@ export function BookingSheet({
     }
     const first = partsFor(true, start).find((x) => x.key !== "custom");
     if (first) setPreset(first.key);
-    else {
-      setPreset("custom");
-      setFrom(toHM(start));
-      setTo(toHM(start + 60));
-    }
+    else setPreset("custom");
+    clampHours(start);
+  }
+
+  function pickPreset(key: PresetKey) {
+    setPreset(key);
+    if (key === "custom" && isToday) clampHours(startMin);
   }
 
   function changeDate(d: string) {
@@ -354,7 +364,7 @@ export function BookingSheet({
           <legend className="label">Час</legend>
           <div className="flex flex-wrap gap-2">
             {parts.map((x) => (
-              <button key={x.key} type="button" className="chip disabled:opacity-50" disabled={!ready} aria-pressed={preset === x.key} onClick={() => setPreset(x.key)}>
+              <button key={x.key} type="button" className="chip disabled:opacity-50" disabled={!ready} aria-pressed={preset === x.key} onClick={() => pickPreset(x.key)}>
                 {x.label}
                 {x.from && x.key !== "custom" && <span className="text-xs font-medium opacity-75">{x.from.slice(0, 2)}–{x.to!.slice(0, 2)}</span>}
               </button>
