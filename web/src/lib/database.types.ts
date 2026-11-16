@@ -929,6 +929,22 @@ export type Database = {
           },
         ]
       }
+      dev_clock: {
+        Row: {
+          id: boolean
+          time_of_day: string
+        }
+        ComputedFields: never
+        Insert: {
+          id?: boolean
+          time_of_day: string
+        }
+        Update: {
+          id?: boolean
+          time_of_day?: string
+        }
+        Relationships: []
+      }
       email_outbox: {
         Row: {
           attempts: number
@@ -2419,6 +2435,7 @@ export type Database = {
         Returns: undefined
       }
       slugify: { Args: { input: string }; Returns: string }
+      sofia_now: { Args: Record<PropertyKey, never>; Returns: string }
       start_conversation: {
         Args: {
           p_body: string

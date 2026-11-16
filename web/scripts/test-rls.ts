@@ -1248,6 +1248,128 @@ async function main() {
     for (const id of extra) await admin.auth.admin.deleteUser(id);
   }
 
+  console.log("\nДнес");
+  {
+    const hour = (price: number) => ({ kind: "hour" as const, price, unit: "hour" as const });
+    const extra: string[] = [];
+    const fixture = async (name: string, shortNotice: boolean) => {
+      const m = await user("craftsman", name);
+      extra.push(m.id);
+      await admin.from("craftsman_categories").insert({ craftsman_id: m.id, category_id: cat!.id });
+      await admin.from("category_prices").insert({ craftsman_id: m.id, category_id: cat!.id, ...hour(25) });
+      await admin.from("availability_rules").insert(
+        [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({ craftsman_id: m.id, weekday, start_time: "08:00", end_time: "18:00" })),
+      );
+      await admin.from("craftsman_profiles").update({ short_notice: shortNotice, last_confirmed_at: new Date().toISOString() }).eq("id", m.id);
+      return m;
+    };
+    const setClock = (time: string) => admin.from("dev_clock").upsert({ id: true, time_of_day: time });
+    const hoursOf = async (id: string, day: string) => {
+      const { data } = await anon.rpc("availability_days", { p_craftsman: id, p_from: day, p_days: 1 });
+      const ranges = (data?.[0]?.ranges ?? []) as { start: string; end: string }[];
+      return { text: ranges.map((r) => `${r.start}-${r.end}`).join(","), status: data?.[0]?.status as string | undefined };
+    };
+
+    try {
+      const dnes = await fixture("dnes", true);
+      const dnes2 = await fixture("dnes2", false);
+      const dnesk = await user("client", "dnesk");
+      extra.push(dnesk.id);
+      const { data: convDnes } = await dnesk.c.rpc("start_conversation", { p_craftsman: dnes.id, p_body: "Здравейте, тест" });
+      const { data: convDnes2 } = await dnesk.c.rpc("start_conversation", { p_craftsman: dnes2.id, p_body: "Здравейте, тест" });
+      const today = String((await anon.rpc("sofia_now")).data).slice(0, 10);
+      const tomorrow = addIso(today, 1);
+
+      await setClock("13:26");
+      const t1 = await hoursOf(dnes.id, today);
+      ok("днес: часовете започват от следващия половин час", t1.text === "13:30-18:00", t1);
+
+      await setClock("16:00");
+      const t2 = await hoursOf(dnes.id, today);
+      ok("днес: точно 2 часа остава свободен", t2.text === "16:00-18:00", t2);
+
+      await setClock("16:10");
+      const t3 = await hoursOf(dnes.id, today);
+      ok("днес: под 2 часа не е свободен", t3.text === "" && t3.status === "busy", t3);
+
+      await setClock("09:00");
+      const t4 = await hoursOf(dnes2.id, today);
+      ok("днес: без отметката не е свободен", t4.text === "", t4);
+
+      await setClock("16:10");
+      const t5a = await hoursOf(dnes.id, tomorrow);
+      const t5b = await hoursOf(dnes2.id, tomorrow);
+      ok("утре: без промяна", t5a.text === "08:00-18:00" && t5b.text === "08:00-18:00", { t5a, t5b });
+
+      await setClock("09:00");
+      const { data: s6 } = await anon.rpc("search_craftsmen", { p_ids: [dnes2.id], p_date_from: today });
+      ok("търсене за днес: майстор без отметката не излиза", Array.isArray(s6) && s6.length === 0, s6);
+
+      await setClock("15:00");
+      const { data: s7 } = await anon.rpc("search_craftsmen", { p_ids: [dnes.id], p_date_from: today });
+      ok("търсене за днес: майстор с отметката и 2 часа излиза", s7?.length === 1 && s7[0].matched_date === today, s7);
+
+      await setClock("16:10");
+      const { data: s8 } = await anon.rpc("search_craftsmen", { p_ids: [dnes.id], p_date_from: today });
+      ok("търсене за днес: майстор с отметката и под 2 часа не излиза", Array.isArray(s8) && s8.length === 0, s8);
+
+      await setClock("09:00");
+      const { data: s9 } = await anon.rpc("search_craftsmen", { p_ids: [dnes.id, dnes2.id] });
+      const nFree = (id: string) => s9?.find((r: { id: string }) => r.id === id)?.next_free;
+      ok("най-скоро свободни: майстор без отметката е свободен от утре", nFree(dnes.id) === today && nFree(dnes2.id) === tomorrow, s9);
+
+      await setClock("15:00");
+      const { error: past } = await dnesk.c.rpc("propose_booking", { p_conversation: convDnes as string, p_date: today, p_start: "14:00", p_end: "15:00" });
+      const { error: later } = await dnesk.c.rpc("propose_booking", { p_conversation: convDnes as string, p_date: today, p_start: "16:00", p_end: "17:00" });
+      ok(
+        "уговорка: минал час днес се отказва",
+        past?.message === "Този час вече мина. Избери по-късен час или друг ден." && !later,
+        { past, later },
+      );
+
+      await setClock("09:00");
+      const noToday = "Тест не идва в същия ден. Избери дата от утре нататък.";
+      const { error: n1 } = await dnesk.c.rpc("propose_booking", { p_conversation: convDnes2 as string, p_date: today, p_start: "10:00", p_end: "11:00" });
+      const { error: n2 } = await dnesk.c.rpc("propose_booking", { p_conversation: convDnes2 as string, p_date: today });
+      const { error: n3 } = await dnesk.c.rpc("propose_booking", { p_conversation: convDnes2 as string, p_date: tomorrow, p_start: "10:00", p_end: "11:00" });
+      ok("уговорка: клиент за днес при майстор без отметката се отказва", n1?.message === noToday && n2?.message === noToday && !n3, { n1, n2, n3 });
+
+      const { error: byCraftsman } = await dnes2.c.rpc("propose_booking", { p_conversation: convDnes2 as string, p_date: today, p_start: "12:00", p_end: "13:00" });
+      ok("уговорка: майстор без отметката предлага за днес", !byCraftsman, byCraftsman);
+
+      await admin.from("dev_clock").delete().eq("id", true);
+      const { data: real } = await anon.rpc("sofia_now");
+      const parts = Object.fromEntries(
+        new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Europe/Sofia", year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+        }).formatToParts(new Date()).map((p) => [p.type, p.value]),
+      );
+      const expected = Date.parse(`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}Z`);
+      const got = Date.parse(`${String(real)}Z`);
+      ok("часовник: без запис е истинският час", Math.abs(got - expected) <= 60_000, { real, expected: new Date(expected).toISOString() });
+
+      const { error: cIns } = await dnesk.c.from("dev_clock").insert({ id: true, time_of_day: "10:00" });
+      const { data: cUpd, error: cUpdErr } = await dnesk.c.from("dev_clock").update({ time_of_day: "10:00" }).eq("id", true).select();
+      const { data: cDel, error: cDelErr } = await dnesk.c.from("dev_clock").delete().eq("id", true).select();
+      const { data: cRows } = await admin.from("dev_clock").select("*");
+      ok(
+        "часовник: клиент не може да го сменя",
+        Boolean(cIns) && (Boolean(cUpdErr) || !cUpd || cUpd.length === 0) && (Boolean(cDelErr) || !cDel || cDel.length === 0) && cRows?.length === 0,
+        { cIns, cUpd, cDel, cRows },
+      );
+
+      await setClock("10:00");
+      const { data: seeClock } = await dnesk.c.from("dev_clock").select("*");
+      ok("часовник: клиент не може да го чете", !seeClock || seeClock.length === 0, seeClock);
+    } finally {
+      await admin.from("dev_clock").delete().eq("id", true);
+      for (const id of extra) await admin.auth.admin.deleteUser(id);
+    }
+    const { data: leftover } = await admin.from("dev_clock").select("*");
+    ok("часовникът е изчистен накрая", leftover?.length === 0, leftover);
+  }
+
   console.log("\nМодерация");
   {
     await admin.from("craftsman_profiles").update({ is_hidden: true }).eq("id", other.id);
