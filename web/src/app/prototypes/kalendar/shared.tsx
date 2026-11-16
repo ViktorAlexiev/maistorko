@@ -324,7 +324,10 @@ export function QuickActions({ k, layout }: { k: Kalendar; layout: "row" | "stac
   );
 }
 
-export function SameDayToggle({ k }: { k: Kalendar }) {
+/** In Календар the switch saves at once; in setup step 4 it is part of the step (`value`) and saved with it */
+export function SameDayToggle({ k, value }: { k: Kalendar; value?: { on: boolean; set: (on: boolean) => void } }) {
+  const on = value ? value.on : k.shortNotice;
+  const set = value ? value.set : k.toggleNotice;
   return (
     <label className="flex cursor-pointer items-center gap-4 rounded-[6px] bg-surface p-4 sm:p-5">
       <span className="min-w-0 flex-1">
@@ -338,8 +341,8 @@ export function SameDayToggle({ k }: { k: Kalendar }) {
           type="checkbox"
           role="switch"
           className="peer sr-only"
-          checked={k.shortNotice}
-          onChange={(e) => k.toggleNotice(e.target.checked)}
+          checked={on}
+          onChange={(e) => set(e.target.checked)}
         />
         <span className="h-7 w-12 rounded-full bg-line-strong transition-colors peer-checked:bg-free peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink" />
         <span className="absolute left-1 top-1 size-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
@@ -716,6 +719,8 @@ export function useWeekDraft(k: Kalendar, first: boolean) {
     },
   };
 }
+
+export type WeekDraft = ReturnType<typeof useWeekDraft>;
 
 /** „Бързо: Пн–Пт 8–17 · Пн–Сб 8–18 · Вечери и уикенд“, and „Изчисти“ where nothing is saved yet */
 export function PresetBar({ onPick, onClear }: { onPick: (p: SchedulePreset) => void; onClear?: () => void }) {

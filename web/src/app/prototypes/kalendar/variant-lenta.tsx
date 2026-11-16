@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { RowList, SlotChips } from "@/app/tabla/kalendar/interval-editor";
 import { WEEKDAYS } from "@/lib/format";
 import { summary, type Interval, type Row } from "@/lib/intervals";
-import { FirstScheduleFrame, PresetBar, ScheduleSection, useWeekDraft, type Kalendar } from "./shared";
+import { FirstScheduleFrame, PresetBar, ScheduleSection, useWeekDraft, type Kalendar, type WeekDraft } from "./shared";
 
 const H0 = 6 * 60;
 const H1 = 22 * 60;
@@ -19,12 +19,26 @@ export function LentaSchedule({ k }: { k: Kalendar }) {
 
 function LentaBody({ k, first }: { k: Kalendar; first: boolean }) {
   const d = useWeekDraft(k, first);
+  const week = <LentaWeek d={d} first={first} tone={first ? "bg-surface" : "bg-paper"} />;
+  if (first) {
+    return (
+      <FirstScheduleFrame k={k} onSave={d.save}>
+        {week}
+      </FirstScheduleFrame>
+    );
+  }
+  return <ScheduleSection help="Докосни ден, за да промениш часовете му.">{week}</ScheduleSection>;
+}
+
+/**
+ * The quick schedules, the seven strips and the sheet of one weekday: the same piece in Календар and in setup step 4.
+ * `first`: nothing is saved yet, so „Изчисти“ is offered.
+ */
+export function LentaWeek({ d, first, tone }: { d: WeekDraft; first: boolean; tone: "bg-surface" | "bg-paper" }) {
   const [open, setOpen] = useState<number | null>(null);
   // The rows when the sheet opened: closing it without „Готово“ goes back to them
   const before = useRef<Row[][]>(d.week);
-  const tone = first ? "bg-surface" : "bg-paper";
-
-  const strips = (
+  return (
     <div className="grid gap-4">
       <PresetBar onPick={d.applyPreset} onClear={first ? d.clear : undefined} />
       <ul className="grid gap-1">
@@ -48,33 +62,15 @@ function LentaBody({ k, first }: { k: Kalendar; first: boolean }) {
           </li>
         ))}
       </ul>
+      <DaySheetGrafik
+        d={d}
+        open={open}
+        onClose={(done) => {
+          if (!done) d.restore(before.current);
+          setOpen(null);
+        }}
+      />
     </div>
-  );
-
-  const sheet = (
-    <DaySheetGrafik
-      d={d}
-      open={open}
-      onClose={(done) => {
-        if (!done) d.restore(before.current);
-        setOpen(null);
-      }}
-    />
-  );
-
-  if (first) {
-    return (
-      <FirstScheduleFrame k={k} onSave={d.save}>
-        {strips}
-        {sheet}
-      </FirstScheduleFrame>
-    );
-  }
-  return (
-    <ScheduleSection help="Докосни ден, за да промениш часовете му.">
-      {strips}
-      {sheet}
-    </ScheduleSection>
   );
 }
 
@@ -105,7 +101,7 @@ function Track({ list, marks }: { list: Interval[]; marks: boolean }) {
 }
 
 /** The sheet of one weekday: „Готово“ keeps the change (and saves it in Календар), the cross or a tap outside drops it. */
-function DaySheetGrafik({ d, open, onClose }: { d: ReturnType<typeof useWeekDraft>; open: number | null; onClose: (done: boolean) => void }) {
+function DaySheetGrafik({ d, open, onClose }: { d: WeekDraft; open: number | null; onClose: (done: boolean) => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const isDone = useRef(false);
   useEffect(() => {
