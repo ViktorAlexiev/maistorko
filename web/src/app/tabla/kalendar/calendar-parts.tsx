@@ -10,7 +10,6 @@ import { RuleLegend, RuleStrip } from "@/components/rule-strip";
 import {
   addDaysISO,
   formatDate,
-  isoWeekday,
   MONTHS_SHORT,
   parseISO,
   WEEKDAYS_SHORT,
@@ -39,8 +38,6 @@ export type DayInfo = {
   manual: boolean;
   /** today, with a working day, but not shown as „Свободен днес“ */
   notToday: boolean;
-  /** only when `notToday`: the working time the day would have (soft green in the week view) */
-  soft: Interval[];
 };
 
 /** The state of the page and what it can do; built in `calendar-editor.tsx` */
@@ -364,101 +361,6 @@ export function MonthGrid({ k, marks }: { k: Kalendar; marks: boolean }) {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Week: vertical time bars 06 to 22, alternate soft bands instead of hour lines
-// ---------------------------------------------------------------------------
-const H0 = 6 * 60;
-const H1 = 22 * 60;
-const pct = (m: number) => ((Math.min(Math.max(m, H0), H1) - H0) / (H1 - H0)) * 100;
-const BANDS = [8, 12, 16, 20];
-
-export function WeekView({ k }: { k: Kalendar }) {
-  const [week, setWeek] = useState(0);
-  const start = addDaysISO(k.weekStart, week * 7);
-  const dates = Array.from({ length: 7 }, (_, i) => addDaysISO(start, i));
-
-  return (
-    <div>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <button type="button" className="btn btn-ghost size-11 p-0" disabled={week === 0} onClick={() => setWeek((w) => w - 1)} aria-label="Предишна седмица">
-          <ChevronLeft className="size-6" aria-hidden />
-        </button>
-        <h2 className="display text-center text-2xl sm:text-3xl" aria-live="polite">
-          {formatDate(dates[0])} – {formatDate(dates[6])}
-        </h2>
-        <button type="button" className="btn btn-ghost size-11 p-0" disabled={week >= 9} onClick={() => setWeek((w) => w + 1)} aria-label="Следваща седмица">
-          <ChevronRight className="size-6" aria-hidden />
-        </button>
-      </div>
-      <div className="grid grid-cols-[1.75rem_repeat(7,minmax(0,1fr))] gap-1 sm:grid-cols-[2.25rem_repeat(7,minmax(0,1fr))] sm:gap-2">
-        <div />
-        {dates.map((d) => (
-          <div key={d} className="text-center">
-            <div className="text-xs font-bold uppercase text-ink-3">{WEEKDAYS_SHORT[isoWeekday(d) - 1]}</div>
-            <div className={`numerals text-xl ${d === k.today ? "text-red" : ""}`}>{parseISO(d).getUTCDate()}</div>
-          </div>
-        ))}
-        <div className="relative h-80">
-          {[6, 8, 10, 12, 14, 16, 18, 20, 22].map((h) => (
-            <span key={h} className="numerals absolute right-0.5 -translate-y-1/2 text-xs text-ink-3" style={{ top: `${pct(h * 60)}%` }}>
-              {String(h).padStart(2, "0")}
-            </span>
-          ))}
-        </div>
-        {dates.map((d) => {
-          const info = k.dayInfo(d);
-          const hidden = info.past || info.far;
-          const booked = hidden ? [] : k.visitsOn(d);
-          return (
-            <button
-              key={d}
-              type="button"
-              disabled={hidden}
-              onClick={() => k.setOpenDay(d)}
-              aria-label={`${formatDate(d, true)}: ${info.ranges.length ? info.ranges.map(([a, b]) => fullRange(a, b)).join(", ") : "зает"}`}
-              className="relative h-80 min-w-0 overflow-hidden rounded-[6px] bg-surface-2 transition-shadow motion-reduce:transition-none hover:shadow-[var(--shadow-md)] disabled:opacity-40"
-            >
-              {BANDS.map((h) => (
-                <span key={h} aria-hidden className="absolute inset-x-0 bg-surface/70" style={{ top: `${pct(h * 60)}%`, height: `${pct((h + 2) * 60) - pct(h * 60)}%` }} />
-              ))}
-              {[...info.soft.map((r) => ({ r, soft: true })), ...info.ranges.map((r) => ({ r, soft: false }))].map(({ r: [a, b], soft }) => (
-                <span
-                  key={`${soft ? "s" : "f"}${a}`}
-                  className={`absolute inset-x-1 rounded-[4px] ${soft ? "bg-free/40" : "bg-free"}`}
-                  style={{ top: `${pct(a)}%`, height: `${Math.max(pct(b) - pct(a), 2)}%` }}
-                />
-              ))}
-              {booked.map((v) => {
-                const [a, b] = visitSpan(v);
-                return (
-                  <span
-                    key={v.id}
-                    className={`absolute inset-x-0.5 z-10 overflow-hidden rounded-[4px] p-0.5 text-left text-[0.65rem] font-bold leading-tight ${
-                      v.kind === "proposed" ? "text-ink shadow-[inset_0_0_0_1.5px_var(--ink)]" : "bg-ink text-white"
-                    }`}
-                    style={{
-                      top: `${pct(a)}%`,
-                      height: `${Math.max(pct(b) - pct(a), 4)}%`,
-                      ...(v.kind === "proposed"
-                        ? { backgroundImage: "repeating-linear-gradient(-45deg, rgb(22 20 15 / 0.3) 0 1.5px, transparent 1.5px 5px)" }
-                        : {}),
-                    }}
-                  >
-                    <span className={`hidden sm:block ${v.kind === "proposed" ? "rounded-[2px] bg-surface/85 px-0.5" : ""}`}>{v.title}</span>
-                  </span>
-                );
-              })}
-            </button>
-          );
-        })}
-      </div>
-      <p className="mt-3 text-sm text-ink-3">
-        Зелено: свободни часове. Тъмно: уговорено посещение. Щриховано: чака отговор. Докоснете ден, за да го промените.
-      </p>
     </div>
   );
 }

@@ -20,7 +20,6 @@ import {
   REASON_OFF,
   REASON_SHORT,
   VacationDialog,
-  WeekView,
   type DayInfo,
   type Kalendar,
   type Period,
@@ -85,7 +84,6 @@ export function CalendarEditor({
   const [today] = useState(todayISO);
   const [exceptions, setExceptions] = useState(initialExceptions);
   const [days, setDays] = useState(initialDays);
-  const [view, setView] = useState<"month" | "week">("month");
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [vacationOpen, setVacationOpen] = useState(false);
   const [busy, startBusy] = useTransition();
@@ -272,11 +270,6 @@ export function CalendarEditor({
     const d = byDay.get(iso);
     const isToday = iso === today;
     const notToday = isToday && todayNotFree;
-    const soft = notToday
-      ? visitsOn(iso)
-          .filter((v) => v.kind !== "proposed")
-          .reduce((list, v) => subtract(list, [v.start ? toMin(v.start) : 0, v.end ? endMin(v.end) : 1440]), plan(iso))
-      : [];
     return {
       iso,
       past: iso < today,
@@ -286,7 +279,6 @@ export function CalendarEditor({
       status: notToday ? "busy" : (d?.status ?? "busy"),
       manual: exceptions.some((e) => e.start_date === iso && e.end_date === iso),
       notToday,
-      soft,
     };
   };
 
@@ -355,27 +347,7 @@ export function CalendarEditor({
             </p>
           )}
 
-          <div role="tablist" aria-label="Изглед" className="flex gap-1">
-            {(
-              [
-                ["month", "Месец"],
-                ["week", "Седмица"],
-              ] as const
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={view === key}
-                onClick={() => setView(key)}
-                className={`min-h-11 rounded-[6px] px-6 font-bold ${view === key ? "bg-rule text-ink" : "bg-surface text-ink-2"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="min-w-0">{view === "month" ? <MonthGrid k={k} marks={!managing} /> : <WeekView k={k} />}</div>
+          <div className="min-w-0"><MonthGrid k={k} marks={!managing} /></div>
         </div>
 
         <aside className="grid min-w-0 gap-4" aria-label={managing ? "Бързи действия" : "Уговорено и бързи действия"}>
