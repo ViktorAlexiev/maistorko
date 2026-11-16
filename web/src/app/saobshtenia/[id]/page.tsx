@@ -43,6 +43,10 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
   const category = Array.isArray(conv.category) ? conv.category[0] : conv.category;
   const iAmClient = conv.client_id === viewer.id;
   const bookingCraftsman = conv.craftsman_id ?? conv.assigned_to;
+  // does the craftsman of a booking take same-day visits? Only a row that says false means no.
+  const { data: bookingProfile } = bookingCraftsman
+    ? await supabase.from("craftsman_profiles").select("short_notice").eq("id", bookingCraftsman).maybeSingle()
+    : { data: null };
   // offers by link are a Pro feature of the craftsman who writes them
   const canOffer = !iAmClient && viewer.id === conv.craftsman_id && hasFeature(await getMyPlan(), "offers");
 
@@ -84,6 +88,7 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
       initialBookings={(bookings ?? []) as Booking[]}
       initialShares={(shares ?? []) as Share[]}
       craftsmanId={bookingCraftsman}
+      craftsmanSameDay={bookingProfile?.short_notice !== false}
       canOffer={canOffer}
       org={org}
       banned={viewer.profile.is_banned}

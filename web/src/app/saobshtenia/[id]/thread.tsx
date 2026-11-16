@@ -62,6 +62,8 @@ type Props = {
   initialShares?: Share[];
   /** the craftsman a booking would be for (the other party, or the one a company conversation is assigned to) */
   craftsmanId: string | null;
+  /** that craftsman takes same-day visits (short_notice); a missing profile row counts as yes, the database decides */
+  craftsmanSameDay: boolean;
   /** conversation with a company: who handles it */
   org?: { name: string; slug: string; canAssign: boolean; team: { id: string; name: string }[]; assignedTo: string | null; assignedName: string | null };
   banned: boolean;
@@ -78,7 +80,7 @@ type Props = {
 let tempSeq = 0;
 const sofiaDay = (ts: string) => new Date(ts).toLocaleDateString("en-CA", { timeZone: "Europe/Sofia" });
 
-export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, org, banned, embedded, draft, purgedAt, canOffer }: Props) {
+export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, craftsmanSameDay, org, banned, embedded, draft, purgedAt, canOffer }: Props) {
   const supabase = createClient();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   const [text, setText] = useState(draft ?? "");
@@ -748,6 +750,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
           conversationId={conversationId}
           craftsmanId={craftsmanId}
           iAmCraftsman={!iAmClient}
+          craftsmanSameDay={craftsmanSameDay}
           partnerName={partner.name}
           defaultDate={requestedDate}
           onCreated={refreshBookings}

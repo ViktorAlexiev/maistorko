@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useConfirm } from "@/components/confirm-dialog";
 import { DateField, TimeField } from "@/components/date-time-fields";
-import { formatDate, relativeDay, todayISO } from "@/lib/format";
+import { addDaysISO, formatDate, relativeDay, todayISO } from "@/lib/format";
 import { SLOT_DEFS, type Range } from "@/lib/slots";
 
 export type Booking = {
@@ -139,6 +139,15 @@ const PRESETS = [
   { key: "custom", label: "Точни часове", from: "09:00", to: "11:00" },
 ] as const;
 
+type PresetKey = (typeof PRESETS)[number]["key"];
+
+const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+const toHM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+/** Today only the parts that start at the next half hour or later; a day that is not today has all of them. */
+const partsFor = (isToday: boolean, startMin: number) =>
+  isToday ? PRESETS.filter((x) => x.key === "custom" || (x.from !== null && toMin(x.from) >= startMin)) : PRESETS;
+
 /** Bottom sheet to propose (client) or save (craftsman) a visit. */
 export function BookingSheet({
   open,
@@ -146,6 +155,7 @@ export function BookingSheet({
   conversationId,
   craftsmanId,
   iAmCraftsman,
+  craftsmanSameDay,
   partnerName,
   defaultDate,
   onCreated,
@@ -155,16 +165,25 @@ export function BookingSheet({
   conversationId: string;
   craftsmanId: string;
   iAmCraftsman: boolean;
+  /** the craftsman takes same-day visits (short_notice) */
+  craftsmanSameDay: boolean;
   partnerName: string;
   defaultDate: string | null;
   onCreated: () => void;
 }) {
   const supabase = createClient();
   const ref = useRef<HTMLDialogElement>(null);
-  const [today] = useState(todayISO);
+  const [today, setToday] = useState(todayISO);
   const [kind, setKind] = useState<"inspection" | "work">("inspection");
   const [date, setDate] = useState(defaultDate && defaultDate >= today ? defaultDate : today);
-  const [preset, setPreset] = useState<(typeof PRESETS)[number]["key"]>("morning");
+  const [preset, setPreset] = useState<PresetKey>("morning");
+  // minutes since 00:00 by the database clock (sofia_now); null until it answers on each opening
+  const [nowMin, setNowMin] = useState<number | null>(null);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) setNowMin(null);
+  }
   const [from, setFrom] = useState("09:00");
   const [to, setTo] = useState("11:00");
   const [note, setNote] = useState("");
@@ -179,6 +198,30 @@ export function BookingSheet({
     if (!open && d.open) d.close();
   }, [open]);
 
+  // On every opening: read the clock, then set the day, the part and the hours by the rules for today
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    supabase.rpc("sofia_now").then(({ data, error }) => {
+      if (!alive) return;
+      if (error || typeof data !== "string") return void toast.error(error?.message ?? "Не успяхме да проверим часа. Опитай пак.");
+      const now = Number(data.slice(11, 13)) * 60 + Number(data.slice(14, 16));
+      const start = Math.ceil(now / 30) * 30;
+      const t = todayISO();
+      const min = start > 22 * 60 || (!iAmCraftsman && !craftsmanSameDay) ? addDaysISO(t, 1) : t;
+      const d = defaultDate && defaultDate >= min ? defaultDate : min;
+      setToday(t);
+      setNowMin(now);
+      setDate(d);
+      applyDay(d, t, start);
+    });
+    return () => {
+      alive = false;
+    };
+    // only when the sheet opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   useEffect(() => {
     if (!open || !date) return;
     let alive = true;
@@ -189,6 +232,37 @@ export function BookingSheet({
       alive = false;
     };
   }, [open, date, craftsmanId, supabase]);
+
+  const ready = nowMin !== null;
+  const startMin = Math.ceil((nowMin ?? 0) / 30) * 30;
+  const noToday = startMin > 22 * 60 || (!iAmCraftsman && !craftsmanSameDay);
+  const minDate = noToday ? addDaysISO(today, 1) : today;
+  const isToday = date === today;
+  const parts = partsFor(isToday, startMin);
+
+  /** Part and hours for a day: today follows the rules for what is left of it, any other day starts at the morning. */
+  function applyDay(d: string, t: string, start: number) {
+    if (d !== t) {
+      setPreset("morning");
+      return;
+    }
+    const first = partsFor(true, start).find((x) => x.key !== "custom");
+    if (first) setPreset(first.key);
+    else {
+      setPreset("custom");
+      setFrom(toHM(start));
+      setTo(toHM(start + 60));
+    }
+  }
+
+  function changeDate(d: string) {
+    setDate(d);
+    if (d && (d === today) !== isToday) applyDay(d, today, startMin);
+  }
+
+  function changeFrom(v: string) {
+    setFrom(isToday && v && toMin(v) < startMin ? toHM(startMin) : v);
+  }
 
   const p = PRESETS.find((x) => x.key === preset)!;
   const startTime = preset === "custom" ? from : p.from;
@@ -266,7 +340,7 @@ export function BookingSheet({
           <label htmlFor="bk-date" className="label">
             Ден
           </label>
-          <DateField id="bk-date" min={today} value={date} onChange={setDate} required />
+          <DateField id="bk-date" min={minDate} value={date} onChange={changeDate} disabled={!ready} required />
           <p className="hint">
             {free === null
               ? "Проверяваме свободните часове…"
@@ -279,8 +353,8 @@ export function BookingSheet({
         <fieldset>
           <legend className="label">Час</legend>
           <div className="flex flex-wrap gap-2">
-            {PRESETS.map((x) => (
-              <button key={x.key} type="button" className="chip" aria-pressed={preset === x.key} onClick={() => setPreset(x.key)}>
+            {parts.map((x) => (
+              <button key={x.key} type="button" className="chip disabled:opacity-50" disabled={!ready} aria-pressed={preset === x.key} onClick={() => setPreset(x.key)}>
                 {x.label}
                 {x.from && x.key !== "custom" && <span className="text-xs font-medium opacity-75">{x.from.slice(0, 2)}–{x.to!.slice(0, 2)}</span>}
               </button>
@@ -292,7 +366,7 @@ export function BookingSheet({
                 <label htmlFor="bk-from" className="text-sm font-semibold text-ink-2">
                   От
                 </label>
-                <TimeField id="bk-from" className="field mt-1" value={from} onChange={setFrom} ariaLabel="От" />
+                <TimeField id="bk-from" className="field mt-1" value={from} onChange={changeFrom} ariaLabel="От" />
               </div>
               <div>
                 <label htmlFor="bk-to" className="text-sm font-semibold text-ink-2">
@@ -333,7 +407,7 @@ export function BookingSheet({
           />
         </div>
 
-        <button type="submit" className="btn btn-primary btn-lg" disabled={pending || invalid}>
+        <button type="submit" className="btn btn-primary btn-lg" disabled={pending || invalid || !ready}>
           {pending ? "Изпращаме…" : iAmCraftsman ? "Запази в календара" : "Изпрати предложение"}
         </button>
       </form>

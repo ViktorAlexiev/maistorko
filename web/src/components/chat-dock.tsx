@@ -390,6 +390,7 @@ type Loaded = {
   phone: string | null;
   requestedDate: string | null;
   categoryName: string | null;
+  sameDay: boolean;
 };
 
 function DockThread({
@@ -429,7 +430,8 @@ function DockThread({
         .from("photo_share_requests")
         .select("id, message_id, path, status, published_at, requested_by")
         .eq("conversation_id", conversationId),
-    ]).then(([conv, msgs, bookings, phone, shares]) => {
+      supabase.from("craftsman_profiles").select("short_notice").eq("id", craftsman.id).maybeSingle(),
+    ]).then(([conv, msgs, bookings, phone, shares, profile]) => {
       if (stale) return;
       if (conv.error || msgs.error || !conv.data) return setFailed(true);
       const cat = Array.isArray(conv.data.category) ? conv.data.category[0] : conv.data.category;
@@ -440,12 +442,13 @@ function DockThread({
         phone: phone.data ?? null,
         requestedDate: conv.data.requested_date,
         categoryName: cat?.name ?? null,
+        sameDay: profile.data?.short_notice !== false,
       });
     });
     return () => {
       stale = true;
     };
-  }, [conversationId]);
+  }, [conversationId, craftsman.id]);
 
   if (failed)
     return (
@@ -471,6 +474,7 @@ function DockThread({
         initialBookings={data.bookings}
         initialShares={data.shares}
         craftsmanId={craftsman.id}
+        craftsmanSameDay={data.sameDay}
         banned={banned}
         embedded
         draft={draft}
