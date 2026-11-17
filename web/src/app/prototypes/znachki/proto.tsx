@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ProtoHarness } from "../_harness/picker";
+import "../_harness/picker.css";
 import { Home } from "../razgovor/home";
 import { useRoom } from "../razgovor/shared";
 import { SheetRows } from "../razgovor/variant-sheet";
-import { SiteHeaderCopy, type Variant } from "./header";
-
-const NAMES = ["Като в профила", "Нит", "Ореол", "Изрез"];
+import { SiteHeaderCopy } from "./header";
 
 /** The four states: how many unread messages and how many unread notifications. */
 const STATES = [
@@ -17,8 +15,8 @@ const STATES = [
   { id: 4, label: "120 съобщения, 130 известия", messages: 120, bell: 130 },
 ];
 
-/** One session: the header copy over the approved „Преглед“ page. A new one starts when the variant or the state changes. */
-function Session({ variant, state, extra }: { variant: Variant; state: number; extra: number }) {
+/** One session: the header copy over the approved „Преглед“ page. A new one starts when the state changes. */
+function Session({ state, extra }: { state: number; extra: number }) {
   const box = useRef<HTMLTextAreaElement>(null);
   const room = useRoom(5, box);
   const st = STATES[state - 1];
@@ -33,7 +31,7 @@ function Session({ variant, state, extra }: { variant: Variant; state: number; e
   return (
     <>
       <Home r={r} Rows={SheetRows} />
-      <SiteHeaderCopy variant={variant} messages={st.messages + extra} bell={st.bell} flash={room.flash} />
+      <SiteHeaderCopy messages={st.messages + extra} bell={st.bell} flash={room.flash} />
     </>
   );
 }
@@ -88,7 +86,7 @@ function StatePill({ value, onChange, onNew }: { value: number; onChange: (s: nu
   );
 }
 
-export function ZnachkiProto({ initialVariant, initialState }: { initialVariant: number; initialState: number }) {
+export function ZnachkiProto({ initialState }: { initialState: number }) {
   const [state, setState] = useState(initialState);
   /** unread messages added with „Ново съобщение“; they start over with a new state */
   const [extra, setExtra] = useState(0);
@@ -101,11 +99,7 @@ export function ZnachkiProto({ initialVariant, initialState }: { initialVariant:
 
   return (
     <>
-      {/* On a phone the variant switch sits just above the bottom bar, so it covers neither the header marks nor the bell dropdown */}
-      <style>{`@media (max-width: 767px) { .proto-picker[data-position="top"] { top: auto; bottom: 60px; } }`}</style>
-      <ProtoHarness names={NAMES} initial={initialVariant} position="top">
-        {(i) => <Session key={`${i}-${state}`} variant={(i + 1) as Variant} state={state} extra={extra} />}
-      </ProtoHarness>
+      <Session key={state} state={state} extra={extra} />
       <StatePill
         value={state}
         onChange={(s) => {
