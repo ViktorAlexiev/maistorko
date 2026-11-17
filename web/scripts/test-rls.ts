@@ -113,8 +113,15 @@ async function main() {
 
   console.log("\nОтзиви");
   {
+    const { error: noWork } = await alice.c.from("reviews").insert({ craftsman_id: craft.id, client_id: alice.id, rating: 5, body: "Тест" });
+    ok("отзив: отговор без свършена работа не стига", Boolean(noWork));
+    const today0 = String((await anon.rpc("sofia_now")).data).slice(0, 10);
+    await admin.from("bookings").insert({
+      conversation_id: convId, craftsman_id: craft.id, client_id: alice.id, booking_date: addIso(today0, -1),
+      start_time: "09:00", end_time: "10:00", kind: "inspection", status: "confirmed", proposed_by: craft.id,
+    });
     const { error: good } = await alice.c.from("reviews").insert({ craftsman_id: craft.id, client_id: alice.id, rating: 5, body: "Тест" });
-    ok("клиент с разговор (и отговор) може да остави отзив", !good, good);
+    ok("отзив: след минал потвърден оглед", !good, good);
     const { error: noConv } = await bob.c.from("reviews").insert({ craftsman_id: craft.id, client_id: bob.id, rating: 1, body: "фалшив" });
     ok("клиент без разговор не може да остави отзив", Boolean(noConv));
     const { error: asOther } = await bob.c.from("reviews").insert({ craftsman_id: other.id, client_id: alice.id, rating: 1 });
@@ -523,6 +530,193 @@ async function main() {
     ok("правото на отзив остава след чистенето", canStill === true);
     const { data: freshPurge } = await admin.rpc("cleanup_old_chats", { p_days: 60 });
     ok("второ пускане не пипа вече изчистените", (freshPurge ?? 0) === 0);
+  }
+
+  console.log("\nОтзив след свършена работа и снимки");
+  {
+    const extra: string[] = [];
+    const uploaded: string[] = [];
+    const folders: string[] = [];
+    const rvm = await user("craftsman", "rvm");
+    extra.push(rvm.id);
+    const ph1 = await user("client", "ph1");
+    const ph2 = await user("client", "ph2");
+    const phm = await user("craftsman", "phm");
+    extra.push(ph1.id, ph2.id, phm.id);
+    try {
+      const today = String((await anon.rpc("sofia_now")).data).slice(0, 10);
+      const yesterday = addIso(today, -1);
+      const tomorrow = addIso(today, 1);
+      const daysAgo = (n: number) => new Date(Date.now() - n * 86400_000).toISOString();
+      type Who = Awaited<ReturnType<typeof user>>;
+      const pair = async (n: number) => {
+        const cl = await user("client", `rv${n}`);
+        extra.push(cl.id);
+        const { data, error } = await cl.c.rpc("start_conversation", { p_craftsman: rvm.id, p_body: "Здравейте, тест" });
+        if (error) throw error;
+        const conv = data as string;
+        await rvm.c.from("messages").insert({ conversation_id: conv, sender_id: rvm.id, body: "Отговор" });
+        return { cl, conv };
+      };
+      const book = async (conv: string, cl: Who, kind: "inspection" | "work", status: string, day: string, endDay?: string, by?: string) => {
+        const { data, error } = await admin
+          .from("bookings")
+          .insert({
+            conversation_id: conv, craftsman_id: rvm.id, client_id: cl.id, booking_date: day, kind, status, proposed_by: by ?? rvm.id,
+            ...(endDay ? { end_date: endDay } : { start_time: "09:00", end_time: "10:00" }),
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        return data!.id as string;
+      };
+      const doneJob = async (conv: string) => {
+        const { error } = await admin.from("jobs").insert({ craftsman_id: rvm.id, conversation_id: conv, title: "Тест", start_date: yesterday, end_date: yesterday, status: "done" });
+        if (error) throw error;
+      };
+      const can = async (cl: Who) => (await cl.c.rpc("can_review", { p_craftsman: rvm.id })).data;
+      const box = async (who: Who, conv: string) => (await who.c.rpc("review_box", { p_conversation: conv })).data;
+
+      const p3 = await pair(3);
+      const { error: askErr } = await rvm.c.rpc("request_review_in_chat", { p_conversation: p3.conv });
+      const { data: rq } = await admin.from("conversations").select("review_requested_at").eq("id", p3.conv).single();
+      await admin.from("messages").delete().eq("conversation_id", p3.conv).eq("meta->>event", "review_request");
+      const { error: rv3 } = await p3.cl.c.from("reviews").insert({ craftsman_id: rvm.id, client_id: p3.cl.id, rating: 5, body: "Тест" });
+      ok("отзив: след покана в разговора", !askErr && Boolean(rq?.review_requested_at) && (await can(p3.cl)) === true && !rv3, { askErr, rq, rv3 });
+
+      const p4 = await pair(4);
+      await book(p4.conv, p4.cl, "work", "confirmed", addIso(today, -3), yesterday);
+      ok("отзив: след минала многодневна работа (последният ден е вчера)", (await can(p4.cl)) === true);
+      const p5 = await pair(5);
+      await book(p5.conv, p5.cl, "work", "confirmed", yesterday, today);
+      ok("отзив: уговорка, чийто последен ден е днес, още не стига", (await can(p5.cl)) === false);
+      const p6 = await pair(6);
+      await book(p6.conv, p6.cl, "inspection", "declined", yesterday);
+      await book(p6.conv, p6.cl, "inspection", "cancelled", yesterday);
+      ok("отзив: отказана минала уговорка не стига", (await can(p6.cl)) === false);
+      const p7 = await pair(7);
+      await doneJob(p7.conv);
+      ok("отзив: свършена поръчка от разговора", (await can(p7.cl)) === true);
+
+      const p8 = await pair(8);
+      ok("кутия: майстор, без уговорки → ask", (await box(rvm, p8.conv)) === "ask");
+      const p9 = await pair(9);
+      await book(p9.conv, p9.cl, "inspection", "proposed", tomorrow, undefined, p9.cl.id);
+      ok("кутия: майстор, предложена уговорка утре → нищо", (await box(rvm, p9.conv)) === null);
+      const p10 = await pair(10);
+      await book(p10.conv, p10.cl, "inspection", "confirmed", today);
+      ok("кутия: майстор, потвърдена уговорка днес → нищо", (await box(rvm, p10.conv)) === null);
+      const p11 = await pair(11);
+      await admin.from("conversations").update({ review_requested_at: daysAgo(10) }).eq("id", p11.conv);
+      ok("кутия: майстор, покана преди 10 дни → нищо", (await box(rvm, p11.conv)) === null);
+      await admin.from("conversations").update({ review_requested_at: daysAgo(31) }).eq("id", p11.conv);
+      const boxAfter31 = await box(rvm, p11.conv);
+      const { error: again } = await rvm.c.rpc("request_review_in_chat", { p_conversation: p11.conv });
+      ok("кутия: майстор, покана преди 31 дни → ask", boxAfter31 === "ask" && !again, { boxAfter31, again });
+
+      const p13 = await pair(13);
+      await book(p13.conv, p13.cl, "inspection", "confirmed", yesterday);
+      ok("кутия: клиент, минал оглед → rate", (await box(p13.cl, p13.conv)) === "rate");
+      const wid = await book(p13.conv, p13.cl, "work", "confirmed", tomorrow);
+      ok("кутия: клиент, минал оглед и работа утре → нищо", (await box(p13.cl, p13.conv)) === null);
+      await admin.from("bookings").delete().eq("id", wid);
+      const p15 = await pair(15);
+      await book(p15.conv, p15.cl, "inspection", "confirmed", yesterday);
+      await rvm.c.rpc("request_review_in_chat", { p_conversation: p15.conv });
+      ok("кутия: клиент, покана в разговора → нищо", (await box(p15.cl, p15.conv)) === null);
+      const { error: rv16 } = await p13.cl.c.from("reviews").insert({ craftsman_id: rvm.id, client_id: p13.cl.id, rating: 5, body: "Тест" });
+      ok("кутия: клиент с отзив след огледа → нищо", !rv16 && (await box(p13.cl, p13.conv)) === null, rv16);
+      const p17 = await pair(17);
+      const { error: rv17 } = await admin.from("reviews").insert({ craftsman_id: rvm.id, client_id: p17.cl.id, rating: 4, body: "Стар", created_at: daysAgo(5), updated_at: daysAgo(5) });
+      await doneJob(p17.conv);
+      ok("кутия: клиент с отзив отпреди свършената поръчка → update", !rv17 && (await box(p17.cl, p17.conv)) === "update", rv17);
+      ok("кутия: чужд за разговора → нищо", (await box(bob, p13.conv)) === null);
+
+      const { data: off, error: offErr } = await admin
+        .from("offers")
+        .insert({
+          craftsman_id: rvm.id, title: "Тест оферта", status: "sent", valid_until: new Date(Date.now() + 7 * 86400_000).toISOString(),
+          lines: [{ name: "Боядисване", kind: "service", amount: "120" }],
+        })
+        .select("token")
+        .single();
+      if (offErr) throw offErr;
+      await admin.from("messages").insert({ conversation_id: p8.conv, sender_id: rvm.id, body: "Оферта", meta: { offer: off!.token, title: "Тест оферта", total: 120 } });
+      // jsonb reorders object keys, so compare the fields, not the text
+      const sameLines = (rows: { lines: unknown; status: string }[] | null) => {
+        const lines = rows?.[0]?.lines as { name: string; kind: string; amount: string }[] | undefined;
+        return rows?.length === 1 && rows[0].status === "sent" && lines?.length === 1 && lines[0].name === "Боядисване" && lines[0].kind === "service" && lines[0].amount === "120";
+      };
+      const offFor = async (who: Who) => (await who.c.rpc("chat_offers", { p_conversation: p8.conv })).data;
+      const [oc, om, ob] = [await offFor(p8.cl), await offFor(rvm), await offFor(bob)];
+      ok("оферта в чата: страните виждат редовете, чужд не", sameLines(oc) && sameLines(om) && (ob?.length ?? 0) === 0, { oc, om, ob });
+      const { data: seen } = await admin.from("offers").select("viewed_at").eq("token", off!.token).single();
+      ok("оферта в чата: четенето не я отбелязва видяна", seen?.viewed_at === null, seen);
+
+      const PNG = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
+      const upload = async (who: Who, path: string) => {
+        const r = await who.c.storage.from("chat-photos").upload(path, PNG, { contentType: "image/png" });
+        if (!r.error) uploaded.push(path);
+        return r;
+      };
+      const newId = crypto.randomUUID();
+      folders.push(newId);
+      const { error: up1 } = await upload(ph1, `${newId}/a.png`);
+      ok("снимка: клиентът качва в папка на разговор, който още няма", !up1, up1);
+      const dlM = await phm.c.storage.from("chat-photos").download(`${newId}/a.png`);
+      const dlB = await bob.c.storage.from("chat-photos").download(`${newId}/a.png`);
+      ok("снимка: друг не вижда качената снимка преди изпращането", Boolean(dlM.error) && Boolean(dlB.error));
+      const { data: noConv } = await admin.from("conversations").select("id").eq("id", newId);
+      ok("снимка: качването само по себе си не създава разговор", (noConv?.length ?? 0) === 0);
+      const { error: upForeign } = await upload(ph1, `${convId}/x.png`);
+      ok("снимка: не може да се качи в папка на чужд разговор", Boolean(upForeign));
+      const { data: started, error: startErr } = await ph1.c.rpc("start_conversation", { p_craftsman: phm.id, p_body: "Със снимка", p_id: newId, p_photos: [`${newId}/a.png`] });
+      const { data: firstMsgs } = await admin.from("messages").select("meta").eq("conversation_id", newId);
+      const photosMeta = (firstMsgs?.[0]?.meta as { photos?: unknown[] } | undefined)?.photos;
+      ok("снимка: първото съобщение със снимки създава разговора с това id", !startErr && started === newId && firstMsgs?.length === 1 && photosMeta?.length === 1, { startErr, started, firstMsgs });
+      const dlM2 = await phm.c.storage.from("chat-photos").download(`${newId}/a.png`);
+      ok("снимка: майсторът вижда снимката от първото съобщение", !dlM2.error, dlM2.error);
+      const id2 = crypto.randomUUID();
+      const { error: badPath } = await ph2.c.rpc("start_conversation", { p_craftsman: phm.id, p_body: "Чужда папка", p_id: id2, p_photos: [`${crypto.randomUUID()}/b.png`] });
+      const { data: id2Conv } = await admin.from("conversations").select("id").eq("id", id2);
+      ok("снимка: снимка извън папката на разговора се отказва", Boolean(badPath) && (id2Conv?.length ?? 0) === 0, badPath);
+      const id3 = crypto.randomUUID();
+      const { error: already } = await ph1.c.rpc("start_conversation", { p_craftsman: phm.id, p_body: "Пак", p_id: id3, p_photos: [`${id3}/c.png`] });
+      ok("снимка: вече започнат разговор със снимки дава грешка", already?.message === "Разговорът вече е започнат. Презаредете страницата.", already);
+
+      const f1 = crypto.randomUUID();
+      const f2 = crypto.randomUUID();
+      const f3 = crypto.randomUUID();
+      folders.push(f1, f2, f3);
+      const four = async (f: string) => {
+        const errs = [];
+        for (const n of ["a", "b", "c", "d"]) errs.push((await upload(ph2, `${f}/${n}.png`)).error);
+        return errs.filter(Boolean);
+      };
+      const e1 = await four(f1);
+      const { error: fifth } = await upload(ph2, `${f1}/e.png`);
+      ok("снимка: пета неизпратена снимка за същия майстор се отказва", e1.length === 0 && Boolean(fifth), { e1, fifth });
+      const e2 = await four(f2);
+      const { error: ninth } = await upload(ph2, `${f3}/a.png`);
+      await ph2.c.storage.from("chat-photos").remove([`${f1}/a.png`]);
+      const { error: afterRemove } = await upload(ph2, `${f3}/a.png`);
+      ok("снимка: девета неизпратена снимка общо се отказва", e2.length === 0 && Boolean(ninth) && !afterRemove, { e2, ninth, afterRemove });
+
+      const { data: before } = await admin.from("chat_photo_purge_queue").select("conversation_id");
+      const known = new Set((before ?? []).map((r) => r.conversation_id));
+      await admin.rpc("cleanup_old_chats", { p_days: 60 });
+      const { data: q1 } = await admin.from("chat_photo_purge_queue").select("conversation_id").eq("conversation_id", f1);
+      await admin.rpc("enqueue_orphan_chat_photos", { p_age: "0 seconds" });
+      const { data: q2 } = await admin.from("chat_photo_purge_queue").select("conversation_id").eq("conversation_id", f1);
+      ok("снимка: папка без разговор, по-стара от ден, влиза в опашката за триене", (q1?.length ?? 0) === 0 && q2?.length === 1, { q1, q2 });
+      const { data: after } = await admin.from("chat_photo_purge_queue").select("conversation_id");
+      const fresh = (after ?? []).map((r) => r.conversation_id).filter((id) => !known.has(id));
+      if (fresh.length) await admin.from("chat_photo_purge_queue").delete().in("conversation_id", fresh);
+    } finally {
+      if (uploaded.length) await admin.storage.from("chat-photos").remove(uploaded);
+      if (folders.length) await admin.from("chat_photo_purge_queue").delete().in("conversation_id", folders);
+      for (const id of extra) await admin.auth.admin.deleteUser(id);
+    }
   }
 
   console.log("\nСтатистика");

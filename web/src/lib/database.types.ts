@@ -533,6 +533,7 @@ export type Database = {
           messages_purged_at: string | null
           org_id: string | null
           requested_date: string | null
+          review_requested_at: string | null
         }
         ComputedFields: never
         Insert: {
@@ -551,6 +552,7 @@ export type Database = {
           messages_purged_at?: string | null
           org_id?: string | null
           requested_date?: string | null
+          review_requested_at?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -568,6 +570,7 @@ export type Database = {
           messages_purged_at?: string | null
           org_id?: string | null
           requested_date?: string | null
+          review_requested_at?: string | null
         }
         Relationships: [
           {
@@ -2102,6 +2105,10 @@ export type Database = {
       calendar_freshness: { Args: { p_confirmed: string }; Returns: string }
       can_manage_craftsman: { Args: { p_craftsman: string }; Returns: boolean }
       can_review: { Args: { p_craftsman: string }; Returns: boolean }
+      can_upload_unsent_chat_photo: {
+        Args: { p_folder: string }
+        Returns: boolean
+      }
       category_counts: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -2119,6 +2126,17 @@ export type Database = {
           job_p25: number
           job_p75: number
           scope: string
+        }[]
+      }
+      chat_offers: {
+        Args: { p_conversation: string }
+        Returns: {
+          lines: Json
+          status: string
+          token: string
+          total: number
+          valid_until: string
+          viewed_at: string
         }[]
       }
       claim_org_invite: { Args: { p_token: string }; Returns: string }
@@ -2160,6 +2178,7 @@ export type Database = {
         Returns: unknown
       }
       day_status: { Args: { ranges: unknown }; Returns: string }
+      enqueue_orphan_chat_photos: { Args: { p_age?: string }; Returns: number }
       free_hours: { Args: { ranges: unknown }; Returns: number }
       has_feature: {
         Args: { p_craftsman: string; p_feature: string }
@@ -2175,6 +2194,7 @@ export type Database = {
       }
       is_org_manager: { Args: { p_org: string }; Returns: boolean }
       is_org_member: { Args: { p_org: string }; Returns: boolean }
+      is_unclaimed_chat_folder: { Args: { p_folder: string }; Returns: boolean }
       job_report: { Args: { p_from: string; p_to: string }; Returns: Json }
       leave_org: { Args: Record<PropertyKey, never>; Returns: undefined }
       log_admin_action: {
@@ -2377,6 +2397,7 @@ export type Database = {
         Returns: string
       }
       reveal_phone: { Args: { p_craftsman: string }; Returns: string }
+      review_box: { Args: { p_conversation: string }; Returns: string }
       revoke_org_invite: { Args: { p_token: string }; Returns: undefined }
       search_craftsmen: {
         Args: {
@@ -2442,6 +2463,8 @@ export type Database = {
           p_category?: number
           p_craftsman: string
           p_date?: string
+          p_id?: string
+          p_photos?: string[]
           p_service?: string
           p_slot?: string
         }
@@ -2485,6 +2508,7 @@ export type Database = {
       unique_org_slug: { Args: { p_name: string }; Returns: string }
       unread_total: { Args: Record<PropertyKey, never>; Returns: number }
       unsubscribe_emails: { Args: { p_token: string }; Returns: boolean }
+      work_done_on: { Args: { p_conversation: string }; Returns: string }
     }
     Enums: {
       exception_kind: "free" | "busy"
