@@ -1,7 +1,7 @@
 "use client";
 
-import { BadgeEuro, ChevronRight } from "lucide-react";
-import { formatEur, pluralBg } from "@/lib/format";
+import { BadgeEuro } from "lucide-react";
+import { formatEur } from "@/lib/format";
 import type { OfferData } from "./data";
 import { Rivet, type Room } from "./shared";
 
@@ -68,48 +68,5 @@ export function OfferReceipt({ r, o, bg }: { r: Room; o: OfferData; bg: string }
         {actionWord(r)}
       </a>
     </div>
-  );
-}
-
-/** „Цена на жълто“: the total on a Rule Yellow block, the facts beside it; the whole card is one link. */
-export function OfferYellow({ r, o, bg }: { r: Room; o: OfferData; bg: string }) {
-  const until = o.validUntil.replace(/\S+$/, (m) => m.slice(0, 3));
-  return (
-    <a href={`/oferta/${o.token}`} target="_blank" rel="noopener noreferrer" className={`mx-auto my-1.5 flex w-full max-w-md overflow-hidden rounded-[10px] ${bg}`}>
-      <span className="grid shrink-0 place-items-center bg-rule px-4 py-3">
-        <span className="numerals text-[2.4rem] leading-none">{formatEur(o.total)}</span>
-      </span>
-      <span className="flex min-w-0 flex-1 items-center gap-2 py-2.5 pl-3 pr-2">
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold leading-snug">{o.title}</span>
-          <span className="block text-sm text-ink-2">
-            {pluralBg(o.lines.length, "позиция", "позиции")}
-            {o.status === "sent" ? ` · валидна до ${until}` : ""}
-          </span>
-          <StatusMark o={o} className="mt-0.5" />
-          <span className="sr-only">{actionWord(r)}</span>
-        </span>
-        <ChevronRight className="size-5 shrink-0 text-ink-2" aria-hidden />
-      </span>
-    </a>
-  );
-}
-
-/** „Ред“: one strip like a row of a list; the whole strip opens the offer. */
-export function OfferRow({ r, o, bg }: { r: Room; o: OfferData; bg: string }) {
-  const st = STATUS[o.status];
-  return (
-    <a href={`/oferta/${o.token}`} target="_blank" rel="noopener noreferrer" className={`mx-auto my-1 flex min-h-11 w-full max-w-md items-center gap-3 rounded-[6px] px-3 py-2.5 ${bg}`}>
-      <BadgeEuro className="size-6 shrink-0" strokeWidth={1.75} aria-hidden />
-      <span className="min-w-0 flex-1">
-        <span className="line-clamp-2 block font-bold leading-snug">{o.title}</span>
-        <span className="mt-0.5 flex items-center gap-1.5 text-sm text-ink-2">
-          {st.rivet && <Rivet kind={st.rivet} />}
-          {st.word}
-        </span>
-        <span className="sr-only">{actionWord(r)}</span>
-      </span>
-      <span className="numerals shrink-0 text-2xl">{formatEur(o.total)}</span>
-    </a>
   );
 }

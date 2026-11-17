@@ -1,18 +1,14 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ProtoHarness } from "../_harness/picker";
+import "../_harness/picker.css";
 import { SCENARIOS, type Scenario } from "./data";
 import { useRoom } from "./shared";
 import { Home } from "./home";
-import { AppRows, VariantApp } from "./variant-app";
-import { IndexRows, VariantIndex } from "./variant-index";
 import { SheetRows, VariantSheet } from "./variant-sheet";
 
-const NAMES = ["Един лист", "Показалец", "Приложение"];
-
-/** One conversation session: a new one starts when the variant or the scenario changes. */
-function Session({ variant, scenario }: { variant: number; scenario: Scenario }) {
+/** One conversation session: a new one starts when the scenario changes. */
+function Session({ scenario }: { scenario: Scenario }) {
   const scroller = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const r = useRoom(scenario, box);
@@ -21,10 +17,8 @@ function Session({ variant, scenario }: { variant: number; scenario: Scenario })
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [r.activeId, r.messages.length, r.askStep, r.rate.open, r.rate.done]);
-  // „Преглед“ (s=5, s=6): the dashboard home, with the rows drawn the way this variant draws its list
-  if (r.view === "home") return <Home r={r} Rows={variant === 1 ? IndexRows : variant === 2 ? AppRows : SheetRows} />;
-  if (variant === 1) return <VariantIndex r={r} scroller={scroller} box={box} />;
-  if (variant === 2) return <VariantApp r={r} scroller={scroller} box={box} />;
+  // „Преглед“ (s=5, s=6): the dashboard home with the same rows as the list
+  if (r.view === "home") return <Home r={r} Rows={SheetRows} />;
   return <VariantSheet r={r} scroller={scroller} box={box} />;
 }
 
@@ -75,7 +69,7 @@ function ScenarioPill({ value, onChange }: { value: Scenario; onChange: (s: Scen
   );
 }
 
-export function RazgovorProto({ initialVariant, initialScenario }: { initialVariant: number; initialScenario: Scenario }) {
+export function RazgovorProto({ initialScenario }: { initialScenario: Scenario }) {
   const [scenario, setScenario] = useState<Scenario>(initialScenario);
 
   useEffect(() => {
@@ -86,9 +80,7 @@ export function RazgovorProto({ initialVariant, initialScenario }: { initialVari
 
   return (
     <>
-      <ProtoHarness names={NAMES} initial={initialVariant} position="top">
-        {(i) => <Session key={`${i}-${scenario}`} variant={i} scenario={scenario} />}
-      </ProtoHarness>
+      <Session key={scenario} scenario={scenario} />
       <ScenarioPill value={scenario} onChange={setScenario} />
     </>
   );
