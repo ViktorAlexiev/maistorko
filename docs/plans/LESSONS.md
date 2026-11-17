@@ -17,3 +17,9 @@
 - An acceptance criterion had the new craftsman save a bio on „Профил“ before choosing categories, but that form already refused to save without a category, so the criterion could not run as written: before writing a criterion that goes through an existing form, check that form's validation rules.
 - The same rule meant the whole profile form, not only its categories part, was blocked for craftsmen who skipped „Какво работиш“, and the owner found it at acceptance: when a new flow lets people skip a step, check every existing form that validates the skipped data.
 - The plan's sentence for 3 of 3 required steps ("Профилът ти се вижда в търсенето") ignored profiles an admin had hidden, which goes against Part 1's rule to say whether the profile is listed: base every "you are visible" message on the same check search uses (`craftsman_is_listed`), not on counting steps.
+
+## 2026-11-17 · Календар (2026-11-16-kalendar)
+
+- At acceptance the owner removed „Седмица“ and asked for a new month grid once they saw both on the live page next to the meter, which already showed the same days: in the variant round, show each view beside the other views on the page that repeat its data, so the owner judges the overlap before tasks are written.
+- The plan's code drew „потвърдено“ and „поръчка“ with the same rivet although the design gave them different meanings: for every status a design separates, the task text must name its own mark.
+- Criteria and tests named columns that do not exist (`exception_date`/`is_available`, `m_date`/`n_free`): check every column name in a criterion's SQL against the schema when writing the plan.
