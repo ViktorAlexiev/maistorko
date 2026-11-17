@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useLayoutEffect, useRef, useState } from "react";
 import { CalendarDays, CheckCheck, ExternalLink, Wrench, X } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { formatEur } from "@/lib/format";
 import type { BookingData, Msg } from "../razgovor/data";
 import { OfferReceipt } from "../razgovor/offer-cards";
 import { useRoom, type Room } from "../razgovor/shared";
@@ -86,6 +87,7 @@ function FirstBubble({ sent }: { sent: SentData }) {
               <p className="inline-flex items-center gap-1.5 rounded-[6px] bg-rule px-2 py-1 text-sm font-bold text-ink">
                 <Wrench className="size-4 shrink-0" aria-hidden />
                 {sent.work}
+                {sent.workPrice !== undefined && `, от ${formatEur(sent.workPrice)}`}
               </p>
             )}
           </div>
