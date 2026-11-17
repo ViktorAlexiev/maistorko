@@ -79,7 +79,7 @@ Status: design approved 2026-11-17
 - **AC18** №19: снимките, датата, работата и текстът тръгват като едно съобщение; майсторът вижда снимките в същото съобщение; файловете са в `chat-photos/<id на разговора>/`.
   Check (browser): като `klient@` на `/maistori/ognyan-radev` (1280×900): прикачи 2 снимки, избери дата и работа, напиши текст, изпрати → в прозореца е разговорът с едно съобщение с етикетите, двете снимки в един ред и текста (сравни с `prozorec-izprateno-desktop.png`); SQL `select count(*), max(jsonb_array_length(meta->'photos')) from messages where conversation_id='<новото id>'` → `1|2`; SQL `select count(*) from storage.objects where bucket_id='chat-photos' and name like '<новото id>/%'` → `2`; вход като `ognyan-radev@maistorko.test` → `/saobshtenia/<новото id>` показва двете снимки в първото съобщение. Накрая триене по реда в „Пробни данни“.
 - **AC19** Снимка към първото съобщение се качва, преди разговорът да съществува, без да става видима за друг; разговор не се създава, докато съобщението не тръгне; неизпратени снимки се трият.
-  Check: `npm run test:rls` минава, с тестовете „снимка: клиентът качва в папка на разговор, който още няма“, „снимка: друг не вижда качената снимка преди изпращането“, „снимка: не може да се качи в папка на чужд разговор“, „снимка: първото съобщение със снимки създава разговора с това id“, „снимка: майсторът вижда снимката от първото съобщение“, „снимка: снимка извън папката на разговора се отказва“, „снимка: качването само по себе си не създава разговор“, „снимка: папка без разговор, по-стара от ден, влиза в опашката за триене“, „снимка: вече започнат разговор със снимки дава грешка“.
+  Check: `npm run test:rls` минава, с тестовете „снимка: клиентът качва в папка на разговор, който още няма“, „снимка: друг не вижда качената снимка преди изпращането“, „снимка: не може да се качи в папка на чужд разговор“, „снимка: първото съобщение със снимки създава разговора с това id“, „снимка: майсторът вижда снимката от първото съобщение“, „снимка: снимка извън папката на разговора се отказва“, „снимка: качването само по себе си не създава разговор“, „снимка: папка без разговор, по-стара от ден, влиза в опашката за триене“, „снимка: вече започнат разговор със снимки дава грешка“, „снимка: пета неизпратена снимка за същия майстор се отказва“, „снимка: девета неизпратена снимка общо се отказва“.
 - **AC20** №4: след първото съобщение, пратено от календара в профила, полето за писане е празно.
   Check (browser): като `klient@` на `/maistori/ognyan-radev` (1280×900): в календара на профила избери утрешния ден и „Сутрин“, натисни „Пиши за утре, сутрин“ → прозорецът се отваря с чипа за дата вече избран и „Сутрин“ избрано; напиши текст, изпрати → в прозореца е разговорът и полето за писане е празно (`textarea.value === ""`). Накрая триене по реда в „Пробни данни“.
 - **AC21** Разговорът в прозореца е „Тихо“, като на страницата „Съобщения“; главата е светла, щракване по името свива прозореца до лента долу, иконата „Отвори в „Съобщения““ я има само когато вече има разговор.
@@ -146,6 +146,7 @@ Planner's calls:
 - Кутията „Обнови отзива“: ред „Обнови отзива за <име>“, бутон „Обнови“; отваря същите звезди и текст, попълнени с неговия отзив, и „Публикувай“ / „Не сега“ — planner's call. Why: пробата не показа този случай; същата кутия с други думи е най-малко ново.
 - Изреченията в профила на майстора за това кой може да остави отзив сменят „Отзив могат да оставят клиенти, с които е разговарял.“ (`maistori/[slug]/page.tsx:433`) на „Отзив могат да оставят клиенти, при които е работил или е идвал на оглед.“ — user (17 ноември, при одобрението на Part 1). Why: старото изречение вече не е вярно. Rejected: изречението да се махне.
 - Снимка към първото съобщение: браузърът измисля id на бъдещия разговор, качва снимките в `chat-photos/<това id>/`, а първото съобщение създава разговора с това id и снимките в него — planner's call. Why: така снимките са в папката на разговора, както всички снимки в чата, и чистенето и триенето на профил (`chat_photo_purge_queue`, `account.ts:42`) работят без промяна. Rejected: временна папка и преместване след създаването (съобщението тръгва без снимки и известието е без тях); празен разговор преди съобщението (майсторът вижда празен разговор). Последствия: качване е позволено в папка с id, което още не е разговор (само за собственика на файла, без блокирани); неизпратени снимки в папка без разговор, по-стари от ден, влизат в опашката за триене при `cleanup_old_chats`; ако между двамата вече има разговор и съобщението носи снимки, базата отказва с „Разговорът вече е започнат. Презаредете страницата.“
+- Неизпратените снимки към първо съобщение имат граница в базата: най-много 4 в прозореца за един майстор (една папка без разговор) и най-много 8 за всички майстори заедно; изпратените не се броят — user (17 ноември, след бележка, че иначе всеки влязъл може да качва без край, без да прати съобщение): „4 за майстор, 8 за всички“. Why: най-много около 40 MB на профил, изтрити след ден. Rejected: само 4 на прозорец (скрипт с много прозорци пак качва много); граница и за качването в започнат разговор (промяна извън този план). Факт: 5 MB на файл и само JPEG/PNG/WebP кофата `chat-photos` вече пази сама (`file_size_limit` 5242880, `allowed_mime_types`). При отказ браузърът показва днешната грешка на `uploadChatPhotos` („… не беше качена.“).
 - №4: прозорецът помни id-то на разговора, който сам е започнал, и на този разговор не дава готов текст — planner's call. Why: при новия начин id-то се знае преди изпращането, затова поправката не зависи от реда на опресняването (причината в „Facts“).
 - №27: Enter изпраща само когато екранът не е докосване и е поне 768px широк (`matchMedia("(pointer: coarse), (max-width: 767px)")` не съвпада) — planner's call. Why: така е в одобрената проба; телефон със свързана клавиатура пак праща със стрелката.
 - Тъмният край на сайта: на страниците „Съобщения“ на телефон `SiteFooter` не се показва, а разговорът стига до долния край на екрана — planner's call. Why: на телефон разговорът е цял екран като приложение; на компютър краят остава.
@@ -195,6 +196,7 @@ Planner's calls:
 
 **Базата**
 - Нищо не се трие от данните. Променени функции: `can_review`, `request_review_in_chat`, `start_conversation` (нови параметри, затова старата сигнатура `start_conversation(uuid,text,date,smallint,text,uuid)` се маха и се създава наново със същите първи шест параметъра), `cleanup_old_chats`; политиката за качване в `chat-photos`. Нови: колона `conversations.review_requested_at`, функции `work_done_on` и `review_box`. Телата на сменените функции се вземат от локалната база (`pg_get_functiondef`), не от стари миграции.
+- Качване в папка без разговор: само собственикът на файла я вижда, най-много 4 негови файла в папката и 8 негови файла общо във всички папки без разговор.
 - След миграцията: `npm run types` и `database.types.ts` в същия commit.
 
 ## Facts
@@ -214,3 +216,290 @@ Planner's calls:
 - Първото съобщение: `FirstMessage` (`web/src/components/chat-dock.tsx:211-384`) праща през `startConversation` (`web/src/app/actions/engage.ts:9-48`) → `start_conversation(p_craftsman, p_body, p_date, p_category, p_slot, p_service)`; `slot` се праща само когато е дошъл от календара (`chat-dock.tsx:250`, `:258`). `start_conversation` при вече съществуващ разговор между двамата (`on conflict (client_id, craftsman_id)`) добавя съобщението в него.
 - №4, причината: `startConversation` вика `revalidatePath`, страницата на профила се опреснява и дава на `ChatDock` `conversationId` на новия разговор; в същото обновяване `FirstMessage` изчезва, преди ефектът му (`chat-dock.tsx:228-230`) да извика `onStarted` → `onAskUsed`, така че `ask` (`profile-booking.tsx:44`, `:80`) остава и става текст в полето (`chat-dock.tsx:169`, `draftFor` `:186-188`). Потвърдено в браузъра на 17 ноември 2026 г. (`klient@` в профила на `ognyan-radev`): след изпращане в полето стоеше „Здравейте! Удобно ли ви е утре, сутрин (до 12 ч.)?“.
 - Тестове: `npm run test:rls` (`web/scripts/test-rls.ts`) създава временни профили и ги трие. Днешният тест „клиент с разговор (и отговор) може да остави отзив“ (`:116-117`) по новото правило трябва да очаква отказ; „правото на отзив остава след чистенето“ (`:522-523`) остава вярен, защото поканата от `:494` се помни в `review_requested_at`. Тестове за код в браузъра в проекта няма.
+- Офертите: `offers` чете само майсторът (`offers: owner`); `offer_by_token(p_token)` е публична, но отбелязва `viewed_at` (затова картата в разговора не я вика). Кофата `chat-photos`: `file_size_limit` 5242880, `allowed_mime_types` `{image/jpeg,image/png,image/webp}`. Опашката `chat_photo_purge_queue` има първичен ключ `conversation_id`; `purgeChatPhotos` (`web/scripts/worker.ts:104-120`) трие папката по име, без да гледа дали разговорът съществува.
+
+# Part 2: Tasks
+
+Gate: `npm run typecheck && npm run lint && npm run test:rls` (run from `web/`) — минава на 17 ноември 2026 г. (332 успешни, 0 неуспешни).
+Branch: `saobshteniya`
+
+За всички задачи:
+- Миграцията се пуска върху локалната база с `npx supabase migration up` от корена на репото. Никога `supabase db reset` и `npm run db:reset`: трият данните, на които стоят проверките.
+- Незакомитените файлове на собственика не се пипат и не се stage-ват: `.impeccable/…`, `PRODUCT.md`, `README.md`, `demo/nginx.conf`, `package-lock.json`, `supabase/config.toml`, `web/.env.example`, `web/.impeccable/…`, `web/AGENTS.md`, `web/next.config.ts`, `web/scripts/seed-new-features.ts`, `docs/ui-pregled.md`, `docs/ui-pregled/`. Без `git stash`. `git add` само с имената на файловете на задачата.
+- Server actions и компоненти: преди промяна прочети съответния документ в `web/node_modules/next/dist/docs/` (`web/AGENTS.md`).
+- Задача, която строи одобрен дизайн: интегрирай дизайна както е одобрен, не го преработвай. НЕ влизат нещата само на пробите: „Сц.“ и `?s=` (`*/proto.tsx`, `_harness/`), измислените данни (`data.ts`, `POOL`, `PRICES`, `useRoom`, `useWindowRoom`), „Демо изображение“ и `PhotoPair`, `Frame` (`razgovor/shared.tsx:238-252`), `Flash` и надписите „Проба: …“, твърдият „На линия“ (`razgovor/thread.tsx:87`), отместването `max-sm:top-11 max-sm:rounded-t-[14px]` (`prozorec/window.tsx:40-41`), фалшивото качване с таймер (`prozorec/first.ts:25-27`, `:54`). Където условие в пробата се различава от днешното в production, остава production, освен ако Part 1 казва друго; всяка задача изброява случаите си.
+
+## Task 1: Базата: правото на отзив, кутията, снимките към първото съобщение, офертата в чата
+
+Risk: risky
+Serves: AC10, AC11, AC14 (правилото), AC19, AC1 (данните за картата „Бележка“), AC23
+Depends on: none
+
+**Delivers:** миграция с новото правило за отзив (`work_done_on`, `can_review`, `review_box`, `review_requested_at`), снимки към първото съобщение (`start_conversation` с id и снимки, качване в папка без разговор с граница 4/8, чистене на неизпратените), четене на офертите в разговора без отбелязване „видяна“ (`chat_offers`), с тестове.
+
+**Files**
+- create `supabase/migrations/20261117000039_saobshteniya.sql`
+- change `web/scripts/test-rls.ts` (`:114-117` и нов раздел „Отзив след свършена работа и снимки“ след блока „Отзиви“, който свършва на `:526`)
+- change `web/src/lib/database.types.ts` (с `npm run types` от `web/`)
+
+**Interfaces** (всички функции: `set search_path = ''`, имената с `public.`/`storage.`)
+- `alter table public.conversations add column review_requested_at timestamptz;` и пренасяне: `update public.conversations c set review_requested_at = m.at from (select conversation_id, max(created_at) as at from public.messages where meta ->> 'event' = 'review_request' group by conversation_id) m where m.conversation_id = c.id;`. Клиентът не може да пише колоната (`authenticated` има само `SELECT` върху `conversations`, без политика за промяна; така остава).
+- `public.work_done_on(p_conversation uuid) returns date` — `language sql stable security definer`; `revoke execute on function public.work_done_on(uuid) from public, anon, authenticated;`. Връща най-късния от трите дни, или `null`:
+  1. `(c.review_requested_at at time zone 'Europe/Sofia')::date` на разговора;
+  2. `coalesce(b.end_date, b.booking_date)` на уговорки в разговора със `status = 'confirmed'` и този ден `< public.sofia_now()::date`;
+  3. `(j.done_at at time zone 'Europe/Sofia')::date` на поръчки с `j.conversation_id = p_conversation and j.status = 'done' and j.done_at is not null`.
+- `public.can_review(p_craftsman uuid) returns boolean` — същият подпис и права; `language sql stable security definer`. Днешните три условия (`auth.uid() is not null`, `auth.uid() <> p_craftsman`, `not public.is_banned()`) и `exists (select 1 from public.conversations c where c.client_id = auth.uid() and c.craftsman_id = p_craftsman and public.work_done_on(c.id) is not null)`. `craftsman_replied_at` вече не участва.
+- `public.review_box(p_conversation uuid) returns text` — `language plpgsql stable security definer`; `grant execute … to authenticated`. „Предстояща уговорка“ = в разговора има `status = 'confirmed' and coalesce(end_date, booking_date) >= public.sofia_now()::date` или `status = 'proposed' and booking_date >= public.sofia_now()::date`. Ред:
+  1. `auth.uid()` е null, `public.is_banned()`, разговорът липсва или `craftsman_id is null` → `null`.
+  2. `auth.uid() = craftsman_id`: `'ask'`, когато в разговора има поне едно съобщение, няма предстояща уговорка и (`review_requested_at is null` или `review_requested_at <= now() - interval '30 days'`); иначе `null`.
+  3. `auth.uid() = client_id`: `null` при предстояща уговорка или `review_requested_at is not null`; `null`, когато `public.work_done_on(id) is null`; без отзив на клиента за `craftsman_id` → `'rate'`; с отзив, чийто `(updated_at at time zone 'Europe/Sofia')::date < work_done_on(id)` → `'update'`; иначе `null`.
+  4. Всеки друг (и `assigned_to`, и управители на фирма) → `null`.
+- `public.request_review_in_chat(p_conversation uuid) returns void` — тялото от локалната база с две промени: проверката за 30 дни е `if v_conv.review_requested_at is not null and v_conv.review_requested_at > now() - interval '30 days' then raise exception 'Вече поискахте отзив от този клиент.'; end if;` (вместо търсенето в `messages`); след `insert` на съобщението — `update public.conversations set review_requested_at = now() where id = v_conv.id;`. Правата остават.
+- `drop function public.start_conversation(uuid, text, date, smallint, text, uuid);` и `create function public.start_conversation(p_craftsman uuid, p_body text, p_date date default null, p_category smallint default null, p_slot text default null, p_service uuid default null, p_id uuid default null, p_photos text[] default null) returns uuid` — тялото от локалната база с добавките:
+  - след проверката на майстора, ако `p_photos is not null and cardinality(p_photos) > 0`: при `p_id is null` → `raise exception 'Невалидна снимка.'`; ако вече има разговор `client_id = v_me and craftsman_id = p_craftsman` → `raise exception 'Разговорът вече е започнат. Презаредете страницата.'`;
+  - `insert into public.conversations (id, client_id, craftsman_id, requested_date, category_id) values (coalesce(p_id, gen_random_uuid()), v_me, p_craftsman, p_date, v_category) on conflict (client_id, craftsman_id) do update …` (останалото както днес; без снимки съобщението влиза в съществуващия разговор и се връща неговото id);
+  - при снимки: `v_meta := v_meta || jsonb_build_object('photos', (select jsonb_agg(jsonb_build_object('path', x)) from unnest(p_photos) as x));` (пътищата и броят проверява днешният тригер `check_message_photos`: до 6, `^<id на разговора>/[A-Za-z0-9._-]+$`);
+  - след вмъкването на разговора: `delete from public.chat_photo_purge_queue where conversation_id = v_conv;`;
+  - права: `revoke all on function public.start_conversation(uuid, text, date, smallint, text, uuid, uuid, text[]) from public, anon; grant execute on function … to authenticated, service_role;` (както днес).
+- `public.is_unclaimed_chat_folder(p_folder text) returns boolean` — `language sql stable security definer`, `grant … to authenticated`: `p_folder ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' and not exists (select 1 from public.conversations where id = p_folder::uuid)`.
+- `public.can_upload_unsent_chat_photo(p_folder text) returns boolean` — `language sql stable security definer`, `grant … to authenticated`: `public.is_unclaimed_chat_folder(p_folder)` и под 4 файла с `owner_id = auth.uid()::text` в `storage.objects` (`bucket_id = 'chat-photos'`, `(storage.foldername(name))[1] = p_folder`) и под 8 такива файла общо във всички папки, за които `public.is_unclaimed_chat_folder` е истина.
+- Политики в `storage.objects`: `drop policy "chat photos: participants upload" on storage.objects;` и наново `for insert to authenticated with check (bucket_id = 'chat-photos' and (public.is_conversation_member((storage.foldername(name))[1]) or public.can_upload_unsent_chat_photo((storage.foldername(name))[1])) and not public.is_banned())`. Нова `"chat photos: uploader reads unsent" for select to authenticated using (bucket_id = 'chat-photos' and owner_id = (select auth.uid())::text and public.is_unclaimed_chat_folder((storage.foldername(name))[1]))` (нужна и за махането с ×). Другите две политики остават.
+- `public.enqueue_orphan_chat_photos(p_age interval default interval '1 day') returns integer` — `language plpgsql security definer`; `revoke execute … from public, anon, authenticated` (остава за `service_role`). Вкарва в `public.chat_photo_purge_queue (conversation_id)` всяка папка от `storage.objects` (`bucket_id = 'chat-photos'`) с име uuid, за което няма разговор, и с файл, по-стар от `now() - p_age` (`created_at`); `on conflict do nothing`; връща броя вкарани редове.
+- `public.cleanup_old_chats(p_days integer default 60) returns integer` — тялото от локалната база; след `get diagnostics v_n = row_count;` добави `perform public.enqueue_orphan_chat_photos();`. Връща `v_n` както днес („второ пускане не пипа вече изчистените“ иска `0`).
+- `public.chat_offers(p_conversation uuid) returns table (token uuid, lines jsonb, total numeric, status text, valid_until timestamptz, viewed_at timestamptz)` — `language sql stable security definer`, `grant … to authenticated`. Само при `public.is_conv_party(p_conversation)`: офертите, чийто `token` е `(m.meta ->> 'offer')::uuid` на съобщение в разговора (само когато `meta ->> 'offer'` е uuid); `status` като в `offer_by_token`: `case when o.status = 'sent' and o.valid_until < now() then 'expired' else o.status end`. Не пише нищо.
+
+**Test cases** (в `web/scripts/test-rls.ts`). „Днес“ = `(await anon.rpc("sofia_now")).data.slice(0, 10)`; „вчера“/„утре“ с `addIso` (`:51`). Уговорки и поръчки вкарва `admin` директно (`bookings`: `conversation_id`, `craftsman_id`, `client_id`, `booking_date`, `end_date`, `start_time: "09:00"`, `end_time: "10:00"`, `kind`, `status`, `proposed_by`; `jobs`: `craftsman_id`, `conversation_id`, `title: "Тест"`, `start_date`, `end_date`, `status: "done"` — `done_at` слага тригерът `job_status_stamp`). Всяка двойка клиент–майстор е нова: `user("client", …)` + `start_conversation` + отговор на майстора (както `:68-71`), защото отзивът е един на двойка (`unique (craftsman_id, client_id)`). `can_review` и `review_box` се викат като съответния потребител (`cl.c.rpc(…)`).
+В `:114-117` (alice ↔ craft, `convId`):
+1. „отзив: отговор без свършена работа не стига“: `alice` вмъква отзив → грешка. (Заменя „клиент с разговор (и отговор) може да остави отзив“.)
+2. „отзив: след минал потвърден оглед“: `admin` вкарва потвърден оглед вчера в `convId`; `alice` вмъква отзив (5, „Тест“) → без грешка. Тестовете на `:118-526` остават непроменени и минават.
+Нов раздел „Отзив след свършена работа и снимки“ (майстор `rvm`):
+3. „отзив: след покана в разговора“: `rvm` вика `request_review_in_chat` → `admin` чете `review_requested_at` → не е null; клиентът вмъква отзив → без грешка.
+4. „отзив: след минала многодневна работа (последният ден е вчера)“: потвърдена „Работа“ от преди 3 дни до вчера → `can_review` → `true`.
+5. „отзив: уговорка, чийто последен ден е днес, още не стига“: потвърдена „Работа“ от вчера до днес → `false`.
+6. „отзив: отказана минала уговорка не стига“: оглед вчера `declined` и оглед вчера `cancelled` → `false`.
+7. „отзив: свършена поръчка от разговора“: поръчка `done` в разговора → `true`.
+8. „кутия: майстор, без уговорки → ask“: `rvm` → `"ask"`.
+9. „кутия: майстор, предложена уговорка утре → нищо“ → `null`.
+10. „кутия: майстор, потвърдена уговорка днес → нищо“ → `null`.
+11. „кутия: майстор, покана преди 10 дни → нищо“: `admin` слага `review_requested_at` преди 10 дни → `null`.
+12. „кутия: майстор, покана преди 31 дни → ask“: същият разговор, преди 31 дни → `"ask"`, и `request_review_in_chat` минава.
+13. „кутия: клиент, минал оглед → rate“: потвърден оглед вчера → клиентът → `"rate"`.
+14. „кутия: клиент, минал оглед и работа утре → нищо“: същият разговор + потвърдена „Работа“ утре → `null`; после `admin` трие тази уговорка.
+15. „кутия: клиент, покана в разговора → нищо“: `rvm` праща покана → клиентът → `null`.
+16. „кутия: клиент с отзив след огледа → нищо“: разговорът от 13, клиентът вмъква отзив → `null`.
+17. „кутия: клиент с отзив отпреди свършената поръчка → update“: нова двойка; `admin` вмъква отзива с `created_at` и `updated_at` преди 5 дни, после поръчка `done` в разговора → клиентът → `"update"`.
+18. „кутия: чужд за разговора → нищо“: `bob` за разговора от 13 → `null`.
+19. „оферта в чата: страните виждат редовете, чужд не“: `admin` вкарва оферта на `rvm` (`status: "sent"`, `valid_until` след 7 дни, `lines` във формата, който чете `web/src/app/oferta/[token]/page.tsx`) и съобщение на `rvm` с `meta: { offer: <token>, title, total }` → клиентът и `rvm` получават 1 ред със същите `lines` и `status = "sent"`; `bob` → 0 реда.
+20. „оферта в чата: четенето не я отбелязва видяна“: след 19 `offers.viewed_at` → `null`.
+Снимки (клиенти `ph1`, `ph2`, майстор `phm`; PNG байтовете като в днешните тестове за снимки преди `:405`; `newId = crypto.randomUUID()`):
+21. „снимка: клиентът качва в папка на разговор, който още няма“: `ph1` качва `${newId}/a.png` → без грешка.
+22. „снимка: друг не вижда качената снимка преди изпращането“: `phm` и `bob` → `download` дава грешка.
+23. „снимка: качването само по себе си не създава разговор“: разговор с id `newId` → 0 реда.
+24. „снимка: не може да се качи в папка на чужд разговор“: `ph1` качва в `${convId}/x.png` → грешка.
+25. „снимка: първото съобщение със снимки създава разговора с това id“: `ph1.c.rpc("start_conversation", { p_craftsman: phm.id, p_body: "Със снимка", p_id: newId, p_photos: [`${newId}/a.png`] })` → `data === newId`; 1 съобщение с `meta.photos` дълъг 1.
+26. „снимка: майсторът вижда снимката от първото съобщение“: `phm` → `download` без грешка.
+27. „снимка: снимка извън папката на разговора се отказва“: `ph2` с ново `id2` и `p_photos: [`${crypto.randomUUID()}/b.png`]` → грешка, и разговор `id2` няма.
+28. „снимка: вече започнат разговор със снимки дава грешка“: `ph1` пак към `phm` с ново `id3` и `p_photos: [`${id3}/c.png`]` → грешка с текст точно „Разговорът вече е започнат. Презаредете страницата.“.
+29. „снимка: пета неизпратена снимка за същия майстор се отказва“: `ph2` качва 4 файла в ново `f1` → без грешка; пети в `f1` → грешка.
+30. „снимка: девета неизпратена снимка общо се отказва“: `ph2` качва 4 в ново `f2` → без грешка; един в ново `f3` → грешка; `ph2` трие един от `f1` и качва в `f3` → без грешка.
+31. „снимка: папка без разговор, по-стара от ден, влиза в опашката за триене“: прочети опашката (`before`); `admin.rpc("cleanup_old_chats", { p_days: 60 })` → ред за `f1` няма; `admin.rpc("enqueue_orphan_chat_photos", { p_age: "0 seconds" })` → ред за `f1` има; накрая изтрий от опашката всеки ред, който го няма в `before` (на локалната база може да има чужди неизпратени папки).
+Накрая на раздела `admin` трие качените файлове на раздела (`admin.storage.from("chat-photos").remove([...])`); профилите трие общото почистване.
+
+**Notes**
+- Тела на сменените функции: само от локалната база (`docker exec supabase_db_maistori-mvp psql -U postgres -d postgres -Atc "select pg_get_functiondef('public.<име>'::regproc)"`), не от стари миграции.
+- Ако `limit_conversations` или `limit_reviews` спре многото нови двойки, раздели ги между два майстора; ограниченията не се свалят.
+- Последствие: в разговор на фирма `review_box` е `null` за всички (днес кутията „Работата е свършена“ там се показва, а базата я отказва с „Разговорът не е намерен.“).
+
+## Task 2: Значките горе и знакът в звънчето
+
+Risk: normal
+Serves: AC15, AC16, AC4 (знакът в звънчето)
+Depends on: none
+
+**Delivers:** червената точка на „Съобщения“ горе, червеното число в правоъгълна табелка на звънчето, точката за непрочетено в списъка на звънчето, новото описание в `DESIGN.md`.
+
+**Files**
+- change `web/src/components/unread-badge.tsx`
+- change `web/src/components/site-header.tsx` (`:56-67`)
+- change `web/src/components/notification-bell.tsx` (`:85-89`, `:120`)
+- change `DESIGN.md` („The Tab and Rivet Rule“)
+
+**Interfaces**
+- `UnreadBadge({ userId, initial, className, dot }: { userId: string; initial: number; className?: string; dot?: string })` — при `dot` и брой > 0 рисува `<span aria-hidden className={dot} />` вместо числото; без `dot` е както днес (`dashboard-nav.tsx:49`, `dashboard-bottom-bar.tsx:63` не се пипат).
+
+**Test cases:** none; verified by AC4, AC15, AC16.
+
+**Notes**
+- Дизайн: „Като в профила“, проба `web/src/app/prototypes/znachki/header.tsx` (`?s=3`), снимки `znachki-desktop.png`, `znachki-phone.png`. Интегрирай както е одобрено.
+- „Съобщения“: както `header.tsx:155-171` — в обвивката на иконата `<UnreadBadge … dot="absolute size-2.5 rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)] -right-1.5 -top-1.5 sm:hidden" />`; думата става `<span className="relative hidden sm:inline">Съобщения<UnreadBadge … dot="absolute size-2.5 rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)] -right-2 -top-1.5" /></span>`. Двете броят на живо поотделно (`useId` в името на канала). `aria-label` на връзката остава.
+- Звънчето: класовете на `Count` (`header.tsx:19-25`: `numerals absolute -top-2 left-3 grid h-5 min-w-5 place-items-center rounded-[4px] bg-red px-1 text-[0.95rem] leading-none text-white ring-2 ring-surface`), „99+“ над 99. От пробата на звънчето се вземат само табелката и знакът; падащият списък остава production.
+- Знакът в списъка на звънчето (`:120`): `mt-[7px] size-2.5 shrink-0 self-start rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]`, `aria-label="непрочетено"` остава.
+- `DESIGN.md`: махни „An unread item in a list is a 12px red rivet…“ и „The site header's circular badges … are not covered yet“; опиши: непрочетен ред (списък, „Преглед“, звънчето) — червена точка 10px с тъмен вътрешен пръстен 1.5px, без число; „Съобщения“ горе — същата точка, извън подредбата, горе вдясно на думата (на телефон — на иконата); звънчето — червено число в правоъгълна табелка с 4px ъгли; лявото меню и долната лента на таблото — черна табелка с жълти цифри. „Red is not used for counts“ става „Red counts appear only on the site header bell“.
+
+## Task 3: Списъкът, „Преглед“ и страницата на телефон
+
+Risk: normal
+Serves: AC1 (листът и празното), AC2 (списъкът, търсенето), AC3, AC4 (точката в реда), AC9
+Depends on: none
+
+**Delivers:** „Един лист“ на компютър, списъкът „Приложение“ на телефон с търсене по име, същите редове в „Преглед“, точка вместо число в реда, без тъмния край на сайта под „Съобщения“ на телефон.
+
+**Files**
+- change `web/src/app/saobshtenia/layout.tsx`
+- change `web/src/app/saobshtenia/page.tsx`
+- change `web/src/app/saobshtenia/conversation-sidebar.tsx`
+- change `web/src/components/conversation-list.tsx` (`ConversationItem`)
+- change `web/src/app/tabla/page.tsx` (`:150-155`, `:220-226`)
+- create `web/src/components/footer-gate.tsx`; change `web/src/app/layout.tsx:61`
+
+**Interfaces**
+- `ConversationItem({ c, active = false, last = false }: { c: ConversationSummary; active?: boolean; last?: boolean })`; `ConversationSummary` не се сменя.
+- `FooterGate({ children }: { children: React.ReactNode })` — `"use client"`, `usePathname()`; при път, който започва с `/saobshtenia`, връща `<div className="max-md:hidden">{children}</div>`, иначе `children`. В `app/layout.tsx:61`: `<FooterGate><SiteFooter /></FooterGate>`.
+- `sessionStorage` ключ `maistorko:last-conversation` (четене и писане в `try/catch`).
+
+**Test cases:** none; verified by AC1, AC2, AC3, AC4, AC9.
+
+**Notes**
+- Дизайн: „Един лист“ + списъкът „Приложение“, проба `web/src/app/prototypes/razgovor/` (`variant-sheet.tsx`, `shared.tsx` `RowContent` `:273-293`, `UnreadRivet` `:268-270`, `EmptyPane` `:255-265`, `home.tsx` `Messages` `:195-211`), снимки `prazno-desktop.png`, `spisak-phone.png`, `pregled-desktop.png`, `pregled-klient-desktop.png`, `pregled-phone.png`. Интегрирай както е одобрено.
+- `layout.tsx`: обвивката `mx-auto max-w-7xl px-0 md:px-6 md:py-6`; решетката — класовете от `variant-sheet.tsx:15` (`grid grid-rows-[minmax(0,1fr)] overflow-hidden bg-surface sm:rounded-[10px] md:grid-cols-[22rem_minmax(0,1fr)]`) с височина `h-[calc(100dvh-4rem)] md:h-[calc(100dvh-7rem)]`. „Телефон“ тук е под `md` (768px), както в пробата. `DashboardBottomBar` остава.
+- `conversation-sidebar.tsx`: колоната — `variant-sheet.tsx:16` (`bg-surface-2`; на телефон само без отворен разговор, както днес); горна лента „Съобщения“ с търсене по име само под `md` (`:17-23`, филтър по `partner_name` без значение главни/малки), заглавие на компютър (`:24`), текстът при празно търсене (`:26`); списъкът — `SheetRows` (`:44-72`). Опресняването на живо (`:19-37`) и празното състояние (`:60-70`) остават. Отвореният ред (`active`) — от адреса, както днес. Последният отворен: при `activeId` запиши го в `maistorko:last-conversation`; без `activeId` го прочети и подай `last` на този ред; `last` дава `bg-rule-soft` само под `md` (на компютър празният лист е без избран ред, `prazno-desktop.png`) — planner's call: пробата помни реда в паметта на страницата, а production минава през адрес.
+- `ConversationItem`: редът от `variant-sheet.tsx:56-63` + `RowContent`. Данните остават днешните: името, `timeAgo`, „Вие: “, редът на фирмата (`conversation-list.tsx:43-48`), датата (`relativeDay`) и работата (`:49-60`) — на мястото и с класовете на реда „about“ (`shared.tsx:283-288`). Непрочетено: точката от Part 1 („Знаците“) на мястото на днешното число (`:62-67`), със `sr-only` „Непрочетени“; удебеляването както днес. Връзката и `aria-current="page"` остават.
+- `page.tsx`: `EmptyPane` с `bg-surface` (`variant-sheet.tsx:33`), днешните текстове.
+- `tabla/page.tsx:153`, `:224`: обвивката на редовете както `SheetRows` с `home` (компютър: върху сиво поле без рамка; телефон: белите ленти). Останалото от таблото не се пипа (картата „Upcoming“, поздравите и лентите в `home.tsx` са само на пробата).
+
+## Task 4: Разговорът „Тихо“
+
+Risk: normal
+Serves: AC1 (разговорът, „Бележка“), AC2 (разговорът, стрелката назад), AC5, AC6, AC7, AC8
+Depends on: Task 1 (`chat_offers`), Task 3 (височината на страницата)
+
+**Delivers:** новият вид на разговора: глава с цялото име, икона „Обади се“ и меню „Още действия“, бледожълтата лента с уговорката, картата „Бележка“, готовите отговори на един ред, полето по правилото за Enter.
+
+**Files**
+- change `web/src/app/saobshtenia/[id]/thread.tsx`
+- change `web/src/app/saobshtenia/[id]/quick-replies.tsx`
+- create `web/src/app/saobshtenia/[id]/menu.tsx` (`Menu` от `razgovor/shared.tsx:329-389`)
+- create `web/src/app/saobshtenia/[id]/offer-card.tsx` (`OfferReceipt` и помощниците от `razgovor/offer-cards.tsx:11-72`)
+- change `web/src/components/report-button.tsx` (само ако е нужно, виж бележките)
+
+**Interfaces**
+- `type ChatOffer = { token: string; lines: unknown; total: number; status: string; valid_until: string; viewed_at: string | null }` (редът на `chat_offers`).
+- `OfferCard({ token, title, total, offer, iAmClient, partnerFirst, bg }: { token: string; title: string; total: number | null; offer: ChatOffer | undefined; iAmClient: boolean; partnerFirst: string; bg: string })` — без `offer` (изтрита оферта) показва заглавието и сумата като днес (`thread.tsx:449-459`).
+- `Thread` вика `supabase.rpc("chat_offers", { p_conversation: conversationId })` при отваряне и когато пристигне съобщение с `meta.offer`; картата намира реда по `token`.
+- Enter: `const enterSends = () => typeof window !== "undefined" && !window.matchMedia("(pointer: coarse), (max-width: 767px)").matches;` и `if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && enterSends()) { e.preventDefault(); submit(); }`; `enterKeyHint="enter"`. Изнеси `enterSends` от `thread.tsx`, за да го ползва и Task 7.
+
+**Test cases:** none; verified by AC1, AC2, AC5, AC6, AC7, AC8.
+
+**Notes**
+- Дизайн: „Тихо“ с картата „Бележка“, проба `web/src/app/prototypes/razgovor/thread.tsx` (`Thread` `:32-79`, `ThreadHeader` `:81-104`, `UpcomingBar` `:106-119`, `BookingCard` `:121-144`, `Composer` `:219-269`) и `shared.tsx` (`TextBubble` `:417-452`, `BackButton` `:314-320`, `ComposerField` `:564-596`, `SendButton` `:598-604`, `Hint` `:607-613`, `QuickRow` `:616-650`), снимки `razgovor-desktop.png`, `razgovor-oferta-desktop.png`, `razgovor-phone.png`. Интегрирай както е одобрено. Фонът: страницата — `ground="paper"`; прозорецът в профила (`embedded`) — `ground="surface"` (`prototypes/prozorec/window.tsx:169-187`).
+- Главата (`thread.tsx:365-407`): стрелката назад (под `md`, към `/saobshtenia`), аватар, името без `truncate` (`text-[1.125rem] font-extrabold leading-tight`), втори ред с датата (`relativeDay(requestedDate)`) и работата (`categoryName`), икона „Обади се“ (`tel:`, само при телефон, `aria-label` „Обади се на <първо име>“), меню „Още действия“ с „Докладвай“. Точката „на линия“ остава днешната на живо (`:401-405`), на мястото от `razgovor/thread.tsx:87`, и се показва само когато и днес. При `embedded` главата пак не се показва (`:366`). Връзката към фирмата (`partner.href`) и `AssignBar` — без промяна.
+- „Докладвай“ отваря днешната форма на `ReportButton` (`report-button.tsx:21`). Ако компонентът не може да се отвори отвън, добави незадължителни `open?: boolean` и `onOpenChange?: (open: boolean) => void`; без тях работи както днес (ползва се и в профила, и при отзивите).
+- Лентата с уговорката: класовете от `razgovor/thread.tsx:106-119`, условието днешното (`:359-361`), текст „<Оглед|Работа> <кога> · <час>“ (`KIND_LABEL`, `bookingWhen` от `./booking`); „Виж“ превърта до картата (дай ѝ `id={`booking-${b.id}`}` и `scrollIntoView({ block: "center" })`).
+- Балончетата и картите: видът от пробата, логиката днешната — картата на уговорка само при първото ѝ съобщение (`:505-507`), снимки с подписани адреси през `PhotoTile` (`:547-553`), заявките за споделяне (`:474-504`), повторното пращане. Снимките в едно балонче са в един ред (`flex gap-2`). Жълтите етикети за дата и работа в първото съобщение (`:520-545`, „<работа>, от <цена>“ на `:540`) остават.
+- „Бележка“: `OfferReceipt` със `StatusMark`, `STATUS`, `detailLine` („Видяна от <име>“ / „Още не е видяна“ само за майстора, по `viewed_at`; „валидна до …“ при `sent`), `formatEur`; бутонът — днешните текстове („Виж и приеми офертата“ / „Виж как я вижда клиентът“), връзка `/oferta/<token>`. Форматът на `lines` — както го чете `web/src/app/oferta/[token]/page.tsx`. Картата не вика `offer_by_token` (той отбелязва офертата като видяна).
+- Кутиите за отзив (`:580-597`) и `ReviewForm` (`:730-742`) не се пипат тук (Task 5 ги сменя); само стоят над полето в новия ред.
+- Полето (`:600-729`): формата `safe-bottom @container relative bg-surface px-3 pt-2 sm:px-4` винаги, без `border-t`; `textarea` расте до 160px (`max-h-40`, ефектът `shared.tsx:566-571`); подсказката `hidden … md:block`. Функциите остават с днешните условия: прикачване (`AttachmentStrip`, `AttachButton`), „Предложи час“ (`canBook && iAmClient`), „Предложи“ на майстора (`canBook`; „Оферта“ или „Оферта (Pro)“ по `canOffer`) — вече през `Menu`; блокиран — днешният текст (`:601-604`).
+- Готовите отговори: един ред с плъзгане (класовете `shared.tsx:621-645`), контейнерът с `aria-label="Бързи отговори"`, „Запази“ и „Промени“/„Готово“ в края. Функциите на `quick-replies.tsx` остават (4 готови, свои от `quick_replies`, запазване, триене в „Промени“).
+- AC7: контейнерът със съобщенията остава с `role="log"` (`:428`).
+
+## Task 5: Кутията за отзив в разговора и правилото в профила
+
+Risk: normal
+Serves: AC11 (в разговора), AC12, AC13, AC14
+Depends on: Task 1, Task 4
+
+**Delivers:** една жълта кутия над полето, решена от `review_box`: „Свърши ли работата?“ с потвърждение, „Оцени“ и „Обнови отзива“ с формата вътре; „Остави отзив“ в поканата отваря същата форма; профилът показва формата при право или вече написан отзив.
+
+**Files**
+- create `web/src/app/saobshtenia/[id]/review-box.tsx`
+- change `web/src/app/saobshtenia/[id]/thread.tsx` (`:322-352`, `:460-473`, `:580-597`, `:730-742`)
+- change `web/src/app/saobshtenia/[id]/page.tsx`
+- change `web/src/components/chat-dock.tsx` (`DockThread` `:396-484`)
+- change `web/src/app/maistori/[slug]/page.tsx` (`:404`, `:433`)
+- change `web/src/app/actions/engage.ts` (`:95`)
+
+**Interfaces**
+- `Thread` получава `reviewBox: "ask" | "rate" | "update" | null` и `myReview: { rating: number; body: string } | null`.
+- `[id]/page.tsx`: `supabase.rpc("review_box", { p_conversation: id })` и, при `iAmClient && conv.craftsman_id`, `supabase.from("reviews").select("rating, body").eq("client_id", viewer.id).eq("craftsman_id", conv.craftsman_id).maybeSingle()` в същия `Promise.all`.
+- `DockThread`: същите две заявки в своя `Promise.all` (`:412-451`), с `craftsman.id`.
+- `ReviewBox({ box, partnerFirst, craftsmanId, slug, myReview, conversationId, formOpen, onFormOpenChange }: { box: "ask" | "rate" | "update" | null; partnerFirst: string; craftsmanId: string | null; slug: string | null; myReview: { rating: number; body: string } | null; conversationId: string; formOpen: boolean; onFormOpenChange: (open: boolean) => void })` — `formOpen` вдига и бутонът „Остави отзив“ в поканата.
+- Формата праща през днешното `submitReview` с `useActionState` и полета `craftsmanId`, `slug`, `rating`, `body`.
+
+**Test cases:** none; verified by AC11–AC14 (правилото е тествано в Task 1).
+
+**Notes**
+- Дизайн: проба `razgovor/thread.tsx` `ReviewField` `:169-217`, `InviteCard` `:146-166`, `shared.tsx` `RateFields` `:509-549`, `RateDone` `:551-557`; снимки `razgovor-oferta-desktop.png` (долу), `razgovor-otziv-phone.png`. Интегрирай както е одобрено. Условията на пробата (`shared.tsx:85`, `:87`) НЕ се ползват: решава `reviewBox`.
+- `ask` → „Свърши ли работата?“ + „Да, поискай отзив“ → в същата кутия „Ще пратим на <първо име> покана за отзив. Следваща покана в този разговор може след 30 дни.“, „Прати поканата“, „Не още“; „Не още“ връща първото; „Прати поканата“ вика `request_review_in_chat` (днешното `askReview`, `:346-352`): при успех кутията изчезва и излиза днешният текст „Клиентът получи съобщение с покана за отзив.“, при грешка — текстът от базата. `rate` → „Оцени <първо име>“ + „Оцени“; `update` → „Обнови отзива за <първо име>“ + „Обнови“; двете отварят формата (5 звезди „Лошо“…„Отлично“, „Какво беше добре и какво не? (по желание)“ до 1000 знака, „Публикувай“, „Не сега“), попълнена с `myReview`, когато има; „Не сега“ я затваря; след запис — „Отзивът е публикуван. Благодарим!“. Никога повече от една кутия; `bg-rule-soft`.
+- Поканата (`:460-473`): при клиента „Остави отзив“ се показва винаги (не само при `canReview`) и отваря формата в кутията; след публикуване в картата пише „Отзивът е публикуван.“; при майстора — „Клиентът може да остави отзив от този разговор.“.
+- Махат се: `canReview`/`partnerReplied` (`:322`, `:580`), `openReview` (`:324-329`), прозорецът `ReviewForm` (`:730-742`) и импортът му в `thread.tsx`. `ReviewForm` остава за профила.
+- Профилът: `:404` става `{(canReview || myReview) && (`; изречението на `:433` — „Отзив могат да оставят клиенти, при които е работил или е идвал на оглед.“.
+- `engage.ts:95`: „Можете да оцените майстор, след като сте си писали и той ви е отговорил.“ → „Можете да оцените майстор, след като е работил при вас или е идвал на оглед.“ — planner's call: старото вече не е вярно; новото повтаря одобреното изречение в профила.
+
+## Task 6: Прозорецът в профила: светла глава и свиване
+
+Risk: normal
+Serves: AC21, AC17 (цял екран на телефон)
+Depends on: Task 4, Task 5
+
+**Delivers:** прозорецът за чат в профила със светлата глава от пробата, цял екран с прави ъгли на телефон, свиване, което пази написаното, разговорът вътре в „Тихо“.
+
+**Files**
+- change `web/src/components/chat-dock.tsx` (`ChatDock` `:65-184`)
+
+**Interfaces:** без нови.
+
+**Test cases:** none; verified by AC21.
+
+**Notes**
+- Дизайн: проба `web/src/app/prototypes/prozorec/window.tsx` (`ChatWindow` `:15-71`), снимки `prozorec-razgovor-desktop.png`, `prozorec-svit-desktop.png`, `prozorec-razgovor-phone.png`. Интегрирай както е одобрено.
+- Кутията (`:96-104`): на компютър класовете от `window.tsx:40-41` (`bg-surface`, `sm:bottom-0 sm:right-6 sm:w-[25rem] sm:rounded-t-[14px]`, без рамка, разгъната `sm:h-[min(38rem,calc(100dvh-5rem))]`). На телефон Part 1 бие пробата: разгъната `max-sm:inset-0` без заобляне и без `max-sm:top-11`; свита `max-sm:inset-x-0 max-sm:bottom-0`.
+- Главата: `window.tsx:44-66` — целта за свиване (Avatar 40, името, втори ред „Разговор“ при `convId`, иначе „Ново съобщение“, `aria-label` „Свий чата“/„Разгъни чата“, `aria-expanded`), „Отвори в „Съобщения““ към `/saobshtenia/${convId}` само при `convId`, „Затвори чата“. Вторият бутон за свиване (`:131-139`) се маха (пробата го няма; свива щракването по името).
+- Свито: тялото остава монтирано и скрито (`hidden`), за да пази написания текст и избраните снимки (днес `:151` го размонтира). Ефектите за Esc и фокус (`:79-91`) остават.
+- `SignInPrompt` и текстът за собствения профил (`:153-161`) — днешният вид и текстове.
+
+## Task 7: Първото съобщение „Като в разговора“ със снимки
+
+Risk: normal
+Serves: AC17, AC18, AC20, AC8 (полето в прозореца)
+Depends on: Task 1, Task 4 (`enterSends`), Task 6
+
+**Delivers:** формата за първо съобщение с чипове „Дата“, „Каква работа“, „Цена“ и листове, снимки, качени веднага в папката на бъдещия разговор и пратени в първото съобщение, Enter по правилото, и №4: празно поле след изпращане от календара.
+
+**Files**
+- create `web/src/components/first-message.tsx` (`FirstMessage`, изнесен от `chat-dock.tsx:211-384` и направен наново)
+- change `web/src/components/chat-dock.tsx` (`onSlot`, `newId`, правилото за `draft`)
+- change `web/src/app/actions/engage.ts` (`startConversation` `:9-48`)
+- change `web/src/components/profile-booking.tsx` (`:165-184`)
+
+**Interfaces**
+- `ChatDock` Props: нов `onSlot: (s: Slot | null) => void`; `ProfileBooking` го подава със `setSlot`.
+- `FirstMessage({ craftsman, workOptions, date, slot, onDate, onSlot, today, busyDay, newId, onStarted }: { craftsman: Craftsman; workOptions: WorkOption[]; date: string | null; slot: Slot | null; onDate: (d: string | null) => void; onSlot: (s: Slot | null) => void; today: string; busyDay: boolean; newId: string; onStarted: (id: string) => void })`.
+- `startConversation` чете още `id` (празно или `/^[0-9a-f-]{36}$/`) и `photos` (JSON масив от низове, всеки започва с `${id}/`, най-много 4); иначе `{ message: "Невалидна снимка." }`. Към днешното извикване (`:33-40`) добавя `p_id: id || undefined, p_photos: photos.length ? photos : undefined`. Връщането е като днес (`{ ok: true, id: data }` при `inline`).
+- `ChatDock`: `const [newId, setNewId] = useState<string | null>(null)`; задава се с `crypto.randomUUID()` в ефект, когато прозорецът се отвори без `convId` (не по време на рендер: компонентът се рендерира и на сървъра), и остава същото, докато страницата е отворена. `draft` към `DockThread` е `""`, когато `convId === newId` или `convId === started`, иначе днешното `props.ask ? draftFor(…) : ""`; ефект вика `props.onAskUsed()`, щом `convId === newId`.
+
+**Test cases:** none; verified by AC17, AC18, AC20, AC8 (базата е тествана в Task 1).
+
+**Notes**
+- Дизайн: „Като в разговора“, проба `web/src/app/prototypes/prozorec/variant-kato.tsx` (цялата), `parts.tsx` (`DateBlock` `:17-42`, `PriceQuestions` `:45-92`, `Thumb` `:95-117`), `first.ts` (`useFirst`, `usePhotos`), `window.tsx` `FirstBubble` `:74-116` (за сравнение с изпратеното); снимки `prozorec-novo-desktop.png`, `prozorec-snimki-desktop.png`, `prozorec-snimki-phone.png`, `prozorec-data-phone.png`, `prozorec-izprateno-desktop.png`. Интегрирай както е одобрено.
+- Данните са днешните: `workOptions` (групи „От ценоразписа“ и „Други (цена в чата)“, стойности `s:<uuid>`/`c:<id>` в скрито поле `work`, първи ред „Не е задължително“), въпросите за цена (`questionsFor`, `composeAnswers`, „Добави към съобщението“ добавя към текста, както `chat-dock.tsx:293-355`), датата (`DateField`, `min` днес). Етикетът на чипа за дата („чт, 19 ное · сутрин“) — както `variant-kato.tsx:15-20`; кратките имена на дни и месеци се пренасят от `prototypes/prozorec/data.ts` в `first-message.tsx`, частта от деня — със `slotLabel`.
+- Листът за дата: „Сутрин / Следобед / Вечер“ (`morning`/`afternoon`/`evening`, през `onSlot`) само след избрана дата, нищо избрано по подразбиране; от календара частта идва избрана (`slot`); подсказките — днешните (`chat-dock.tsx:256-265`): „Предпочитано: …“, „Отбелязан като зает: питайте дали може.“, „Майсторът потвърждава деня в чата.“, „Без конкретна дата“ (маха датата и частта). `slot` се праща само с дата.
+- Снимки: при избор се качват веднага с `uploadChatPhotos(supabase, newId, files)` (`saobshtenia/[id]/chat-photos.tsx:21-51`); докато се качват, миниатюрата е със спинър (`Thumb`); × маха миниатюрата и вика `supabase.storage.from("chat-photos").remove([path])` (грешката се пропуска: чистенето я хваща след ден); над 4 — „Най-много 4 снимки в едно съобщение. Останалите не са добавени.“ (`MAX_ATTACHMENTS`); при отказ от базата (4/8) — грешките на `uploadChatPhotos` („… не беше качена.“). Пътищата на качените — в скритото поле `photos` като JSON. „Изпрати“ е спрян, докато има качване.
+- Изпращане: празно поле → „Напишете съобщение.“ без заявка; Enter по `enterSends` (Task 4) → `form.requestSubmit()`; на телефон Enter е нов ред. При успех `onStarted(state.id)` → прозорецът показва разговора; полето в него е празно (№4).
+- Махат се: „Снимки на проблема можете да изпратите в разговора веднага след първото съобщение.“ (`chat-dock.tsx:352`), тъмният фон на формата (`p-4 bg-ink`, `:243`), `required` на полето. Остават: „Телефонът ви остава скрит, освен ако не го напишете.“, „Изпращаме…“, `FormMessage` за грешка от сървъра, `craftsmanId`/`slug`/`inline` в скрити полета.
+
+## Task 8: Махане на пробните страници
+
+Risk: mechanical
+Serves: AC22
+Depends on: Task 2, Task 3, Task 4, Task 5, Task 6, Task 7
+
+**Delivers:** папката с пробите е изтрита.
+
+**Files**
+- delete `web/src/app/prototypes/` (цялата: `_harness/`, `razgovor/`, `znachki/`, `prozorec/`)
+
+**Test cases:** none; verified by AC22, AC23.
+
+**Notes**
+- `grep -rn "prototypes/" web/src` след триенето → нищо. Ако production файл още внася от `prototypes/`, пренеси нужното в него, без да сменяш вида.
+- Снимките в `docs/plans/2026-11-17-saobshteniya-designs/` остават.
