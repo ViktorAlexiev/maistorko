@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useLayoutEffect, useRef, useState } from "react";
-import { CalendarDays, CheckCheck, Wrench, X } from "lucide-react";
+import { CalendarDays, CheckCheck, ExternalLink, Wrench, X } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import type { BookingData, Msg } from "../razgovor/data";
 import { OfferReceipt } from "../razgovor/offer-cards";
@@ -9,8 +10,25 @@ import { useRoom, type Room } from "../razgovor/shared";
 import { Thread } from "../razgovor/thread";
 import { conversationMessages, CRAFTSMAN, FIRST_TOKEN, type SentData } from "./data";
 
-/** The chat window of a craftsman's profile: bottom right on a desktop (25rem), full screen on a phone. */
-export function ChatWindow({ open, line, onClose, children }: { open: boolean; line: string; onClose: () => void; children: React.ReactNode }) {
+/** The chat window of a craftsman's profile: bottom right on a desktop (25rem), full screen on a phone. Collapses to its header strip. */
+export function ChatWindow({
+  open,
+  collapsed,
+  onToggle,
+  line,
+  link,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
+  line: string;
+  /** the „Отвори в „Съобщения““ link, shown once the window shows the conversation */
+  link: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <div
       role="dialog"
@@ -18,19 +36,35 @@ export function ChatWindow({ open, line, onClose, children }: { open: boolean; l
       aria-label={`Чат с ${CRAFTSMAN.name}`}
       // Esc closes the window; a sheet inside it handles Esc first and stops it here
       onKeyDown={(e) => e.key === "Escape" && onClose()}
-      className={`dock-in fixed z-50 flex-col overflow-hidden bg-surface shadow-[var(--shadow-lg)] max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-11 max-sm:rounded-t-[14px] sm:bottom-0 sm:right-6 sm:h-[min(38rem,calc(100dvh-5rem))] sm:w-[25rem] sm:rounded-t-[14px] ${open ? "flex" : "hidden"}`}
+      className={`dock-in fixed z-50 flex-col overflow-hidden bg-surface shadow-[var(--shadow-lg)] max-sm:inset-x-0 max-sm:bottom-0 max-sm:rounded-t-[14px] sm:bottom-0 sm:right-6 sm:w-[25rem] sm:rounded-t-[14px] ${
+        collapsed ? "" : "max-sm:top-11 sm:h-[min(38rem,calc(100dvh-5rem))]"
+      } ${open ? "flex" : "hidden"}`}
     >
       <header className="flex shrink-0 items-center gap-2.5 bg-surface py-2 pl-3.5 pr-1.5">
-        <Avatar name={CRAFTSMAN.name} size={40} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[1.125rem] font-extrabold leading-tight">{CRAFTSMAN.name}</p>
-          <p className="truncate text-sm leading-snug text-ink-2">{line}</p>
-        </div>
+        <button
+          type="button"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-[6px] text-left"
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Разгъни чата" : "Свий чата"}
+        >
+          <Avatar name={CRAFTSMAN.name} size={40} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[1.125rem] font-extrabold leading-tight">{CRAFTSMAN.name}</span>
+            <span className="block truncate text-sm leading-snug text-ink-2">{line}</span>
+          </span>
+        </button>
+        {link && (
+          <Link href="/prototypes/razgovor?s=3" className="btn btn-ghost size-11 shrink-0 p-0" aria-label="Отвори в „Съобщения“" title="Отвори в „Съобщения“">
+            <ExternalLink className="size-5" aria-hidden />
+          </Link>
+        )}
         <button type="button" className="btn btn-ghost size-11 shrink-0 p-0" onClick={onClose} aria-label="Затвори чата" title="Затвори">
           <X className="size-5" aria-hidden />
         </button>
       </header>
-      {children}
+      {/* hidden, not unmounted: what was typed and the photos picked survive a collapse */}
+      <div className={collapsed ? "hidden" : "contents"}>{children}</div>
     </div>
   );
 }
@@ -79,13 +113,20 @@ function FirstBubble({ sent }: { sent: SentData }) {
   );
 }
 
-const nowTime = () => new Date().toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" });
+export const nowTime = () => new Date().toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" });
 
 /**
  * The window's own conversation: the approved „Тихо“ thread, but with this craftsman, this first message and the client's side only.
  * The shared room of the conversation prototype fills in everything the window does not change.
  */
-function useWindowRoom(box: React.RefObject<HTMLTextAreaElement | null>, sent: SentData, extended: boolean): Room {
+export type WindowRoom = Room & {
+  /** „Днес“ only: a message of mine with the photos picked for it */
+  sendWithPhotos: (body: string, photos: string[]) => void;
+  /** „Днес“ only: a visit proposed by the client from the composer's „Предложи час“ */
+  propose: (b: Omit<BookingData, "status" | "past" | "by">) => void;
+};
+
+export function useWindowRoom(box: React.RefObject<HTMLTextAreaElement | null>, sent: SentData, extended: boolean): WindowRoom {
   const base = useRoom(3, box);
   const [messages, setMessages] = useState<Msg[]>(() => conversationMessages(sent, extended));
   const [text, setText] = useState("");
@@ -117,6 +158,14 @@ function useWindowRoom(box: React.RefObject<HTMLTextAreaElement | null>, sent: S
       settle(id);
       box.current?.focus();
     },
+    sendWithPhotos: (body: string, photos: string[]) => {
+      const id = `n${++seq.current}`;
+      setText("");
+      patch((xs) => [...xs, { t: "text", id, from: "client", body, time: nowTime(), state: "sending", photos }]);
+      settle(id);
+      box.current?.focus();
+    },
+    propose: (b) => patch((xs) => [...xs, { t: "booking", id: `b${++seq.current}`, from: "client", time: nowTime(), b: { ...b, status: "proposed", past: false, by: "client" } }]),
     retry: (id: string) => {
       patch((xs) => xs.map((x) => (x.t === "text" && x.id === id ? { ...x, state: "sending" } : x)));
       settle(id);

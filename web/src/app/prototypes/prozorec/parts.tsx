@@ -1,13 +1,13 @@
 "use client";
 
-import { ImagePlus, LoaderCircle, X } from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 import { DateField } from "@/components/date-time-fields";
 import { relativeDay } from "@/lib/format";
 import { SLOT_DEFS, slotLabel } from "@/lib/slots";
-import { CRAFTSMAN, TODAY, WORK_OPTIONS } from "./data";
+import { CRAFTSMAN, TODAY } from "./data";
 import type { First, PhotoItem } from "./first";
 
-/** The fields of today's first message that all three variants share. Each variant lays them out its own way. */
+/** The fields of today's first message used by „Като в разговора“. */
 
 export const BODY_HINT = "Телефонът ви остава скрит, освен ако не го напишете.";
 
@@ -38,32 +38,6 @@ export function DateBlock({ f, id, fieldClass = "field", chipClass = "chip" }: {
         </p>
       )}
     </div>
-  );
-}
-
-const priced = WORK_OPTIONS.filter((o) => o.priced);
-const other = WORK_OPTIONS.filter((o) => !o.priced);
-
-/** „Каква работа“ with the same two groups as today. */
-export function WorkSelect({ f, id, className = "field" }: { f: First; id: string; className?: string }) {
-  return (
-    <select id={id} className={className} value={f.work} onChange={(e) => f.setWork(e.target.value)}>
-      <option value="">Не е задължително</option>
-      <optgroup label="От ценоразписа">
-        {priced.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </optgroup>
-      <optgroup label="Други (цена в чата)">
-        {other.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </optgroup>
-    </select>
   );
 }
 
@@ -118,14 +92,14 @@ export function PriceQuestions({ f, id, fieldClass = "field", onAdded }: { f: Fi
 }
 
 /** One picked photo: preview, a spinner while it uploads, the „Демо изображение“ label on demo files, and an × that removes it. */
-export function Thumb({ p, onRemove, className = "", big = false }: { p: PhotoItem; onRemove: (key: string) => void; className?: string; big?: boolean }) {
+export function Thumb({ p, onRemove, className = "" }: { p: PhotoItem; onRemove: (key: string) => void; className?: string }) {
   return (
     <li className={`relative ${className}`}>
       <div className="relative size-full overflow-hidden rounded-[6px] bg-surface-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={p.src} alt="Избрана снимка" className="size-full object-cover" />
         {p.demo && (
-          <span className={`absolute inset-x-0.5 bottom-0.5 rounded-[4px] bg-ink/85 px-1 py-0.5 text-center font-bold leading-tight text-white ${big ? "text-xs" : "text-[0.625rem]"}`}>Демо изображение</span>
+          <span className="absolute inset-x-0.5 bottom-0.5 rounded-[4px] bg-ink/85 px-1 py-0.5 text-center text-[0.625rem] font-bold leading-tight text-white">Демо изображение</span>
         )}
         {p.uploading && (
           <span className="absolute inset-0 grid place-items-center bg-surface/70" role="status" aria-label="Снимката се качва">
@@ -141,43 +115,3 @@ export function Thumb({ p, onRemove, className = "", big = false }: { p: PhotoIt
     </li>
   );
 }
-
-/** The add tile: a label over a real file input (JPEG, PNG, WebP, several at once). Disabled when four are picked. */
-export function AddTile({ f, id, className = "", children }: { f: First; id: string; className?: string; children?: React.ReactNode }) {
-  const p = f.photos;
-  return (
-    <li className={className}>
-      <input
-        id={id}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        multiple
-        className="peer sr-only"
-        disabled={p.full}
-        onChange={(e) => {
-          if (e.target.files?.length) p.add(Array.from(e.target.files));
-          e.target.value = "";
-        }}
-      />
-      <label
-        htmlFor={id}
-        className={`grid size-full cursor-pointer place-content-center justify-items-center gap-1 rounded-[6px] bg-surface-2 text-center text-sm font-bold text-ink-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink ${p.full ? "pointer-events-none opacity-50" : "hover:bg-paper"}`}
-      >
-        <ImagePlus className="size-6" aria-hidden />
-        {children ?? "Снимка"}
-      </label>
-    </li>
-  );
-}
-
-export function PhotoNote({ f }: { f: First }) {
-  return f.photos.note ? (
-    <p role="alert" className="error-text">
-      {f.photos.note}
-    </p>
-  ) : (
-    <p className="hint">До {f.photos.max} снимки, JPG, PNG или WEBP.</p>
-  );
-}
-
-export const SEND_TEXT = { idle: "Изпрати съобщение", busy: "Изпращаме…" };

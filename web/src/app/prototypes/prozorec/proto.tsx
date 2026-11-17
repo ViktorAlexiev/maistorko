@@ -7,12 +7,12 @@ import { formatEur } from "@/lib/format";
 import { ProtoHarness } from "../_harness/picker";
 import { CRAFTSMAN, DEMO_SENT, SCENARIOS, type Scenario, type SentData } from "./data";
 import { useFirst } from "./first";
-import { Formular } from "./variant-formular";
+import { DnesWindow } from "./today";
 import { KatoRazgovor } from "./variant-kato";
-import { Pismo } from "./variant-pismo";
 import { ChatWindow, Conversation } from "./window";
 
-const NAMES = ["Формуляр", "Като в разговора", "Писмо"];
+/** The switch over the window's conversation (s=3 and s=4): how it looks today, and in „Тихо“. */
+const NAMES = ["Днес", "Тихо"];
 
 const PRICES: [string, number][] = [
   ["Смяна на смесител", 60],
@@ -61,9 +61,10 @@ function Profile({ onWrite, open }: { onWrite: () => void; open: boolean }) {
   );
 }
 
-/** One session: a new one starts when the variant or the scenario changes. */
-function Session({ variant, scenario }: { variant: number; scenario: Scenario }) {
+/** One session: a new one starts when the view or the scenario changes. `today` = the conversation drawn the way the window draws it today. */
+function Session({ today, scenario }: { today: boolean; scenario: Scenario }) {
   const [open, setOpen] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   /** the first message once it has been sent; from then on the window shows the conversation */
   const [sent, setSent] = useState<SentData | null>(scenario >= 3 ? DEMO_SENT : null);
   const f = useFirst(scenario, setSent);
@@ -76,12 +77,25 @@ function Session({ variant, scenario }: { variant: number; scenario: Scenario })
     return () => els.forEach((el, i) => (el.style.overflow = before[i]));
   }, []);
 
+  const toggle = () => setCollapsed((v) => !v);
+  const close = () => setOpen(false);
+
   return (
     <>
-      <Profile open={open} onWrite={() => setOpen(true)} />
-      <ChatWindow open={open} line={sent ? "Разговор" : "Ново съобщение"} onClose={() => setOpen(false)}>
-        {sent ? <Conversation sent={sent} extended={scenario === 4} /> : variant === 0 ? <Formular f={f} /> : variant === 1 ? <KatoRazgovor f={f} /> : <Pismo f={f} />}
-      </ChatWindow>
+      <Profile
+        open={open}
+        onWrite={() => {
+          setOpen(true);
+          setCollapsed(false);
+        }}
+      />
+      {today && sent ? (
+        <DnesWindow open={open} collapsed={collapsed} onToggle={toggle} onClose={close} sent={sent} extended={scenario === 4} />
+      ) : (
+        <ChatWindow open={open} collapsed={collapsed} onToggle={toggle} line={sent ? "Разговор" : "Ново съобщение"} link={Boolean(sent)} onClose={close}>
+          {sent ? <Conversation sent={sent} extended={scenario === 4} /> : <KatoRazgovor f={f} />}
+        </ChatWindow>
+      )}
     </>
   );
 }
@@ -127,6 +141,8 @@ export function ProzorecProto({ initialVariant, initialScenario }: { initialVari
   useEffect(() => {
     const url = new URL(window.location.href);
     url.searchParams.set("s", String(scenario));
+    // the switch exists only in s=3 and s=4; elsewhere v means nothing
+    if (scenario < 3) url.searchParams.delete("v");
     window.history.replaceState(null, "", url);
   }, [scenario]);
 
@@ -141,9 +157,13 @@ export function ProzorecProto({ initialVariant, initialScenario }: { initialVari
           .proto-picker-item { padding: 0 9px; }
         }
       `}</style>
-      <ProtoHarness names={NAMES} initial={initialVariant} position="top">
-        {(i) => <Session key={`${i}-${scenario}`} variant={i} scenario={scenario} />}
-      </ProtoHarness>
+      {scenario >= 3 ? (
+        <ProtoHarness key={scenario} names={NAMES} initial={initialVariant} position="top">
+          {(i) => <Session key={`${i}-${scenario}`} today={i === 0} scenario={scenario} />}
+        </ProtoHarness>
+      ) : (
+        <Session key={scenario} today={false} scenario={scenario} />
+      )}
       <ScenarioPill value={scenario} onChange={setScenario} />
     </>
   );

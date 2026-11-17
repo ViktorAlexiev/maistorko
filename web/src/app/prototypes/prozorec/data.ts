@@ -32,19 +32,20 @@ export const CRAFTSMAN = {
   ],
 };
 
-export type WorkOption = { value: string; label: string; priced: boolean };
+export type WorkOption = { value: string; label: string; priced: boolean; /** the price list's „от“ price in euro, for the ones from the price list */ price?: number };
 
 export const WORK_OPTIONS: WorkOption[] = [
-  { value: "s:mesitel", label: "Смяна на смесител", priced: true },
-  { value: "s:sifon", label: "Смяна на сифон", priced: true },
-  { value: "s:otpushvane", label: "Отпушване на канал", priced: true },
-  { value: "s:boiler", label: "Монтаж на бойлер", priced: true },
+  { value: "s:mesitel", label: "Смяна на смесител", priced: true, price: 60 },
+  { value: "s:sifon", label: "Смяна на сифон", priced: true, price: 35 },
+  { value: "s:otpushvane", label: "Отпушване на канал", priced: true, price: 70 },
+  { value: "s:boiler", label: "Монтаж на бойлер", priced: true, price: 90 },
   { value: "c:tech", label: "Теч на тръба", priced: false },
   { value: "c:kazanche", label: "Ремонт на казанче", priced: false },
   { value: "c:druga", label: "Друга ВиК работа", priced: false },
 ];
 
 export const workLabel = (value: string) => WORK_OPTIONS.find((o) => o.value === value)?.label ?? "";
+export const workPrice = (value: string) => WORK_OPTIONS.find((o) => o.value === value)?.price;
 
 export const DEMO_PHOTOS = ["/demo/work/pipes.svg", "/demo/work/bathroom.svg", "/demo/work/boiler.svg"];
 
@@ -60,7 +61,11 @@ export function dateLabel(date: string, slot: Slot | null) {
 /** The first message as it was sent: one message with its photos, work, date and text. */
 export type SentData = {
   label?: string;
+  /** the part of the day inside `label`, for the look that draws it lighter */
+  slot?: string;
   work?: string;
+  /** the price list's price of the work, „от 60 €“ */
+  workPrice?: number;
   photos: { src: string; demo: boolean }[];
   body: string;
   time: string;
@@ -68,7 +73,9 @@ export type SentData = {
 
 export const DEMO_SENT: SentData = {
   label: dateLabel("2026-11-19", "morning"),
+  slot: slotLabel("morning") ?? undefined,
   work: workLabel("s:mesitel"),
+  workPrice: workPrice("s:mesitel"),
   photos: DEMO_PHOTOS.map((src) => ({ src, demo: true })),
   body: DEMO_BODY,
   time: "10:12",

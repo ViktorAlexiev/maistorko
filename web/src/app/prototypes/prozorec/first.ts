@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { MAX_ATTACHMENTS } from "@/app/saobshtenia/[id]/chat-photos";
 import { checkImage } from "@/components/image-upload";
 import { composeAnswers, questionsFor } from "@/lib/inquiry-questions";
-import type { Slot } from "@/lib/slots";
-import { BUSY_DAYS, CRAFTSMAN, DEMO_BODY, DEMO_PHOTOS, dateLabel, workLabel, type Scenario, type SentData } from "./data";
+import { slotLabel, type Slot } from "@/lib/slots";
+import { BUSY_DAYS, CRAFTSMAN, DEMO_BODY, DEMO_PHOTOS, dateLabel, workLabel, workPrice, type Scenario, type SentData } from "./data";
 
-/** The state of the first message, shared by the three variants: today's fields plus the photos. */
+/** The state of the first message, used by „Като в разговора“: today's fields plus the photos. */
 
 export type PhotoItem = { key: string; src: string; demo: boolean; uploading: boolean };
 
@@ -59,7 +59,7 @@ function usePhotos(initial: PhotoItem[]) {
     setItems((xs) => xs.filter((x) => x.key !== key));
   }
 
-  return { items, note, add, remove, full: items.length >= MAX_ATTACHMENTS, max: MAX_ATTACHMENTS };
+  return { items, note, add, remove, full: items.length >= MAX_ATTACHMENTS };
 }
 
 const clock = () => new Date().toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" });
@@ -138,7 +138,9 @@ export function useFirst(scenario: Scenario, onSent: (s: SentData) => void) {
       setPending({
         body: body.trim(),
         label: date ? dateLabel(date, slot) : undefined,
+        slot: date && slot ? (slotLabel(slot) ?? undefined) : undefined,
         work: work ? workLabel(work) : undefined,
+        workPrice: work ? workPrice(work) : undefined,
         photos: photos.items.map((p) => ({ src: p.src, demo: p.demo })),
         time: clock(),
       });
