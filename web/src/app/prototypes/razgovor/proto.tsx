@@ -4,9 +4,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ProtoHarness } from "../_harness/picker";
 import { SCENARIOS, type Scenario } from "./data";
 import { useRoom } from "./shared";
-import { VariantApp } from "./variant-app";
-import { VariantIndex } from "./variant-index";
-import { VariantSheet } from "./variant-sheet";
+import { Home } from "./home";
+import { AppRows, VariantApp } from "./variant-app";
+import { IndexRows, VariantIndex } from "./variant-index";
+import { SheetRows, VariantSheet } from "./variant-sheet";
 
 const NAMES = ["Един лист", "Показалец", "Приложение"];
 
@@ -20,6 +21,8 @@ function Session({ variant, scenario }: { variant: number; scenario: Scenario })
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [r.activeId, r.messages.length, r.askStep, r.rate.open, r.rate.done]);
+  // „Преглед“ (s=5, s=6): the dashboard home, with the rows drawn the way this variant draws its list
+  if (r.view === "home") return <Home r={r} Rows={variant === 1 ? IndexRows : variant === 2 ? AppRows : SheetRows} />;
   if (variant === 1) return <VariantIndex r={r} scroller={scroller} box={box} />;
   if (variant === 2) return <VariantApp r={r} scroller={scroller} box={box} />;
   return <VariantSheet r={r} scroller={scroller} box={box} />;

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { OfferRow } from "./offer-cards";
-import { EmptyPane, Frame, RowContent, type Refs, type Room } from "./shared";
+import { EmptyPane, Frame, RowContent, type Refs, type Room, type RowsProps } from "./shared";
 import { Thread, ThreadHeader } from "./thread";
 
 /** „Приложение“: edge to edge. One top bar runs across both panes (title and search on the left, the conversation header on the right). */
@@ -28,24 +28,8 @@ export function VariantApp({ r, scroller, box }: Refs & { r: Room }) {
           <div className="hidden bg-surface md:col-start-2 md:row-start-1 md:block" />
         )}
         <aside aria-label="Разговори" className={`min-h-0 flex-col bg-surface-2 md:col-start-1 md:row-start-2 md:flex ${listShown ? "flex" : "hidden"}`}>
-          <ul className="grid min-h-0 flex-1 content-start gap-1 overflow-y-auto p-2">
-            {rows.map((row) => {
-              const sel = row.id === r.activeId;
-              return (
-                <li key={row.id}>
-                  <button
-                    type="button"
-                    onClick={() => r.open(row.id)}
-                    aria-current={sel ? "true" : undefined}
-                    className={`flex w-full gap-3 rounded-[6px] px-3 py-3 text-left ${sel ? "bg-rule-soft" : "bg-surface hover:bg-paper"}`}
-                  >
-                    <RowContent row={row} />
-                  </button>
-                </li>
-              );
-            })}
-            {rows.length === 0 && <li className="p-4 text-center text-ink-2">Няма разговор с това име.</li>}
-          </ul>
+          <AppRows rows={rows} activeId={r.activeId} onOpen={r.open} />
+          {rows.length === 0 && <p className="p-4 text-center text-ink-2">Няма разговор с това име.</p>}
         </aside>
         {r.active ? (
           <div className={`min-h-0 grid-rows-[minmax(0,1fr)] md:col-start-2 md:row-start-2 md:grid ${listShown ? "hidden" : "grid"}`}>
@@ -56,5 +40,28 @@ export function VariantApp({ r, scroller, box }: Refs & { r: Room }) {
         )}
       </div>
     </Frame>
+  );
+}
+
+/** The rows of „Приложение“: Card Surface strips (6px corners, 4px apart) on the list pane's tone; the same on „Преглед“. */
+export function AppRows({ rows, activeId, onOpen, home = false }: RowsProps) {
+  return (
+    <ul className={home ? "grid content-start gap-1 rounded-[10px] bg-surface-2 p-2" : "grid min-h-0 flex-1 content-start gap-1 overflow-y-auto p-2"}>
+      {rows.map((row) => {
+        const sel = row.id === activeId;
+        return (
+          <li key={row.id}>
+            <button
+              type="button"
+              onClick={() => onOpen(row.id)}
+              aria-current={sel ? "true" : undefined}
+              className={`flex w-full gap-3 rounded-[6px] px-3 py-3 text-left ${sel ? "bg-rule-soft" : "bg-surface hover:bg-paper"}`}
+            >
+              <RowContent row={row} />
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

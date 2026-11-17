@@ -1,6 +1,6 @@
 /** The conversations behind the three variants of „Разговорът“. Planning prototype: nothing here is saved. */
 
-export type Scenario = 1 | 2 | 3 | 4;
+export type Scenario = 1 | 2 | 3 | 4 | 5 | 6;
 export type Role = "craftsman" | "client";
 
 export const SCENARIOS: { id: Scenario; label: string; viewer: Role }[] = [
@@ -8,6 +8,8 @@ export const SCENARIOS: { id: Scenario; label: string; viewer: Role }[] = [
   { id: 2, label: "Майстор · огледът мина", viewer: "craftsman" },
   { id: 3, label: "Клиент · огледът мина", viewer: "client" },
   { id: 4, label: "Няма избран разговор", viewer: "craftsman" },
+  { id: 5, label: "Преглед · майстор", viewer: "craftsman" },
+  { id: 6, label: "Преглед · клиент", viewer: "client" },
 ];
 
 export const PEOPLE = {

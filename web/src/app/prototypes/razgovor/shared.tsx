@@ -28,6 +28,8 @@ export type Refs = { scroller: React.RefObject<HTMLDivElement | null>; box: Reac
 
 export type RateState = { open: boolean; rating: number; text: string; error: string };
 
+export type RowsProps = { rows: Row[]; activeId: string | null; onOpen: (id: string) => void; /** on „Преглед“ instead of the messages list */ home?: boolean };
+
 export type Row = { id: string; name: string; about: string; when: string; unread: boolean; preview: string };
 
 /** The line a list row shows: the last thing said, „Вие: “ in front of what you wrote yourself. */
@@ -45,12 +47,16 @@ function previewOf(t: Thread, viewer: Role) {
 /** The whole local state: the list of conversations, the open one with its composer, quick replies, bookings and both review flows. */
 export function useRoom(scenario: Scenario, box: React.RefObject<HTMLTextAreaElement | null>) {
   const viewer = SCENARIOS[scenario - 1].viewer;
-  const [initial] = useState(() => buildThreads(scenario));
+  // „Преглед“ (s=5, s=6) shows the rows of s=1 and s=3 on the dashboard home
+  const dataScenario: Scenario = scenario === 5 ? 1 : scenario === 6 ? 3 : scenario;
+  const [initial] = useState(() => buildThreads(dataScenario));
+  /** the dashboard home, or the messages page */
+  const [view, setView] = useState<"home" | "messages">(scenario >= 5 ? "home" : "messages");
   const [store, setStore] = useState<Record<string, Thread>>(() => Object.fromEntries(initial.map((t) => [t.id, t])));
   const [order, setOrder] = useState(() => initial.map((t) => t.id));
-  const [activeId, setActiveId] = useState<string | null>(scenario === 4 ? null : initial[0].id);
+  const [activeId, setActiveId] = useState<string | null>(scenario >= 4 ? null : initial[0].id);
   /** phone only: which of the two screens is showing */
-  const [screen, setScreen] = useState<"list" | "chat">(scenario === 4 ? "list" : "chat");
+  const [screen, setScreen] = useState<"list" | "chat">(scenario >= 4 ? "list" : "chat");
   const [text, setText] = useState("");
   const [own, setOwn] = useState(QUICK_OWN);
   const [editQuick, setEditQuick] = useState(false);
@@ -141,6 +147,7 @@ export function useRoom(scenario: Scenario, box: React.RefObject<HTMLTextAreaEle
 
   /** open a conversation in place: it is marked read and its own half-done things start fresh */
   function open(id: string) {
+    setView("messages");
     setActiveId(id);
     setScreen("chat");
     setStore((st) => ({ ...st, [id]: { ...st[id], unread: false } }));
@@ -150,6 +157,13 @@ export function useRoom(scenario: Scenario, box: React.RefObject<HTMLTextAreaEle
     setRateForm({ open: false, rating: 0, text: "", error: "" });
   }
 
+  /** the messages page with nothing selected: the list, and on desktop „Изберете разговор“ */
+  function goMessages() {
+    setView("messages");
+    setActiveId(null);
+    setScreen("list");
+  }
+
   function scrollToCard(id: string) {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     document.getElementById(`m-${id}`)?.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
@@ -157,6 +171,10 @@ export function useRoom(scenario: Scenario, box: React.RefObject<HTMLTextAreaEle
 
   return {
     scenario,
+    view,
+    goMessages,
+    mainId: initial[0].id,
+    unreadCount: rows.filter((x) => x.unread).length,
     viewer,
     partner,
     about: active?.about ?? "",
