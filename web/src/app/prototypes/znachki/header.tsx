@@ -17,7 +17,7 @@ const RING = "0 0 0 2px var(--surface)";
  * out of the layout at the top-right corner so nothing moves when it appears. On desktop it sits on the word, on phones (word hidden) on the icon.
  */
 const PROFILE_DOT = "absolute size-2.5 rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]";
-const PROFILE_DOT_WORD = `${PROFILE_DOT} -right-1.5 -top-1`;
+const PROFILE_DOT_WORD = `${PROFILE_DOT} -right-2 -top-1.5`;
 const PROFILE_DOT_ICON = `${PROFILE_DOT} -right-1.5 -top-1.5 sm:hidden`;
 
 /** „Нит“: a 12px rivet head: red disc, the inset ink ring of the unread mark, a soft highlight top-left, a 2px Card Surface ring outside. */
