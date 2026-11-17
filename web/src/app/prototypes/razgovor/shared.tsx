@@ -266,7 +266,7 @@ export function EmptyPane({ className = "" }: { className?: string }) {
 
 /** The unread mark of a list row: the profile dot, red (10px, inset ink ring), centred on the first line of text. */
 export function UnreadRivet() {
-  return <span className="mt-[5px] size-2.5 shrink-0 self-start rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]" role="img" aria-label="Непрочетено" />;
+  return <span className="mt-[7px] size-2.5 shrink-0 self-start rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]" role="img" aria-label="Непрочетено" />;
 }
 
 /** Avatar, name, time, preview and what the talk is about: the inside of a list row. */

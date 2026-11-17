@@ -122,7 +122,7 @@ function BellCopy({ count, flash }: { count: number; flash: (t: string) => void 
                       <span className="line-clamp-2 block text-sm text-ink-2">{n.body}</span>
                       <span className="block text-xs text-ink-3">{n.when}</span>
                     </span>
-                    {!n.read && <span aria-label="непрочетено" role="img" className="mt-[5px] size-2.5 shrink-0 rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]" />}
+                    {!n.read && <span aria-label="непрочетено" role="img" className="mt-[7px] size-2.5 shrink-0 rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]" />}
                   </button>
                 </li>
               );
