@@ -4,15 +4,11 @@ import { useEffect, useState } from "react";
 import { MessageSquare, Star } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { formatEur } from "@/lib/format";
-import { ProtoHarness } from "../_harness/picker";
+import "../_harness/picker.css";
 import { CRAFTSMAN, DEMO_SENT, SCENARIOS, type Scenario, type SentData } from "./data";
 import { useFirst } from "./first";
-import { DnesWindow } from "./today";
 import { KatoRazgovor } from "./variant-kato";
 import { ChatWindow, Conversation } from "./window";
-
-/** The switch over the window's conversation (s=3 and s=4): how it looks today, and in „Тихо“. */
-const NAMES = ["Днес", "Тихо"];
 
 const PRICES: [string, number][] = [
   ["Смяна на смесител", 60],
@@ -61,8 +57,8 @@ function Profile({ onWrite, open }: { onWrite: () => void; open: boolean }) {
   );
 }
 
-/** One session: a new one starts when the view or the scenario changes. `today` = the conversation drawn the way the window draws it today. */
-function Session({ today, scenario }: { today: boolean; scenario: Scenario }) {
+/** One session: a new one starts when the scenario changes. */
+function Session({ scenario }: { scenario: Scenario }) {
   const [open, setOpen] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   /** the first message once it has been sent; from then on the window shows the conversation */
@@ -89,13 +85,9 @@ function Session({ today, scenario }: { today: boolean; scenario: Scenario }) {
           setCollapsed(false);
         }}
       />
-      {today && sent ? (
-        <DnesWindow open={open} collapsed={collapsed} onToggle={toggle} onClose={close} sent={sent} extended={scenario === 4} />
-      ) : (
-        <ChatWindow open={open} collapsed={collapsed} onToggle={toggle} line={sent ? "Разговор" : "Ново съобщение"} link={Boolean(sent)} onClose={close}>
-          {sent ? <Conversation sent={sent} extended={scenario === 4} /> : <KatoRazgovor f={f} />}
-        </ChatWindow>
-      )}
+      <ChatWindow open={open} collapsed={collapsed} onToggle={toggle} line={sent ? "Разговор" : "Ново съобщение"} link={Boolean(sent)} onClose={close}>
+        {sent ? <Conversation sent={sent} extended={scenario === 4} /> : <KatoRazgovor f={f} />}
+      </ChatWindow>
     </>
   );
 }
@@ -135,35 +127,27 @@ function ScenarioPill({ value, onChange }: { value: Scenario; onChange: (s: Scen
   );
 }
 
-export function ProzorecProto({ initialVariant, initialScenario }: { initialVariant: number; initialScenario: Scenario }) {
+export function ProzorecProto({ initialScenario }: { initialScenario: Scenario }) {
   const [scenario, setScenario] = useState<Scenario>(initialScenario);
 
   useEffect(() => {
     const url = new URL(window.location.href);
     url.searchParams.set("s", String(scenario));
-    // the switch exists only in s=3 and s=4; elsewhere v means nothing
-    if (scenario < 3) url.searchParams.delete("v");
+    url.searchParams.delete("v");
     window.history.replaceState(null, "", url);
   }, [scenario]);
 
   return (
     <>
-      {/* On a phone the window starts below a strip that holds the two harness pills, so they never cover its buttons */}
+      {/* On a phone the window starts below a strip that holds the harness pill, so it never covers the window's buttons */}
       <style>{`
         .proto-pill { top: 24px; bottom: auto; left: 8px; transform: none; flex-direction: column; align-items: stretch; border-radius: 18px; max-width: calc(100vw - 16px); }
         @media (max-width: 639px) {
-          .proto-picker[data-position="top"] { top: 7px; left: auto; right: 8px; transform: none; }
           .proto-pill { top: 7px; }
           .proto-picker-item { padding: 0 9px; }
         }
       `}</style>
-      {scenario >= 3 ? (
-        <ProtoHarness key={scenario} names={NAMES} initial={initialVariant} position="top">
-          {(i) => <Session key={`${i}-${scenario}`} today={i === 0} scenario={scenario} />}
-        </ProtoHarness>
-      ) : (
-        <Session key={scenario} today={false} scenario={scenario} />
-      )}
+      <Session key={scenario} scenario={scenario} />
       <ScenarioPill value={scenario} onChange={setScenario} />
     </>
   );

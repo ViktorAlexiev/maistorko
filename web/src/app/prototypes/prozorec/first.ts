@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { MAX_ATTACHMENTS } from "@/app/saobshtenia/[id]/chat-photos";
 import { checkImage } from "@/components/image-upload";
 import { composeAnswers, questionsFor } from "@/lib/inquiry-questions";
-import { slotLabel, type Slot } from "@/lib/slots";
+import type { Slot } from "@/lib/slots";
 import { BUSY_DAYS, CRAFTSMAN, DEMO_BODY, DEMO_PHOTOS, dateLabel, workLabel, workPrice, type Scenario, type SentData } from "./data";
 
 /** The state of the first message, used by „Като в разговора“: today's fields plus the photos. */
@@ -138,7 +138,6 @@ export function useFirst(scenario: Scenario, onSent: (s: SentData) => void) {
       setPending({
         body: body.trim(),
         label: date ? dateLabel(date, slot) : undefined,
-        slot: date && slot ? (slotLabel(slot) ?? undefined) : undefined,
         work: work ? workLabel(work) : undefined,
         workPrice: work ? workPrice(work) : undefined,
         photos: photos.items.map((p) => ({ src: p.src, demo: p.demo })),

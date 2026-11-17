@@ -61,8 +61,6 @@ export function dateLabel(date: string, slot: Slot | null) {
 /** The first message as it was sent: one message with its photos, work, date and text. */
 export type SentData = {
   label?: string;
-  /** the part of the day inside `label`, for the look that draws it lighter */
-  slot?: string;
   work?: string;
   /** the price list's price of the work, „от 60 €“ */
   workPrice?: number;
@@ -73,7 +71,6 @@ export type SentData = {
 
 export const DEMO_SENT: SentData = {
   label: dateLabel("2026-11-19", "morning"),
-  slot: slotLabel("morning") ?? undefined,
   work: workLabel("s:mesitel"),
   workPrice: workPrice("s:mesitel"),
   photos: DEMO_PHOTOS.map((src) => ({ src, demo: true })),

@@ -99,7 +99,7 @@ export function Thumb({ p, onRemove, className = "" }: { p: PhotoItem; onRemove:
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={p.src} alt="Избрана снимка" className="size-full object-cover" />
         {p.demo && (
-          <span className="absolute inset-x-0.5 bottom-0.5 rounded-[4px] bg-ink/85 px-1 py-0.5 text-center text-[0.625rem] font-bold leading-tight text-white">Демо изображение</span>
+          <span className="absolute inset-x-0.5 bottom-0.5 rounded-[4px] bg-ink/85 px-0.5 py-0.5 text-center text-[0.5625rem] font-bold leading-tight tracking-tight text-white">Демо изображение</span>
         )}
         {p.uploading && (
           <span className="absolute inset-0 grid place-items-center bg-surface/70" role="status" aria-label="Снимката се качва">

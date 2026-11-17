@@ -115,20 +115,13 @@ function FirstBubble({ sent }: { sent: SentData }) {
   );
 }
 
-export const nowTime = () => new Date().toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" });
+const nowTime = () => new Date().toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" });
 
 /**
  * The window's own conversation: the approved „Тихо“ thread, but with this craftsman, this first message and the client's side only.
  * The shared room of the conversation prototype fills in everything the window does not change.
  */
-export type WindowRoom = Room & {
-  /** „Днес“ only: a message of mine with the photos picked for it */
-  sendWithPhotos: (body: string, photos: string[]) => void;
-  /** „Днес“ only: a visit proposed by the client from the composer's „Предложи час“ */
-  propose: (b: Omit<BookingData, "status" | "past" | "by">) => void;
-};
-
-export function useWindowRoom(box: React.RefObject<HTMLTextAreaElement | null>, sent: SentData, extended: boolean): WindowRoom {
+function useWindowRoom(box: React.RefObject<HTMLTextAreaElement | null>, sent: SentData, extended: boolean): Room {
   const base = useRoom(3, box);
   const [messages, setMessages] = useState<Msg[]>(() => conversationMessages(sent, extended));
   const [text, setText] = useState("");
@@ -160,14 +153,6 @@ export function useWindowRoom(box: React.RefObject<HTMLTextAreaElement | null>, 
       settle(id);
       box.current?.focus();
     },
-    sendWithPhotos: (body: string, photos: string[]) => {
-      const id = `n${++seq.current}`;
-      setText("");
-      patch((xs) => [...xs, { t: "text", id, from: "client", body, time: nowTime(), state: "sending", photos }]);
-      settle(id);
-      box.current?.focus();
-    },
-    propose: (b) => patch((xs) => [...xs, { t: "booking", id: `b${++seq.current}`, from: "client", time: nowTime(), b: { ...b, status: "proposed", past: false, by: "client" } }]),
     retry: (id: string) => {
       patch((xs) => xs.map((x) => (x.t === "text" && x.id === id ? { ...x, state: "sending" } : x)));
       settle(id);
