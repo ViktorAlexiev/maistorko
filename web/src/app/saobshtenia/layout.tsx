@@ -18,8 +18,8 @@ export default async function MessagesLayout({ children }: LayoutProps<"/saobsht
   const unread = { userId: viewer.id, initial: unreadTotal ?? 0 };
 
   return (
-    <div className="mx-auto max-w-7xl px-0 sm:px-6 sm:py-6">
-      <div className="grid h-[calc(100dvh-4rem)] overflow-hidden sm:h-[calc(100dvh-7rem)] md:grid-cols-[22rem_minmax(0,1fr)]">
+    <div className="mx-auto max-w-7xl px-0 md:px-6 md:py-6">
+      <div className="grid h-[calc(100dvh-4rem)] grid-rows-[minmax(0,1fr)] overflow-hidden bg-surface max-md:[body:has(.bottom-nav)_&]:h-[calc(100dvh-7.5rem-env(safe-area-inset-bottom))] sm:rounded-[10px] md:h-[calc(100dvh-7rem)] md:grid-cols-[22rem_minmax(0,1fr)]">
         <ConversationSidebar userId={viewer.id} initial={(data ?? []) as ConversationSummary[]} />
         {children}
       </div>

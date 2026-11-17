@@ -2,19 +2,40 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { ConversationItem, type ConversationSummary } from "@/components/conversation-list";
+import { ConversationRows, type ConversationSummary } from "@/components/conversation-list";
+
+const LAST_KEY = "maistorko:last-conversation";
+
+function readLast() {
+  try {
+    return sessionStorage.getItem(LAST_KEY);
+  } catch {
+    return null;
+  }
+}
+
+const noop = () => () => {};
 
 export function ConversationSidebar({ userId, initial }: { userId: string; initial: ConversationSummary[] }) {
   const pathname = usePathname();
   const activeId = pathname.split("/")[2];
   const [items, setItems] = useState(initial);
+  const [q, setQ] = useState("");
+  const last = useSyncExternalStore(noop, readLast, () => null);
   const [prevInitial, setPrevInitial] = useState(initial);
   if (prevInitial !== initial) {
     setPrevInitial(initial);
     setItems(initial);
   }
+
+  useEffect(() => {
+    if (!activeId) return;
+    try {
+      sessionStorage.setItem(LAST_KEY, activeId);
+    } catch {}
+  }, [activeId]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -36,39 +57,41 @@ export function ConversationSidebar({ userId, initial }: { userId: string; initi
     };
   }, [userId]);
 
+  const rows = items.filter((c) => c.partner_name.toLowerCase().includes(q.trim().toLowerCase()));
+
   return (
-    <aside
-      aria-label="Разговори"
-      className={`min-h-0 flex-col border-line md:flex md:border-r ${activeId ? "hidden" : "flex"}`}
-    >
-      <div className="border-b border-line px-4 py-4">
-        <h1 className="display text-4xl">Съобщения</h1>
+    <aside aria-label="Разговори" className={`min-h-0 flex-col bg-surface-2 md:flex ${activeId ? "hidden" : "flex"}`}>
+      <div className="flex items-center gap-3 bg-surface px-3 py-2 md:hidden">
+        <h1 className="display shrink-0 text-3xl">Съобщения</h1>
+        <label htmlFor="conversation-search" className="sr-only">
+          Търси разговор по име
+        </label>
+        <input
+          id="conversation-search"
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Търси по име"
+          className="field min-h-11 min-w-0 flex-1 py-1.5"
+        />
       </div>
-      <div
-        className={`min-h-0 flex-1 overflow-y-auto p-1.5 ${
-          activeId ? "" : "max-lg:pb-[calc(3.5rem+env(safe-area-inset-bottom)+0.375rem)]"
-        }`}
-      >
-        {items.length ? (
-          <ul className="grid gap-0.5">
-            {items.map((c) => (
-              <li key={c.id}>
-                <ConversationItem c={c} active={c.id === activeId} />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="p-5 text-ink-2">
-            <p className="font-bold text-ink">Още няма разговори.</p>
-            <p className="mt-1">
-              Разговор започва от профила на майстор с бутона „Пиши“.{" "}
-              <Link href="/maistori" className="link font-semibold text-ink">
-                Разгледай майсторите
-              </Link>
-            </p>
-          </div>
-        )}
-      </div>
+      <h1 className="display hidden px-4 pb-3 pt-4 text-4xl md:block">Съобщения</h1>
+      {items.length ? (
+        <>
+          <ConversationRows items={rows} activeId={activeId ?? null} lastId={activeId ? null : last} />
+          {rows.length === 0 && <p className="p-4 text-center text-ink-2">Няма разговор с това име.</p>}
+        </>
+      ) : (
+        <div className="p-5 text-ink-2">
+          <p className="font-bold text-ink">Още няма разговори.</p>
+          <p className="mt-1">
+            Разговор започва от профила на майстор с бутона „Пиши“.{" "}
+            <Link href="/maistori" className="link font-semibold text-ink">
+              Разгледай майсторите
+            </Link>
+          </p>
+        </div>
+      )}
     </aside>
   );
 }

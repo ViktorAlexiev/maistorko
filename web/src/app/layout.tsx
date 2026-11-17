@@ -3,6 +3,7 @@ import { Sofia_Sans, Sofia_Sans_Extra_Condensed } from "next/font/google";
 import { Toaster } from "sonner";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { FooterGate } from "@/components/footer-gate";
 import "./globals.css";
 
 const sofia = Sofia_Sans({
@@ -58,7 +59,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <main id="main" className="flex-1">
           {children}
         </main>
-        <SiteFooter />
+        <FooterGate>
+          <SiteFooter />
+        </FooterGate>
         <Toaster
           position="top-center"
           toastOptions={{

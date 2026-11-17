@@ -18,14 +18,55 @@ export type ConversationSummary = {
   assigned_name?: string | null;
 };
 
-export function ConversationItem({ c, active = false }: { c: ConversationSummary; active?: boolean }) {
+/** The row list of the messages page and the dashboard. From md up: rows straight on the list pane, the open one Card Surface and flush into the conversation. Below md: Card Surface strips. With `home` the rows lie on a Panel Surface field. */
+export function ConversationRows({
+  items,
+  activeId = null,
+  lastId = null,
+  home = false,
+}: {
+  items: ConversationSummary[];
+  activeId?: string | null;
+  lastId?: string | null;
+  home?: boolean;
+}) {
+  return (
+    <ul
+      className={
+        home
+          ? "grid content-start gap-1 rounded-[10px] bg-surface-2 p-2"
+          : "grid min-h-0 flex-1 content-start gap-1 overflow-y-auto p-2 md:p-0 md:pb-3 md:pl-2"
+      }
+    >
+      {items.map((c) => (
+        <li key={c.id} className={home ? undefined : c.id === activeId ? "md:pr-0" : "md:pr-2"}>
+          <ConversationItem c={c} active={c.id === activeId} last={c.id === lastId} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function ConversationItem({
+  c,
+  active = false,
+  last = false,
+}: {
+  c: ConversationSummary;
+  active?: boolean;
+  last?: boolean;
+}) {
   const unread = c.unread_count > 0;
   return (
     <Link
       href={`/saobshtenia/${c.id}`}
       aria-current={active ? "page" : undefined}
-      className={`flex gap-3 rounded-[8px] px-3 py-3 transition-colors ${
-        active ? "bg-rule-soft" : "hover:bg-surface-2"
+      className={`flex w-full gap-3 rounded-[6px] px-3 py-3 text-left ${
+        active
+          ? "bg-rule-soft md:rounded-r-none md:bg-surface"
+          : last
+            ? "bg-rule-soft hover:bg-paper md:bg-transparent"
+            : "bg-surface hover:bg-paper md:bg-transparent"
       }`}
     >
       <Avatar name={c.partner_name} url={c.partner_avatar} size={44} />
@@ -60,9 +101,8 @@ export function ConversationItem({ c, active = false }: { c: ConversationSummary
         )}
       </div>
       {unread && (
-        <span className="numerals mt-1 grid h-6 min-w-6 place-items-center self-start rounded-full bg-red px-1.5 text-sm text-white">
-          <span className="sr-only">Непрочетени: </span>
-          {c.unread_count}
+        <span className="mt-[7px] size-2.5 shrink-0 self-start rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]">
+          <span className="sr-only">Непрочетени</span>
         </span>
       )}
     </Link>

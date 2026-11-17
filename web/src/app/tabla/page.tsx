@@ -4,7 +4,7 @@ import { requireViewer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { daysSince, formatDate, todayISO, timeAgo } from "@/lib/format";
 import { ConfirmCalendarBanner } from "@/components/confirm-calendar";
-import { ConversationItem, type ConversationSummary } from "@/components/conversation-list";
+import { ConversationRows, type ConversationSummary } from "@/components/conversation-list";
 import { RuleLegend, RuleStrip } from "@/components/rule-strip";
 import { EmptyState, Rating, Stars } from "@/components/bits";
 import { CraftsmanRow, type CraftsmanCardData } from "@/components/craftsman-row";
@@ -148,14 +148,16 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
                 Всички
               </Link>
             </div>
-            <div className="mt-3 grid gap-1 rounded-[10px] border border-line bg-surface p-1.5">
+            <div className="mt-3">
               {convs.length ? (
-                convs.slice(0, 5).map((c) => <ConversationItem key={c.id} c={c} />)
+                <ConversationRows items={convs.slice(0, 5)} home />
               ) : (
-                <p className="p-4 text-ink-2">
-                  Още няма запитвания. Клиентите ти пишат от профила ти, обикновено след като видят свободен ден в
-                  календара.
-                </p>
+                <div className="grid gap-1 rounded-[10px] border border-line bg-surface p-1.5">
+                  <p className="p-4 text-ink-2">
+                    Още няма запитвания. Клиентите ти пишат от профила ти, обикновено след като видят свободен ден в
+                    календара.
+                  </p>
+                </div>
               )}
             </div>
           </section>
@@ -219,10 +221,8 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
           </Link>
         </div>
         {convs.length ? (
-          <div className="mt-3 grid gap-1 rounded-[10px] border border-line bg-surface p-1.5">
-            {convs.slice(0, 5).map((c) => (
-              <ConversationItem key={c.id} c={c} />
-            ))}
+          <div className="mt-3">
+            <ConversationRows items={convs.slice(0, 5)} home />
           </div>
         ) : (
           <div className="mt-3">
