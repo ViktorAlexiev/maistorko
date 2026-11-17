@@ -3,8 +3,11 @@
 import { useEffect, useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-/** Live unread-message count. Listens to new messages and read-marker changes. */
-export function UnreadBadge({ userId, initial, className }: { userId: string; initial: number; className?: string }) {
+/**
+ * Live unread-message count. Listens to new messages and read-marker changes.
+ * With `dot` it draws that mark (no number) instead of the count while there is anything unread.
+ */
+export function UnreadBadge({ userId, initial, className, dot }: { userId: string; initial: number; className?: string; dot?: string }) {
   const id = useId();
   const [count, setCount] = useState(initial);
   const [prevInitial, setPrevInitial] = useState(initial);
@@ -37,6 +40,7 @@ export function UnreadBadge({ userId, initial, className }: { userId: string; in
   }, [userId, id]);
 
   if (!count) return null;
+  if (dot) return <span aria-hidden className={dot} />;
   return (
     <span
       className={

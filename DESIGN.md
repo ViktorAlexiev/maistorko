@@ -123,7 +123,7 @@ The interface is practical, legible for older and less tech-savvy craftsmen, and
 
 **Key Characteristics:**
 - A 14-day folding rule on every craftsman (catalog rows, profile, dashboard, calendar editor).
-- Yellow is a field, not an accent. Red is reserved for "today" and the date marker.
+- Yellow is a field, not an accent. Red is reserved for "today", the date marker and unread marks.
 - Extra-condensed numerals for dates and prices; Sofia Sans for everything else.
 - Lists of separate strips and indexes instead of card grids. Nothing is divided by hairlines.
 - Flat surfaces with ambient shadows only on hover and overlays.
@@ -155,7 +155,7 @@ A two-material palette, enamel yellow and printed ink, with one functional green
 ### Named Rules
 **The Yellow Field Rule.** Yellow owns whole regions (a band, a strip, a rule), never a scatter of small accents. If yellow appears as a thin decoration, it should be ink instead.
 
-**The Measuring Mark Rule.** Red marks position in time ("today", the chosen date), never emphasis or error. Errors use Danger, which is a separate token.
+**The Measuring Mark Rule.** Red marks position in time ("today", the chosen date), never emphasis or error. The one other use is unread: the red rivet and the red count on the site header bell (The Tab and Rivet Rule). Errors use Danger, which is a separate token.
 
 **The Green Means Free Rule.** Green appears only when it says someone is available, or when an action succeeded.
 
@@ -238,7 +238,7 @@ The yellow field with fields for "what", "city" and "Търси", and a 14-day r
 - **Error / Disabled:** a danger border with a message below; disabled fields use the panel surface.
 
 ### Navigation
-A sticky solid card-surface header (#fffdf8) with the rule-mark logo and ghost links: no bottom line, no translucency, no blur. Its dropdowns have no border, only the large shadow, and their rows are strips. On phones the menu is a bottom sheet. Dashboard navigation is the Index: a list in the condensed display face (1.7rem), other pages in Ink Tertiary and the current one on a yellow field with 4px corners, groups split by space only; unread messages are a red number beside „Съобщения“. On phones it becomes a bottom bar of words (the current one on a yellow field), and „Още“ opens a bottom sheet with the rest.
+A sticky solid card-surface header (#fffdf8) with the rule-mark logo and ghost links: no bottom line, no translucency, no blur. Its dropdowns have no border, only the large shadow, and their rows are strips. On phones the menu is a bottom sheet. Dashboard navigation is the Index: a list in the condensed display face (1.7rem), other pages in Ink Tertiary and the current one on a yellow field with 4px corners, groups split by space only; unread messages are an ink tab with yellow numerals beside „Съобщения“. On phones it becomes a bottom bar of words (the current one on a yellow field), and „Още“ opens a bottom sheet with the rest.
 
 ### Chat
 Your own bubbles are ink with white text and a 4px tail corner. The other side's bubbles are card surface with a hairline. An attached date renders as a yellow chip inside the bubble. The composer bar sits in a card-surface footer.
@@ -254,7 +254,7 @@ Your own bubbles are ink with white text and a 4px tail corner. The other side's
 
 **The Light Bar Rule.** The site header is a solid Card Surface bar over the paper ground: no bottom line, no translucency, no blur, no shadow. The footer has no line above the copyright; the copyright row sits on a full-width Graphite Deep strip. Dropdowns from the header have no border, only the large shadow.
 
-**The Tab and Rivet Rule.** A count beside a word (unread messages, new items) is an ink tab with yellow numerals: Ink background, Enamel Rule Yellow numerals in the condensed numerals style, 4px corners, about 24px high, set inline after the word. On the phone bottom bar the tab is smaller and sits at the word's top-right corner with a Card Surface ring. Above 99 it reads „99+“. Red is not used for counts (red marks position in time, see The Measuring Mark Rule). A status mark without a number is a rivet, like the hinge rivet of the folding rule: a round mark with an inset ink ring. The visit marks on „Календар“ are three: „потвърдено“ is a filled ink rivet, „чака отговор“ an open ink ring, and „поръчка“ an ink square. Unsaved changes are a 10px Hinge Brass rivet at the top-right corner of the word, positioned out of the layout so nothing moves when it appears. An unread item in a list is a 12px red rivet at the right of the row. The site header's circular badges (bell, „Съобщения“) are not covered yet.
+**The Tab and Rivet Rule.** A count beside a word (unread messages, new items) is an ink tab with yellow numerals: Ink background, Enamel Rule Yellow numerals in the condensed numerals style, 4px corners, about 24px high, set inline after the word. On the phone bottom bar the tab is smaller and sits at the word's top-right corner with a Card Surface ring. Above 99 it reads „99+“. Red counts appear only on the site header bell (see below). A status mark without a number is a rivet, like the hinge rivet of the folding rule: a round mark with an inset ink ring. The visit marks on „Календар“ are three: „потвърдено“ is a filled ink rivet, „чака отговор“ an open ink ring, and „поръчка“ an ink square. Unsaved changes are a 10px Hinge Brass rivet at the top-right corner of the word, positioned out of the layout so nothing moves when it appears. An unread row (a list, „Преглед“, the bell's list) is marked by a 10px red rivet with a 1.5px dark inner ring, at the right of the row and without a number. „Съобщения“ in the site header carries the same red rivet, out of the layout at the top-right corner of the word (on phones, where the word is hidden, of the icon). The site header bell shows its count as a red number in a rectangular tab with 4px corners. The dashboard's left menu and bottom bar keep the ink tab with yellow numerals.
 
 ## Do's and Don'ts
 
@@ -264,10 +264,10 @@ Your own bubbles are ink with white text and a 4px tail corner. The other side's
 - **Do** give yellow whole regions: bands, strips and fields.
 - **Do** keep tap targets at 44px or more and calendar actions reachable with one thumb.
 - **Do** label demo imagery "Демо изображение" until real photos exist.
-- **Do** mark counts with an ink tab and unsaved or unread states with a rivet (The Tab and Rivet Rule).
+- **Do** mark counts with an ink tab (only the site header bell uses a red tab) and unsaved or unread states with a rivet (The Tab and Rivet Rule).
 
 ### Don't:
-- **Don't** use red for emphasis or errors. Red marks time only.
+- **Don't** use red for emphasis or errors. Red marks time and unread only.
 - **Don't** build card grids of icon, heading and text. Use strip lists and indexes.
 - **Don't** divide content with hairlines, ink rules or box borders (The No Hairline Rule).
 - **Don't** put eyebrows or kickers above headings.

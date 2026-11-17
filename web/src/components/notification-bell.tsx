@@ -81,12 +81,14 @@ export function NotificationBell({ userId, initial, initialUnread }: { userId: s
         aria-haspopup="true"
         onClick={() => setOpen((o) => !o)}
       >
-        <Bell className="size-5" aria-hidden />
-        {unread > 0 && (
-          <span className="numerals absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-red px-1 text-[0.8rem] leading-none text-white ring-2 ring-surface">
-            {unread > 99 ? "99+" : unread}
-          </span>
-        )}
+        <span className="relative">
+          <Bell className="size-5" aria-hidden />
+          {unread > 0 && (
+            <span className="numerals absolute -top-2 left-3 grid h-5 min-w-5 place-items-center rounded-[4px] bg-red px-1 text-[0.95rem] leading-none text-white ring-2 ring-surface">
+              {unread > 99 ? "99+" : unread}
+            </span>
+          )}
+        </span>
       </button>
 
       {open && (
@@ -117,7 +119,7 @@ export function NotificationBell({ userId, initial, initialUnread }: { userId: s
                       {n.body && <span className="line-clamp-2 block text-sm text-ink-2">{n.body}</span>}
                       <span className="block text-xs text-ink-3">{timeAgo(n.created_at)}</span>
                     </span>
-                    {!n.read_at && <span aria-label="непрочетено" className="mt-1 size-3 shrink-0 rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.6)]" />}
+                    {!n.read_at && <span aria-label="непрочетено" className="mt-[7px] size-2.5 shrink-0 self-start rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]" />}
                   </>
                 );
                 const cls = "flex gap-3 rounded-[6px] bg-paper px-4 py-3 transition-colors hover:bg-rule-soft/50";

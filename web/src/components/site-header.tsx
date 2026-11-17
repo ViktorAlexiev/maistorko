@@ -14,6 +14,8 @@ const NAV = [
   { href: "/#kak-raboti", label: "Как работи" },
 ];
 
+const MESSAGES_DOT = "absolute size-2.5 rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]";
+
 export async function SiteHeader() {
   const viewer = await getViewer();
   let unread = 0;
@@ -58,12 +60,15 @@ export async function SiteHeader() {
                 className="btn btn-ghost btn-sm relative"
                 aria-label={unread ? `Съобщения, ${unread} непрочетени` : "Съобщения"}
               >
-                {/* the badge sits on the icon, not on the last letter of the word */}
+                {/* the red dot sits out of the layout: on the icon on phones, on the word from sm */}
                 <span className="relative">
                   <MessageCircle className="size-5" aria-hidden />
-                  <UnreadBadge userId={viewer.id} initial={unread} />
+                  <UnreadBadge userId={viewer.id} initial={unread} dot={`${MESSAGES_DOT} -right-1.5 -top-1.5 sm:hidden`} />
                 </span>
-                <span className="hidden sm:inline">Съобщения</span>
+                <span className="relative hidden sm:inline">
+                  Съобщения
+                  <UnreadBadge userId={viewer.id} initial={unread} dot={`${MESSAGES_DOT} -right-2 -top-1.5`} />
+                </span>
               </Link>
               <UserMenu
                 name={displayName}
