@@ -7,7 +7,7 @@ import { useRoom } from "../razgovor/shared";
 import { SheetRows } from "../razgovor/variant-sheet";
 import { SiteHeaderCopy, type Variant } from "./header";
 
-const NAMES = ["Нит", "Ореол", "Изрез"];
+const NAMES = ["Като в профила", "Нит", "Ореол", "Изрез"];
 
 /** The four states: how many unread messages and how many unread notifications. */
 const STATES = [

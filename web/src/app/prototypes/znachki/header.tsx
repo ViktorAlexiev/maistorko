@@ -5,12 +5,20 @@ import { Bell, CalendarClock, CalendarDays, Check, ChevronDown, Menu, MessageCir
 import { Avatar } from "@/components/avatar";
 import { Logo } from "@/components/logo";
 
-export type Variant = 1 | 2 | 3;
+export type Variant = 1 | 2 | 3 | 4;
 
 const NAV = ["Майстори", "Категории", "Как работи"];
 
-/** The three looks of the dot on „Съобщения“; the bell is always the red count below. */
+/** The four looks of the dot on „Съобщения“; the bell is always the red count below. */
 const RING = "0 0 0 2px var(--surface)";
+
+/**
+ * „Като в профила“: the unsaved-changes mark of the profile sections (profile-parts.tsx), but red: 10px, the same inset ink ring,
+ * out of the layout at the top-right corner so nothing moves when it appears. On desktop it sits on the word, on phones (word hidden) on the icon.
+ */
+const PROFILE_DOT = "absolute size-2.5 rounded-full bg-red shadow-[inset_0_0_0_1.5px_rgb(22_20_15/0.75)]";
+const PROFILE_DOT_WORD = `${PROFILE_DOT} -right-1.5 -top-1`;
+const PROFILE_DOT_ICON = `${PROFILE_DOT} -right-1.5 -top-1.5 sm:hidden`;
 
 /** „Нит“: a 12px rivet head: red disc, the inset ink ring of the unread mark, a soft highlight top-left, a 2px Card Surface ring outside. */
 function RivetDot() {
@@ -200,11 +208,17 @@ export function SiteHeaderCopy({ variant, messages, bell, flash }: { variant: Va
               <MessageCircle
                 className="size-5"
                 aria-hidden
-                style={variant === 3 && messages > 0 ? { maskImage: CUT, WebkitMaskImage: CUT } : undefined}
+                style={variant === 4 && messages > 0 ? { maskImage: CUT, WebkitMaskImage: CUT } : undefined}
               />
-              {messages > 0 && (variant === 1 ? <RivetDot /> : variant === 2 ? <HaloDot pulseKey={messages} /> : <NotchDot />)}
+              {messages > 0 && variant === 1 && <span aria-hidden className={PROFILE_DOT_ICON} />}
+              {messages > 0 && variant === 2 && <RivetDot />}
+              {messages > 0 && variant === 3 && <HaloDot pulseKey={messages} />}
+              {messages > 0 && variant === 4 && <NotchDot />}
             </span>
-            <span className="hidden sm:inline">Съобщения</span>
+            <span className="relative hidden sm:inline">
+              Съобщения
+              {messages > 0 && variant === 1 && <span aria-hidden className={PROFILE_DOT_WORD} />}
+            </span>
           </button>
           <div className="relative hidden md:block">
             <button type="button" className="btn btn-ghost btn-sm gap-2 pl-1" aria-haspopup="menu" aria-label="Меню на профила: Георги Петров" onClick={soon("Моето табло")}>
