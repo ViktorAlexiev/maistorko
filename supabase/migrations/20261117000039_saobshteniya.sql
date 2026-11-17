@@ -175,7 +175,10 @@ begin
         category_id = coalesce(excluded.category_id, public.conversations.category_id)
   returning id into v_conv;
 
-  delete from public.chat_photo_purge_queue where conversation_id = v_conv;
+  -- only a call that created the conversation clears the queue (on a conflict the existing id comes back)
+  if p_id is not null and v_conv = p_id then
+    delete from public.chat_photo_purge_queue where conversation_id = v_conv;
+  end if;
 
   if p_date is not null then v_meta := v_meta || jsonb_build_object('date', p_date); end if;
   if p_date is not null and p_slot is not null then v_meta := v_meta || jsonb_build_object('slot', p_slot); end if;

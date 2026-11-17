@@ -684,6 +684,12 @@ async function main() {
       const { error: already } = await ph1.c.rpc("start_conversation", { p_craftsman: phm.id, p_body: "Пак", p_id: id3, p_photos: [`${id3}/c.png`] });
       ok("снимка: вече започнат разговор със снимки дава грешка", already?.message === "Разговорът вече е започнат. Презаредете страницата.", already);
 
+      await admin.from("chat_photo_purge_queue").insert({ conversation_id: newId });
+      const { error: again2 } = await ph1.c.rpc("start_conversation", { p_craftsman: phm.id, p_body: "Още едно" });
+      const { data: keptQ } = await admin.from("chat_photo_purge_queue").select("conversation_id").eq("conversation_id", newId);
+      await admin.from("chat_photo_purge_queue").delete().eq("conversation_id", newId);
+      ok("снимка: писане в изчистен разговор пази реда за триене", !again2 && keptQ?.length === 1, { again2, keptQ });
+
       const f1 = crypto.randomUUID();
       const f2 = crypto.randomUUID();
       const f3 = crypto.randomUUID();
