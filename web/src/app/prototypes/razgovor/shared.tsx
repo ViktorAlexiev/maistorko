@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, CalendarDays, Check, CheckCheck, Plus, RotateCw, SendHorizontal, Star, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, CheckCheck, MessageCircle, Plus, RotateCw, SendHorizontal, Star, X } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import {
-  buildMessages,
+  buildThreads,
   INVITE_BODY,
-  PEOPLE,
   PHOTOS,
   QUICK_DEFAULTS,
   QUICK_OWN,
@@ -15,6 +14,7 @@ import {
   type Msg,
   type Role,
   type Scenario,
+  type Thread,
 } from "./data";
 
 /* ------------------------------------------------------------------ state shared by all three variants */
@@ -26,23 +26,46 @@ const enterSends = () => typeof window !== "undefined" && !window.matchMedia("(p
 
 export type Refs = { scroller: React.RefObject<HTMLDivElement | null>; box: React.RefObject<HTMLTextAreaElement | null> };
 
-export type RateState = { open: boolean; rating: number; text: string; done: boolean; error: string };
+export type RateState = { open: boolean; rating: number; text: string; error: string };
 
-/** The whole local state of one conversation: messages, composer, quick replies, bookings and both review flows. */
+export type Row = { id: string; name: string; about: string; when: string; unread: boolean; preview: string };
+
+/** The line a list row shows: the last thing said, „Вие: “ in front of what you wrote yourself. */
+function previewOf(t: Thread, viewer: Role) {
+  for (let i = t.messages.length - 1; i >= 0; i--) {
+    const m = t.messages[i];
+    if (m.t === "text") return `${m.from === viewer ? "Вие: " : ""}${m.body}`;
+    if (m.t === "offer") return `${viewer === "craftsman" ? "Вие: " : ""}Оферта: ${m.o.title}`;
+    if (m.t === "invite") return `${viewer === "craftsman" ? "Вие: " : ""}${m.body}`;
+    if (m.t === "booking") return `${m.from === viewer ? "Вие: " : ""}Уговорка: ${m.b.kind === "inspection" ? "оглед" : "работа"}, ${m.b.date}`;
+  }
+  return "";
+}
+
+/** The whole local state: the list of conversations, the open one with its composer, quick replies, bookings and both review flows. */
 export function useRoom(scenario: Scenario, box: React.RefObject<HTMLTextAreaElement | null>) {
   const viewer = SCENARIOS[scenario - 1].viewer;
-  const partnerRole: Role = viewer === "craftsman" ? "client" : "craftsman";
-  const partner = PEOPLE[partnerRole];
-  const [messages, setMessages] = useState<Msg[]>(() => buildMessages(scenario));
+  const [initial] = useState(() => buildThreads(scenario));
+  const [store, setStore] = useState<Record<string, Thread>>(() => Object.fromEntries(initial.map((t) => [t.id, t])));
+  const [order, setOrder] = useState(() => initial.map((t) => t.id));
+  const [activeId, setActiveId] = useState<string | null>(scenario === 4 ? null : initial[0].id);
+  /** phone only: which of the two screens is showing */
+  const [screen, setScreen] = useState<"list" | "chat">(scenario === 4 ? "list" : "chat");
   const [text, setText] = useState("");
   const [own, setOwn] = useState(QUICK_OWN);
   const [editQuick, setEditQuick] = useState(false);
   const [askStep, setAskStep] = useState<"idle" | "confirm">("idle");
-  const [rate, setRate] = useState<RateState>({ open: false, rating: 0, text: "", done: false, error: "" });
+  const [rateForm, setRateForm] = useState<RateState>({ open: false, rating: 0, text: "", error: "" });
+  const [rated, setRated] = useState<string[]>([]);
   const [cancelAsk, setCancelAsk] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const seq = useRef(0);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const active = activeId ? store[activeId] : null;
+  const messages = active?.messages ?? [];
+  const partner = { name: active?.name ?? "", first: active?.name.split(" ")[0] ?? "", phone: active?.phone ?? "" };
+  const rows: Row[] = order.map((id) => ({ id, name: store[id].name, about: store[id].about, when: store[id].when, unread: store[id].unread, preview: previewOf(store[id], viewer) }));
 
   const bookings = messages.flatMap((m) => (m.t === "booking" ? [{ id: m.id, b: m.b }] : []));
   const upcoming = bookings.filter((x) => x.b.status === "confirmed" && !x.b.past).sort((a, c) => a.b.iso.localeCompare(c.b.iso))[0] ?? null;
@@ -50,11 +73,13 @@ export function useRoom(scenario: Scenario, box: React.RefObject<HTMLTextAreaEle
   const invited = messages.some((m) => m.t === "invite");
   const passed = [...bookings].reverse().find((x) => x.b.status === "confirmed" && x.b.past)?.b ?? null;
   const passedLine = passed ? `${passed.kind === "inspection" ? "Огледът" : "Работата"} мина в ${passed.weekday}.` : "";
-  /** craftsman: „Свърши ли работата?“ only when nothing is coming up and no invite was sent yet */
-  const showAsk = viewer === "craftsman" && !hasOpenBooking && !invited;
+  const rateDone = activeId !== null && rated.includes(activeId);
+  const rate = { ...rateForm, done: rateDone };
+  /** craftsman: „Свърши ли работата?“ once a visit has passed, nothing is coming up and no invite was sent yet */
+  const showAsk = viewer === "craftsman" && passed !== null && !hasOpenBooking && !invited;
   /** client: „Оцени“ only after the visit passed, until a review or an invite card exists */
-  const showRate = viewer === "client" && passed !== null && !rate.done && !invited && !rate.open;
-  const showRateForm = viewer === "client" && rate.open && !rate.done;
+  const showRate = viewer === "client" && passed !== null && !rateDone && !invited && !rateForm.open;
+  const showRateForm = viewer === "client" && rateForm.open && !rateDone;
 
   function flash(t: string) {
     setNote(t);
@@ -62,46 +87,67 @@ export function useRoom(scenario: Scenario, box: React.RefObject<HTMLTextAreaEle
     flashTimer.current = setTimeout(() => setNote(null), 2600);
   }
 
-  function settle(id: string) {
-    setTimeout(() => setMessages((xs) => xs.map((x) => (x.t === "text" && x.id === id ? { ...x, state: "sent" } : x))), 600);
+  function patchThread(tid: string, fn: (xs: Msg[]) => Msg[]) {
+    setStore((st) => ({ ...st, [tid]: { ...st[tid], messages: fn(st[tid].messages) } }));
   }
 
-  function push(body: string) {
-    const id = `n${++seq.current}`;
-    setMessages((xs) => [...xs, { t: "text", id, from: viewer, body, time: nowTime(), state: "sending" }]);
-    settle(id);
+  /** a conversation you wrote in goes to the top of the list, marked „сега“ */
+  function touch(tid: string) {
+    setStore((st) => ({ ...st, [tid]: { ...st[tid], when: "сега" } }));
+    setOrder((o) => [tid, ...o.filter((x) => x !== tid)]);
+  }
+
+  function settle(tid: string, id: string) {
+    setTimeout(() => patchThread(tid, (xs) => xs.map((x) => (x.t === "text" && x.id === id ? { ...x, state: "sent" } : x))), 600);
   }
 
   function submit() {
     const body = text.trim();
-    if (!body) return;
+    if (!body || !activeId) return;
+    const tid = activeId;
+    const id = `n${++seq.current}`;
     setText("");
-    push(body);
+    patchThread(tid, (xs) => [...xs, { t: "text", id, from: viewer, body, time: nowTime(), state: "sending" }]);
+    touch(tid);
+    settle(tid, id);
     box.current?.focus();
   }
 
   function retry(id: string) {
-    setMessages((xs) => xs.map((x) => (x.t === "text" && x.id === id ? { ...x, state: "sending" } : x)));
-    settle(id);
-  }
-
-  function patchBooking(id: string, patch: Partial<BookingData>) {
-    setMessages((xs) => xs.map((x) => (x.t === "booking" && x.id === id ? { ...x, b: { ...x.b, ...patch } } : x)));
+    if (!activeId) return;
+    patchThread(activeId, (xs) => xs.map((x) => (x.t === "text" && x.id === id ? { ...x, state: "sending" } : x)));
+    settle(activeId, id);
   }
 
   function actBooking(id: string, action: "confirm" | "decline" | "cancel") {
+    if (!activeId) return;
     setCancelAsk(null);
-    patchBooking(id, { status: action === "confirm" ? "confirmed" : action === "decline" ? "declined" : "cancelled" });
+    const status = action === "confirm" ? "confirmed" : action === "decline" ? "declined" : "cancelled";
+    patchThread(activeId, (xs) => xs.map((x) => (x.t === "booking" && x.id === id ? { ...x, b: { ...x.b, status } as BookingData } : x)));
   }
 
   function sendInvite() {
-    setMessages((xs) => [...xs, { t: "invite", id: `n${++seq.current}`, time: nowTime(), body: INVITE_BODY }]);
+    if (!activeId) return;
+    patchThread(activeId, (xs) => [...xs, { t: "invite", id: `n${++seq.current}`, time: nowTime(), body: INVITE_BODY }]);
+    touch(activeId);
     setAskStep("idle");
   }
 
   function publish() {
-    if (rate.rating === 0) return setRate((x) => ({ ...x, error: "Изберете оценка от една до пет звезди." }));
-    setRate((x) => ({ ...x, open: false, done: true, error: "" }));
+    if (rateForm.rating === 0) return setRateForm((x) => ({ ...x, error: "Изберете оценка от една до пет звезди." }));
+    if (activeId) setRated((x) => [...x, activeId]);
+    setRateForm({ open: false, rating: 0, text: "", error: "" });
+  }
+
+  /** open a conversation in place: it is marked read and its own half-done things start fresh */
+  function open(id: string) {
+    setActiveId(id);
+    setScreen("chat");
+    setStore((st) => ({ ...st, [id]: { ...st[id], unread: false } }));
+    setText("");
+    setAskStep("idle");
+    setCancelAsk(null);
+    setRateForm({ open: false, rating: 0, text: "", error: "" });
   }
 
   function scrollToCard(id: string) {
@@ -113,6 +159,13 @@ export function useRoom(scenario: Scenario, box: React.RefObject<HTMLTextAreaEle
     scenario,
     viewer,
     partner,
+    about: active?.about ?? "",
+    rows,
+    activeId,
+    active: active !== null,
+    screen,
+    open,
+    back: () => setScreen("list"),
     messages,
     upcoming,
     passedLine,
@@ -135,9 +188,9 @@ export function useRoom(scenario: Scenario, box: React.RefObject<HTMLTextAreaEle
     askCancel: () => setAskStep("idle"),
     askSend: sendInvite,
     rate,
-    rateOpen: () => setRate((x) => ({ ...x, open: true, error: "" })),
-    rateClose: () => setRate((x) => ({ ...x, open: false, error: "" })),
-    rateSet: (patch: Partial<RateState>) => setRate((x) => ({ ...x, ...patch, error: "" })),
+    rateOpen: () => setRateForm((x) => ({ ...x, open: true, error: "" })),
+    rateClose: () => setRateForm((x) => ({ ...x, open: false, error: "" })),
+    rateSet: (patch: Partial<RateState>) => setRateForm((x) => ({ ...x, ...patch, error: "" })),
     publish,
     quick: {
       defaults: QUICK_DEFAULTS,
@@ -161,59 +214,10 @@ export function useRoom(scenario: Scenario, box: React.RefObject<HTMLTextAreaEle
 
 export type Room = ReturnType<typeof useRoom>;
 
-/* ------------------------------------------------------------------ the page around the thread */
-
-const SIDEBAR: Record<Role, { name: string; preview: string; when: string; about: string; unread?: boolean }[]> = {
-  craftsman: [
-    { name: "Мария Иванова", preview: "", when: "днес", about: "Осветление" },
-    { name: "Стоян Колев", preview: "Може ли във вторник сутринта?", when: "вчера", about: "Контакти и ключове", unread: true },
-    { name: "Десислава Тодорова", preview: "Благодаря, всичко работи.", when: "пн", about: "Електрическо табло" },
-    { name: "Николай Попов", preview: "Вие: Ще мина в петък следобед.", when: "съб", about: "Видеонаблюдение" },
-  ],
-  client: [
-    { name: "Георги Петров", preview: "", when: "днес", about: "Осветление" },
-    { name: "Иван Димитров", preview: "Тръбата е сменена, ще ви пиша за сметката.", when: "вчера", about: "ВиК", unread: true },
-    { name: "Недялко Стоянов", preview: "Вие: Удобно ми е в понеделник.", when: "пн", about: "Боядисване" },
-  ],
-};
-
-const PREVIEW: Record<Scenario, string> = {
-  1: "Вие: До утре в 9 ч. Ще ви звънна от входа.",
-  2: "Благодаря! Ще помисля и ще ви пиша до утре.",
-  3: "Вие: Благодаря! Ще помисля и ще ви пиша до утре.",
-};
-
-function Sidebar({ r }: { r: Room }) {
-  return (
-    <aside aria-label="Разговори" className="hidden min-h-0 flex-col md:flex">
-      <h1 className="display px-1 pb-3 text-4xl">Съобщения</h1>
-      <ul className="grid min-h-0 flex-1 content-start gap-1 overflow-y-auto">
-        {SIDEBAR[r.viewer].map((c, i) => (
-          <li key={c.name}>
-            <div className={`flex gap-3 rounded-[6px] px-3 py-3 ${i === 0 ? "bg-rule-soft" : "bg-surface"}`} aria-current={i === 0 ? "page" : undefined}>
-              <Avatar name={c.name} size={44} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <p className={`truncate ${c.unread ? "font-extrabold" : "font-bold"}`}>{c.name}</p>
-                  <span className="ml-auto shrink-0 text-xs text-ink-3">{c.when}</span>
-                </div>
-                <p className="truncate text-sm text-ink-2">{i === 0 ? PREVIEW[r.scenario] : c.preview}</p>
-                <p className="mt-1 flex items-center gap-1 truncate text-xs font-semibold text-ink-3">
-                  <CalendarDays className="size-3.5 shrink-0" aria-hidden />
-                  {c.about}
-                </p>
-              </div>
-              {c.unread && <span className="mt-1 size-3 shrink-0 self-start rounded-full bg-red" aria-label="Непрочетено" />}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </aside>
-  );
-}
+/* ------------------------------------------------------------------ the page around the thread and the list */
 
 /** Fills the screen under the site header so the page itself never scrolls and the footer stays out of sight. */
-export function Stage({ r, children }: { r: Room; children: React.ReactNode }) {
+export function Frame({ full = false, children }: { full?: boolean; children: React.ReactNode }) {
   useEffect(() => {
     const el = document.documentElement;
     const before = el.style.overflow;
@@ -224,13 +228,49 @@ export function Stage({ r, children }: { r: Room; children: React.ReactNode }) {
   }, []);
   return (
     <div className="fixed inset-x-0 bottom-0 top-16 z-30 bg-paper">
-      <div className="mx-auto h-full max-w-7xl sm:px-6 sm:py-6">
-        <div className="grid h-full grid-rows-[minmax(0,1fr)] overflow-hidden md:grid-cols-[22rem_minmax(0,1fr)] md:gap-6">
-          <Sidebar r={r} />
-          {children}
-        </div>
-      </div>
+      <div className={full ? "h-full" : "mx-auto h-full max-w-7xl sm:px-6 sm:py-6"}>{children}</div>
     </div>
+  );
+}
+
+/** Same words as the real page when no conversation is open (desktop only). */
+export function EmptyPane({ className = "" }: { className?: string }) {
+  return (
+    <section className={`hidden place-items-center p-10 text-center md:grid ${className}`}>
+      <div>
+        <MessageCircle className="mx-auto size-10 text-ink-3" strokeWidth={1.5} aria-hidden />
+        <p className="mt-3 text-lg font-bold">Изберете разговор</p>
+        <p className="mt-1 max-w-sm text-ink-2">Тук уточнявате детайлите: дата, адрес, цена. Съобщенията пристигат веднага.</p>
+      </div>
+    </section>
+  );
+}
+
+/** The unread mark of a list row: a 12px red rivet (The Tab and Rivet Rule). */
+export function UnreadRivet() {
+  return <span className="mt-1 size-3 shrink-0 self-start rounded-full bg-red" role="img" aria-label="Непрочетено" />;
+}
+
+/** Avatar, name, time, preview and what the talk is about: the inside of a list row. */
+export function RowContent({ row, about = true }: { row: Row; about?: boolean }) {
+  return (
+    <>
+      <Avatar name={row.name} size={44} />
+      <span className="min-w-0 flex-1">
+        <span className="flex items-baseline gap-2">
+          <span className={`truncate ${row.unread ? "font-extrabold" : "font-bold"}`}>{row.name}</span>
+          <span className="ml-auto shrink-0 text-xs text-ink-3">{row.when}</span>
+        </span>
+        <span className={`block truncate text-sm ${row.unread ? "font-semibold text-ink" : "text-ink-2"}`}>{row.preview}</span>
+        {about && (
+          <span className="mt-1 flex items-center gap-1 truncate text-xs font-semibold text-ink-3">
+            <CalendarDays className="size-3.5 shrink-0" aria-hidden />
+            <span className="truncate">{row.about}</span>
+          </span>
+        )}
+      </span>
+      {row.unread && <UnreadRivet />}
+    </>
   );
 }
 
@@ -252,9 +292,10 @@ export const KIND = { inspection: "Оглед", work: "Работа" } as const;
 /** a card that is over, declined or cancelled steps back to Panel Surface */
 export const isQuiet = (b: BookingData) => b.status === "declined" || b.status === "cancelled" || (b.status === "confirmed" && b.past);
 
+/** The back arrow of a conversation on a phone: it goes to the list of conversations. */
 export function BackButton({ r, className = "" }: { r: Room; className?: string }) {
   return (
-    <button type="button" className={`grid size-11 shrink-0 place-items-center rounded-[6px] md:hidden ${className}`} aria-label="Всички разговори" onClick={() => r.flash("Проба: тук се връща към списъка с разговори")}>
+    <button type="button" className={`grid size-11 shrink-0 place-items-center rounded-[6px] md:hidden ${className}`} aria-label="Всички разговори" onClick={r.back}>
       <ArrowLeft className="size-5" aria-hidden />
     </button>
   );
@@ -355,14 +396,14 @@ export function PhotoPair() {
 type TextMsg = Extract<Msg, { t: "text" }>;
 
 /** One chat bubble with its date label, photos, time and send state; a failed one can be retried below it. */
-export function TextBubble({ m, r, round = "rounded-[14px]" }: { m: TextMsg; r: Room; round?: string }) {
+export function TextBubble({ m, r, incoming = "bg-surface" }: { m: TextMsg; r: Room; incoming?: string }) {
   const mine = m.from === r.viewer;
   const tail = mine ? "rounded-br-[4px]" : "rounded-bl-[4px]";
-  const tone = m.state === "failed" ? "bg-danger-soft text-ink" : mine ? "bg-ink text-white" : "bg-surface text-ink";
+  const tone = m.state === "failed" ? "bg-danger-soft text-ink" : mine ? "bg-ink text-white" : `${incoming} text-ink`;
   return (
     <>
       <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-        <div className={`max-w-[85%] px-3.5 py-2 sm:max-w-[75%] ${round} ${tail} ${tone}`}>
+        <div className={`max-w-[85%] rounded-[14px] px-3.5 py-2 sm:max-w-[75%] ${tail} ${tone}`}>
           {m.label && (
             <p className={`mb-1.5 inline-flex items-center gap-1.5 rounded-[6px] px-2 py-1 text-sm font-bold text-ink ${mine ? "bg-rule" : "bg-rule-soft"}`}>
               <CalendarDays className="size-4 shrink-0" aria-hidden />
@@ -393,7 +434,7 @@ export function TextBubble({ m, r, round = "rounded-[14px]" }: { m: TextMsg; r: 
 }
 
 /** Actions under a booking card, with the real texts: confirm or decline a proposal, withdraw your own, cancel a confirmed one after asking. */
-export function BookingActions({ r, id, b }: { r: Room; id: string; b: BookingData }) {
+export function BookingActions({ r, id, b, inner = "bg-paper" }: { r: Room; id: string; b: BookingData; inner?: string }) {
   const first = r.partner.first;
   if (b.status === "proposed" && b.by !== r.viewer) {
     return (
@@ -420,7 +461,7 @@ export function BookingActions({ r, id, b }: { r: Room; id: string; b: BookingDa
   if (b.status === "confirmed" && !b.past) {
     if (r.cancelAsk === id) {
       return (
-        <div className="mt-2 rounded-[6px] bg-paper p-2.5" role="alertdialog" aria-label="Отмяна на уговорката">
+        <div className={`mt-2 rounded-[6px] p-2.5 ${inner}`} role="alertdialog" aria-label="Отмяна на уговорката">
           <p className="font-bold">Да отменя ли уговорката?</p>
           <p className="text-sm text-ink-2">Другата страна ще види съобщение.</p>
           <div className="mt-2 flex gap-2">
@@ -446,7 +487,7 @@ export function BookingActions({ r, id, b }: { r: Room; id: string; b: BookingDa
   return null;
 }
 
-/** Five stars, a short text and „Публикувай“; the frame around it belongs to the variant. */
+/** Five stars, a short text and „Публикувай“; the frame around it belongs to the thread. */
 export function RateFields({ r, idPrefix }: { r: Room; idPrefix: string }) {
   const labels = ["", "Лошо", "Слабо", "Добре", "Много добре", "Отлично"];
   return (

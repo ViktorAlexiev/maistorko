@@ -4,11 +4,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ProtoHarness } from "../_harness/picker";
 import { SCENARIOS, type Scenario } from "./data";
 import { useRoom } from "./shared";
-import { VariantProzorets } from "./variant-prozorets";
-import { VariantTalon } from "./variant-talon";
-import { VariantTiho } from "./variant-tiho";
+import { VariantApp } from "./variant-app";
+import { VariantIndex } from "./variant-index";
+import { VariantSheet } from "./variant-sheet";
 
-const NAMES = ["Тихо", "Талон", "Прозорец"];
+const NAMES = ["Един лист", "Показалец", "Приложение"];
 
 /** One conversation session: a new one starts when the variant or the scenario changes. */
 function Session({ variant, scenario }: { variant: number; scenario: Scenario }) {
@@ -19,10 +19,10 @@ function Session({ variant, scenario }: { variant: number; scenario: Scenario })
   useLayoutEffect(() => {
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [r.messages.length, r.askStep, r.rate.open, r.rate.done]);
-  if (variant === 1) return <VariantTalon r={r} scroller={scroller} box={box} />;
-  if (variant === 2) return <VariantProzorets r={r} scroller={scroller} box={box} />;
-  return <VariantTiho r={r} scroller={scroller} box={box} />;
+  }, [r.activeId, r.messages.length, r.askStep, r.rate.open, r.rate.done]);
+  if (variant === 1) return <VariantIndex r={r} scroller={scroller} box={box} />;
+  if (variant === 2) return <VariantApp r={r} scroller={scroller} box={box} />;
+  return <VariantSheet r={r} scroller={scroller} box={box} />;
 }
 
 /** The scenario switch: a second, small harness pill at the top left. Collapsed it is one word inside the site header; open it drops a short list. */

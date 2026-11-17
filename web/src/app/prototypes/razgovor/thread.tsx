@@ -2,7 +2,7 @@
 
 import { BadgeEuro, CalendarPlus, ChevronUp, Ellipsis, Flag, Handshake, ImagePlus, Phone, Star } from "lucide-react";
 import { Avatar } from "@/components/avatar";
-import { aboutLine, type BookingData } from "./data";
+import type { BookingData, OfferData } from "./data";
 import {
   askText,
   BackButton,
@@ -11,56 +11,74 @@ import {
   ComposerField,
   Flash,
   Hint,
-  KIND,
   isQuiet,
+  KIND,
   Menu,
   QuickRow,
   RateDone,
   RateFields,
   Rivet,
   SendButton,
-  Stage,
   statusOf,
   TextBubble,
   type Refs,
   type Room,
 } from "./shared";
 
-/** „Тихо“: the familiar layout, everything inline; header, messages and composer are told apart by tone and space only. */
-export function VariantTiho({ r, scroller, box }: Refs & { r: Room }) {
+/** Draws an offer inside the conversation; `bg` is the card tone that fits the ground it lies on. */
+export type OfferRender = (o: OfferData, bg: string) => React.ReactNode;
+
+/** The „Тихо“ conversation: header, bar, bubbles, cards, review box, quick-reply row, composer. Everything is inline; tone and space separate the parts. */
+export function Thread({
+  r,
+  scroller,
+  box,
+  offer,
+  ground = "paper",
+  bare = false,
+  className = "",
+}: Refs & {
+  r: Room;
+  offer: OfferRender;
+  /** "paper": messages on Concrete Paper. "surface": the whole conversation is Card Surface (cards and incoming bubbles step back to paper). */
+  ground?: "paper" | "surface";
+  /** the header is drawn elsewhere (one top bar across list and conversation) */
+  bare?: boolean;
+  className?: string;
+}) {
+  const onSurface = ground === "surface";
+  const card = onSurface ? "bg-paper" : "bg-surface";
   return (
-    <Stage r={r}>
-      <section aria-label={`Разговор с ${r.partner.name}`} className="relative flex min-h-0 flex-col bg-paper md:overflow-hidden md:rounded-[10px]">
-        <Header r={r} />
-        {r.upcoming && <UpcomingBar r={r} />}
-        <div
-          data-proto="messages"
-          ref={scroller}
-          role="log"
-          aria-live="polite"
-          aria-relevant="additions"
-          className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-5"
-        >
-          <ol className="mx-auto grid max-w-2xl gap-1.5">
-            {r.messages.map((m) => (
-              <li key={m.id} id={`m-${m.id}`} className="grid">
-                {m.t === "day" && <p className="numerals my-2 text-center text-base text-ink-3">{m.label}</p>}
-                {m.t === "text" && <TextBubble m={m} r={r} />}
-                {m.t === "booking" && <BookingCard r={r} id={m.id} b={m.b} />}
-                {m.t === "offer" && <OfferCard r={r} title={m.title} total={m.total} />}
-                {m.t === "invite" && <InviteCard r={r} body={m.body} />}
-              </li>
-            ))}
-          </ol>
-        </div>
-        <ReviewField r={r} />
-        <Composer r={r} box={box} />
-      </section>
-    </Stage>
+    <section aria-label={`Разговор с ${r.partner.name}`} className={`relative flex min-h-0 flex-col ${onSurface ? "bg-surface" : "bg-paper"} ${className}`}>
+      {!bare && <ThreadHeader r={r} />}
+      {r.upcoming && <UpcomingBar r={r} />}
+      <div
+        data-proto="messages"
+        ref={scroller}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-5"
+      >
+        <ol className="mx-auto grid max-w-2xl gap-1.5">
+          {r.messages.map((m) => (
+            <li key={m.id} id={`m-${m.id}`} className="grid">
+              {m.t === "day" && <p className="numerals my-2 text-center text-base text-ink-3">{m.label}</p>}
+              {m.t === "text" && <TextBubble m={m} r={r} incoming={card} />}
+              {m.t === "booking" && <BookingCard r={r} id={m.id} b={m.b} bg={card} />}
+              {m.t === "offer" && offer(m.o, card)}
+              {m.t === "invite" && <InviteCard r={r} body={m.body} bg={card} />}
+            </li>
+          ))}
+        </ol>
+      </div>
+      <ReviewField r={r} />
+      <Composer r={r} box={box} />
+    </section>
   );
 }
 
-function Header({ r }: { r: Room }) {
+export function ThreadHeader({ r }: { r: Room }) {
   return (
     <header className="relative z-20 flex items-center gap-2 bg-surface px-1.5 py-2 sm:px-3">
       <BackButton r={r} className="hover:bg-ink/5" />
@@ -70,7 +88,7 @@ function Header({ r }: { r: Room }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[1.125rem] font-extrabold leading-tight">{r.partner.name}</p>
-        <p className="text-sm leading-snug text-ink-2">{aboutLine(r.scenario)}</p>
+        <p className="text-sm leading-snug text-ink-2">{r.about}</p>
       </div>
       <a href={callHref(r)} className="btn btn-ghost size-11 shrink-0 p-0" aria-label={`Обади се на ${r.partner.first}`} title={r.partner.phone}>
         <Phone className="size-5" aria-hidden />
@@ -100,11 +118,11 @@ function UpcomingBar({ r }: { r: Room }) {
   );
 }
 
-function BookingCard({ r, id, b }: { r: Room; id: string; b: BookingData }) {
+function BookingCard({ r, id, b, bg }: { r: Room; id: string; b: BookingData; bg: string }) {
   const st = statusOf(b);
   const quiet = isQuiet(b);
   return (
-    <div className={`mx-auto my-1.5 w-full max-w-md overflow-hidden rounded-[10px] ${quiet ? "bg-surface-2 text-ink-2" : "bg-surface"}`}>
+    <div className={`mx-auto my-1.5 w-full max-w-md overflow-hidden rounded-[10px] ${quiet ? "bg-surface-2 text-ink-2" : bg}`}>
       <div aria-hidden className="graduations graduations-top h-2 bg-rule" />
       <div className="p-3.5 pt-3">
         <div className="flex items-start gap-3">
@@ -119,30 +137,15 @@ function BookingCard({ r, id, b }: { r: Room; id: string; b: BookingData }) {
             {st.word}
           </span>
         </div>
-        <BookingActions r={r} id={id} b={b} />
+        <BookingActions r={r} id={id} b={b} inner={bg === "bg-paper" ? "bg-surface-2" : "bg-paper"} />
       </div>
     </div>
   );
 }
 
-function OfferCard({ r, title, total }: { r: Room; title: string; total: number }) {
+function InviteCard({ r, body, bg }: { r: Room; body: string; bg: string }) {
   return (
-    <div className="mx-auto my-1.5 w-full max-w-md rounded-[10px] bg-surface p-3.5">
-      <p className="flex items-center gap-1.5 text-sm font-bold text-ink-2">
-        <BadgeEuro className="size-4" aria-hidden /> Оферта
-      </p>
-      <p className="mt-0.5 font-bold">{title}</p>
-      <p className="numerals text-3xl">{total.toFixed(2).replace(".", ",")} €</p>
-      <button type="button" className="btn btn-primary mt-2 w-full" onClick={() => r.flash("Проба: тук се отваря страницата на офертата")}>
-        {r.viewer === "client" ? "Виж и приеми офертата" : "Виж как я вижда клиентът"}
-      </button>
-    </div>
-  );
-}
-
-function InviteCard({ r, body }: { r: Room; body: string }) {
-  return (
-    <div className="mx-auto my-1.5 w-full max-w-md rounded-[10px] bg-surface p-3.5">
+    <div className={`mx-auto my-1.5 w-full max-w-md rounded-[10px] p-3.5 ${bg}`}>
       <p className="flex items-center gap-1.5 text-sm font-bold text-ink-2">
         <Star className="size-4" aria-hidden /> Работата е свършена
       </p>
