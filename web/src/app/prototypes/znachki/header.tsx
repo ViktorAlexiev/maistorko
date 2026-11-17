@@ -9,10 +9,47 @@ export type Variant = 1 | 2 | 3;
 
 const NAV = ["Майстори", "Категории", "Как работи"];
 
-/** The mark: a 12px red dot (the unread rivet) with a 2px Card Surface ring. */
-const DOT = "size-3 rounded-full bg-red ring-2 ring-surface";
-/** At the top-right corner of the icon. */
-const CORNER = "absolute -right-1 -top-1";
+/** The three looks of the dot on „Съобщения“; the bell is always the red count below. */
+const RING = "0 0 0 2px var(--surface)";
+
+/** „Нит“: a 12px rivet head: red disc, the inset ink ring of the unread mark, a soft highlight top-left, a 2px Card Surface ring outside. */
+function RivetDot() {
+  return (
+    <span
+      aria-hidden
+      className="absolute -right-1 -top-1 size-3 rounded-full bg-red"
+      style={{ boxShadow: `inset 0 0 0 1.5px rgb(22 20 15 / 0.6), ${RING}` }}
+    >
+      <span className="absolute left-[2px] top-[2px] size-[3px] rounded-full bg-white/60 blur-[0.5px]" />
+    </span>
+  );
+}
+
+/** „Ореол“: a 10px dot with a 2px Card Surface ring and a pale red halo; the halo pulses once when it appears and whenever the count grows (key = count). */
+function HaloDot({ pulseKey }: { pulseKey: number }) {
+  return (
+    <span aria-hidden className="absolute -right-[3px] -top-[3px] size-[10px]">
+      <style>{`
+        @keyframes znachki-pulse { from { transform: scale(1); opacity: 0.55; } to { transform: scale(2.8); opacity: 0; } }
+        @media (prefers-reduced-motion: no-preference) { .znachki-pulse { animation: znachki-pulse 600ms ease-out 1 both; } }
+        @media (prefers-reduced-motion: reduce) { .znachki-pulse { display: none; } }
+      `}</style>
+      <span key={pulseKey} className="znachki-pulse absolute inset-0 rounded-full bg-red" />
+      <span
+        className="absolute inset-0 rounded-full bg-red"
+        style={{ boxShadow: `${RING}, 0 0 0 5px color-mix(in srgb, var(--red) 25%, transparent)` }}
+      />
+    </span>
+  );
+}
+
+/** „Изрез“: a solid 10px dot without a ring; the icon is cut around it by a mask (see CUT). */
+function NotchDot() {
+  return <span aria-hidden className="absolute -right-[3px] -top-[3px] size-[10px] rounded-full bg-red" />;
+}
+
+/** The dot's centre is at (19px, 1px) of the 20px icon; the mask clears the stroke 3px beyond the dot's edge (radius 8px). */
+const CUT = "radial-gradient(circle at 19px 1px, transparent 7.5px, #000 8px)";
 
 /** A red count in the look of the Tab: condensed numerals, white on red, 4px corners, about 20px high; „99+“ above 99. */
 function Count({ n }: { n: number }) {
@@ -47,7 +84,7 @@ const POOL: Omit<Item, "id" | "read">[] = [
 const ICON = { booking: CalendarClock, review: Star, calendar: CalendarDays };
 
 /** A static copy of the bell of notification-bell.tsx: its button, the dropdown and „Прочетени“, with the state's count. */
-function BellCopy({ variant, count, flash }: { variant: Variant; count: number; flash: (t: string) => void }) {
+function BellCopy({ count, flash }: { count: number; flash: (t: string) => void }) {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(count);
   const [items, setItems] = useState<Item[]>(() => POOL.map((p, i) => ({ ...p, id: i, read: i >= count })));
@@ -91,7 +128,7 @@ function BellCopy({ variant, count, flash }: { variant: Variant; count: number; 
       >
         <span className="relative">
           <Bell className="size-5" aria-hidden />
-          {unread > 0 && (variant === 2 ? <Count n={unread} /> : <span aria-hidden className={`${CORNER} ${DOT}`} />)}
+          {unread > 0 && <Count n={unread} />}
         </span>
       </button>
 
@@ -135,7 +172,7 @@ function BellCopy({ variant, count, flash }: { variant: Variant; count: number; 
 
 /**
  * A static copy of the logged-in craftsman site header (site-header.tsx), fixed over the real one: logo, nav links (from md),
- * the bell, „Съобщения“ (the word from sm), the user menu (from md) or the menu button (below md). Only the marks differ per variant.
+ * the bell, „Съобщения“ (the word from sm), the user menu (from md) or the menu button (below md). Only the dot on „Съобщения“ differs per variant.
  */
 export function SiteHeaderCopy({ variant, messages, bell, flash }: { variant: Variant; messages: number; bell: number; flash: (t: string) => void }) {
   const soon = (what: string) => () => flash(`Проба: тук се отваря „${what}“.`);
@@ -152,7 +189,7 @@ export function SiteHeaderCopy({ variant, messages, bell, flash }: { variant: Va
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <BellCopy variant={variant} count={bell} flash={flash} />
+          <BellCopy count={bell} flash={flash} />
           <button
             type="button"
             className="btn btn-ghost btn-sm relative min-h-11"
@@ -160,13 +197,14 @@ export function SiteHeaderCopy({ variant, messages, bell, flash }: { variant: Va
             onClick={() => flash("Проба: тук се отварят съобщенията.")}
           >
             <span className="relative">
-              <MessageCircle className="size-5" aria-hidden />
-              {messages > 0 && <span aria-hidden className={`${CORNER} ${DOT} ${variant === 3 ? "sm:hidden" : ""}`} />}
+              <MessageCircle
+                className="size-5"
+                aria-hidden
+                style={variant === 3 && messages > 0 ? { maskImage: CUT, WebkitMaskImage: CUT } : undefined}
+              />
+              {messages > 0 && (variant === 1 ? <RivetDot /> : variant === 2 ? <HaloDot pulseKey={messages} /> : <NotchDot />)}
             </span>
-            <span className="hidden items-center gap-1.5 sm:inline-flex">
-              Съобщения
-              {variant === 3 && messages > 0 && <span aria-hidden className="size-3 rounded-full bg-red" />}
-            </span>
+            <span className="hidden sm:inline">Съобщения</span>
           </button>
           <div className="relative hidden md:block">
             <button type="button" className="btn btn-ghost btn-sm gap-2 pl-1" aria-haspopup="menu" aria-label="Меню на профила: Георги Петров" onClick={soon("Моето табло")}>

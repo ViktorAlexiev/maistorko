@@ -7,7 +7,7 @@ import { useRoom } from "../razgovor/shared";
 import { SheetRows } from "../razgovor/variant-sheet";
 import { SiteHeaderCopy, type Variant } from "./header";
 
-const NAMES = ["Две точки", "Число на звънчето", "Точка след думата"];
+const NAMES = ["Нит", "Ореол", "Изрез"];
 
 /** The four states: how many unread messages and how many unread notifications. */
 const STATES = [
@@ -18,7 +18,7 @@ const STATES = [
 ];
 
 /** One session: the header copy over the approved „Преглед“ page. A new one starts when the variant or the state changes. */
-function Session({ variant, state }: { variant: Variant; state: number }) {
+function Session({ variant, state, extra }: { variant: Variant; state: number; extra: number }) {
   const box = useRef<HTMLTextAreaElement>(null);
   const room = useRoom(5, box);
   const st = STATES[state - 1];
@@ -33,13 +33,13 @@ function Session({ variant, state }: { variant: Variant; state: number }) {
   return (
     <>
       <Home r={r} Rows={SheetRows} />
-      <SiteHeaderCopy variant={variant} messages={st.messages} bell={st.bell} flash={room.flash} />
+      <SiteHeaderCopy variant={variant} messages={st.messages + extra} bell={st.bell} flash={room.flash} />
     </>
   );
 }
 
 /** The state switch: a small harness pill at the top left, like the scenario pill of the conversation prototype. */
-function StatePill({ value, onChange }: { value: number; onChange: (s: number) => void }) {
+function StatePill({ value, onChange, onNew }: { value: number; onChange: (s: number) => void; onNew: () => void }) {
   const [open, setOpen] = useState(false);
   const current = STATES[value - 1];
   return (
@@ -80,6 +80,9 @@ function StatePill({ value, onChange }: { value: number; onChange: (s: number) =
           ))}
         </ul>
       )}
+      <button type="button" className="proto-picker-item" onClick={onNew} style={{ justifyContent: "center", whiteSpace: "nowrap" }}>
+        Ново съобщение
+      </button>
       <span className="sr-only">Сега: {current.label}</span>
     </nav>
   );
@@ -87,6 +90,8 @@ function StatePill({ value, onChange }: { value: number; onChange: (s: number) =
 
 export function ZnachkiProto({ initialVariant, initialState }: { initialVariant: number; initialState: number }) {
   const [state, setState] = useState(initialState);
+  /** unread messages added with „Ново съобщение“; they start over with a new state */
+  const [extra, setExtra] = useState(0);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -99,9 +104,16 @@ export function ZnachkiProto({ initialVariant, initialState }: { initialVariant:
       {/* On a phone the variant switch sits just above the bottom bar, so it covers neither the header marks nor the bell dropdown */}
       <style>{`@media (max-width: 767px) { .proto-picker[data-position="top"] { top: auto; bottom: 60px; } }`}</style>
       <ProtoHarness names={NAMES} initial={initialVariant} position="top">
-        {(i) => <Session key={`${i}-${state}`} variant={(i + 1) as Variant} state={state} />}
+        {(i) => <Session key={`${i}-${state}`} variant={(i + 1) as Variant} state={state} extra={extra} />}
       </ProtoHarness>
-      <StatePill value={state} onChange={setState} />
+      <StatePill
+        value={state}
+        onChange={(s) => {
+          setState(s);
+          setExtra(0);
+        }}
+        onNew={() => setExtra((n) => n + 1)}
+      />
     </>
   );
 }
