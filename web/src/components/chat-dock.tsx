@@ -160,6 +160,7 @@ export function ChatDock(props: Props) {
             craftsman={craftsman}
             banned={props.banned}
             draft={props.ask ? draftFor(props.ask.date, props.ask.slot) : ""}
+            collapsed={minimized}
           />
         ) : (
           <FirstMessage
@@ -393,12 +394,14 @@ function DockThread({
   craftsman,
   banned,
   draft,
+  collapsed,
 }: {
   conversationId: string;
   me: string;
   craftsman: Craftsman;
   banned: boolean;
   draft: string;
+  collapsed: boolean;
 }) {
   const [data, setData] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
@@ -475,6 +478,7 @@ function DockThread({
         craftsmanSameDay={data.sameDay}
         banned={banned}
         embedded
+        hidden={collapsed}
         draft={draft}
         reviewBox={data.reviewBox}
         myReview={data.myReview}

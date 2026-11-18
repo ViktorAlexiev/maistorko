@@ -71,6 +71,8 @@ type Props = {
   banned: boolean;
   /** Inside the chat window on a profile: the window draws its own header. */
   embedded?: boolean;
+  /** The window is collapsed: the thread stays mounted but is not shown, so nothing is marked read and the view is restored on show. */
+  hidden?: boolean;
   /** When the old message texts were deleted after 60 idle days (null = never) */
   purgedAt?: string | null;
   /** Text to put in the composer, e.g. a question about the day picked on the profile. */
@@ -100,7 +102,7 @@ const boxKeyOf = (n: number, bs: Booking[]) => `${n}|${bs.map((b) => `${b.id}:${
 
 const sofiaDay = (ts: string) => new Date(ts).toLocaleDateString("en-CA", { timeZone: "Europe/Sofia" });
 
-export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, craftsmanSameDay, org, banned, embedded, draft, purgedAt, canOffer, reviewBox: initialBox, myReview }: Props) {
+export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, craftsmanSameDay, org, banned, embedded, hidden = false, draft, purgedAt, canOffer, reviewBox: initialBox, myReview }: Props) {
   const supabase = createClient();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   const [text, setText] = useState(draft ?? "");
@@ -128,7 +130,9 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
   const box = useRef<HTMLTextAreaElement>(null);
   const atBottom = useRef(true);
 
+  const hiddenRef = useRef(hidden);
   const markRead = useCallback(async () => {
+    if (hiddenRef.current) return;
     await supabase.rpc("mark_conversation_read", { p_conversation: conversationId });
     window.dispatchEvent(new Event("maistorko:read"));
   }, [supabase, conversationId]);
@@ -248,13 +252,26 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
   }, [messages]);
 
   // The composer grows with its text, including a prefilled draft and the reset after sending
-  useLayoutEffect(() => {
+  const fitComposer = useCallback(() => {
     const el = box.current;
     if (!el) return;
     el.style.height = "auto";
     // border-box: scrollHeight leaves out the border, so add it back or a scrollbar appears
     el.style.height = `${Math.min(el.scrollHeight + el.offsetHeight - el.clientHeight, 160)}px`;
-  }, [text]);
+  }, []);
+  useLayoutEffect(fitComposer, [text, fitComposer]);
+
+  // A collapsed window hides the thread (display: none loses the scroll position and measures nothing):
+  // when it is shown again, go back to the bottom if the reader was there, re-measure the composer, mark read
+  useLayoutEffect(() => {
+    const was = hiddenRef.current;
+    hiddenRef.current = hidden;
+    if (!was || hidden) return;
+    const el = scroller.current;
+    if (el && atBottom.current) el.scrollTop = el.scrollHeight;
+    fitComposer();
+    if (document.visibilityState === "visible") markRead();
+  }, [hidden, fitComposer, markRead]);
 
   async function send(body: string, tempId = crypto.randomUUID(), photos?: string[]) {
     const meta = photos?.length ? { photos: photos.map((path) => ({ path })) } : {};
