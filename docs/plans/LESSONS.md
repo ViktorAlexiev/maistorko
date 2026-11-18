@@ -23,3 +23,9 @@
 - At acceptance the owner removed „Седмица“ and asked for a new month grid once they saw both on the live page next to the meter, which already showed the same days: in the variant round, show each view beside the other views on the page that repeat its data, so the owner judges the overlap before tasks are written.
 - The plan's code drew „потвърдено“ and „поръчка“ with the same rivet although the design gave them different meanings: for every status a design separates, the task text must name its own mark.
 - Criteria and tests named columns that do not exist (`exception_date`/`is_available`, `m_date`/`n_free`): check every column name in a criterion's SQL against the schema when writing the plan.
+
+## 2026-11-18 · Съобщения (2026-11-17-saobshteniya)
+
+- The two approved images for the first message disagreed with each other (two labels and 92px thumbnails vs one label and big tiles), and the task text kept today's look: when a plan approves several screens that show the same element, compare them and settle one look before writing tasks.
+- The plan let closing the profile chat window delete unsent photos and text, and limited „Изтрий моя отзив“ to the 30 newest reviews; the owner overturned both at acceptance and added a confirm step and an „· редактиран“ mark: for every destructive or draft-losing action, the plan should state what is kept, how it is undone, and whether it asks first.
+- AC14's test account was proved with a raw table query that missed an old review, so the check ran on a substitute: prove a test account's property through the same function the app uses (`can_review`), not a raw table query.
