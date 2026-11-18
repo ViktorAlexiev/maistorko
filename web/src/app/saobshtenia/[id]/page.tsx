@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Thread, type ChatMessage } from "./thread";
+import { toReviewBox } from "./review-box";
 import type { Booking } from "./booking";
 import type { Share } from "./chat-photos";
 import { getMyOrg, isManager } from "@/lib/org";
@@ -20,7 +21,7 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
     .maybeSingle();
   if (!conv) notFound();
 
-  const [{ data: summaries }, { data: messages }, { data: phone }, { data: bookings }, { data: shares }] = await Promise.all([
+  const [{ data: summaries }, { data: messages }, { data: phone }, { data: bookings }, { data: shares }, { data: box }, { data: myReview }] = await Promise.all([
     supabase.rpc("my_conversations"),
     supabase
       .from("messages")
@@ -38,6 +39,11 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
       .from("photo_share_requests")
       .select("id, message_id, path, status, published_at, requested_by")
       .eq("conversation_id", id),
+    supabase.rpc("review_box", { p_conversation: id }),
+    // the client's own review, to fill the review form with
+    conv.client_id === viewer.id && conv.craftsman_id
+      ? supabase.from("reviews").select("rating, body").eq("client_id", viewer.id).eq("craftsman_id", conv.craftsman_id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
   const summary = summaries?.find((s) => s.id === id);
   const category = Array.isArray(conv.category) ? conv.category[0] : conv.category;
@@ -92,6 +98,8 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
       canOffer={canOffer}
       org={org}
       banned={viewer.profile.is_banned}
+      reviewBox={toReviewBox(box)}
+      myReview={myReview ?? null}
     />
   );
 }

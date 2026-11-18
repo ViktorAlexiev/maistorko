@@ -401,7 +401,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
                 </p>
               )}
             </div>
-            {canReview && (
+            {(canReview || myReview) && (
               <div className="mt-5">
                 <ReviewForm craftsmanId={c.id} slug={c.slug} existing={myReview ? { rating: myReview.rating, body: myReview.body } : null} />
               </div>
@@ -430,7 +430,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
               </ul>
             ) : (
               <p className="mt-3 text-ink-2">
-                {firstName} още няма отзиви. Отзив могат да оставят клиенти, с които е разговарял.
+                {firstName} още няма отзиви. Отзив могат да оставят клиенти, при които е работил или е идвал на оглед.
               </p>
             )}
           </section>

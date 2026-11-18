@@ -92,7 +92,7 @@ export async function submitReview(_: FormState, formData: FormData): Promise<Fo
     return {
       message:
         error.code === "42501"
-          ? "Можете да оцените майстор, след като сте си писали и той ви е отговорил."
+          ? "Можете да оцените майстор, след като е работил при вас или е идвал на оглед."
           : "Отзивът не беше записан. Опитайте отново.",
       values: { body: raw.body },
     };

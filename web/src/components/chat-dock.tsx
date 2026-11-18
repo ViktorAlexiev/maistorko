@@ -7,6 +7,7 @@ import { startConversation } from "@/app/actions/engage";
 import type { FormState } from "@/app/actions/auth";
 import { Thread, type ChatMessage } from "@/app/saobshtenia/[id]/thread";
 import type { Booking } from "@/app/saobshtenia/[id]/booking";
+import { toReviewBox, type MyReview, type ReviewBoxKind } from "@/app/saobshtenia/[id]/review-box";
 import type { Share } from "@/app/saobshtenia/[id]/chat-photos";
 import { Avatar } from "@/components/avatar";
 import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
@@ -391,6 +392,8 @@ type Loaded = {
   requestedDate: string | null;
   categoryName: string | null;
   sameDay: boolean;
+  reviewBox: ReviewBoxKind | null;
+  myReview: MyReview | null;
 };
 
 function DockThread({
@@ -431,7 +434,9 @@ function DockThread({
         .select("id, message_id, path, status, published_at, requested_by")
         .eq("conversation_id", conversationId),
       supabase.from("craftsman_profiles").select("short_notice").eq("id", craftsman.id).maybeSingle(),
-    ]).then(([conv, msgs, bookings, phone, shares, profile]) => {
+      supabase.rpc("review_box", { p_conversation: conversationId }),
+      supabase.from("reviews").select("rating, body").eq("client_id", me).eq("craftsman_id", craftsman.id).maybeSingle(),
+    ]).then(([conv, msgs, bookings, phone, shares, profile, box, review]) => {
       if (stale) return;
       if (conv.error || msgs.error || !conv.data) return setFailed(true);
       const cat = Array.isArray(conv.data.category) ? conv.data.category[0] : conv.data.category;
@@ -443,12 +448,14 @@ function DockThread({
         requestedDate: conv.data.requested_date,
         categoryName: cat?.name ?? null,
         sameDay: profile.data?.short_notice !== false,
+        reviewBox: toReviewBox(box.data),
+        myReview: review.data ?? null,
       });
     });
     return () => {
       stale = true;
     };
-  }, [conversationId, craftsman.id]);
+  }, [conversationId, craftsman.id, me]);
 
   if (failed)
     return (
@@ -478,6 +485,8 @@ function DockThread({
         banned={banned}
         embedded
         draft={draft}
+        reviewBox={data.reviewBox}
+        myReview={data.myReview}
       />
     </div>
   );

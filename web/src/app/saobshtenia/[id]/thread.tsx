@@ -12,8 +12,8 @@ import { BookingCard, BookingSheet, bookingWhen, KIND_LABEL, type Booking } from
 import { Menu } from "./menu";
 import { OfferCard, Rivet, type ChatOffer, type Line } from "./offer-card";
 import { ReportButton } from "@/components/report-button";
-import { ReviewForm } from "@/components/review-form";
 import { QuickReplies } from "./quick-replies";
+import { ReviewBox, type MyReview, type ReviewBoxKind } from "./review-box";
 import { OfferSheet, type CreatedOffer } from "./offer-sheet";
 import {
   AttachButton,
@@ -77,6 +77,10 @@ type Props = {
   draft?: string;
   /** the craftsman has offers by link (Pro) */
   canOffer?: boolean;
+  /** which yellow box sits above the composer (decided by the database); null = none */
+  reviewBox: ReviewBoxKind | null;
+  /** the client's own review of this craftsman, to fill the form with */
+  myReview: MyReview | null;
 };
 
 let tempSeq = 0;
@@ -93,7 +97,7 @@ function upcomingWhen(b: Booking, today: string) {
 
 const sofiaDay = (ts: string) => new Date(ts).toLocaleDateString("en-CA", { timeZone: "Europe/Sofia" });
 
-export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, craftsmanSameDay, org, banned, embedded, draft, purgedAt, canOffer }: Props) {
+export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, craftsmanSameDay, org, banned, embedded, draft, purgedAt, canOffer, reviewBox, myReview }: Props) {
   const supabase = createClient();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   const [text, setText] = useState(draft ?? "");
@@ -110,12 +114,11 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [sending, setSending] = useState(false);
   const [busyPath, setBusyPath] = useState<string | null>(null);
-  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewFormOpen, setReviewFormOpen] = useState(false);
+  const [published, setPublished] = useState(false);
   const [offerOpen, setOfferOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [offers, setOffers] = useState<ChatOffer[]>([]);
-  const [myReview, setMyReview] = useState<{ rating: number; body: string } | null>(null);
-  const [askingReview, setAskingReview] = useState(false);
   const canBook = Boolean(craftsmanId) && (iAmClient || craftsmanId === me);
   const scroller = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
@@ -345,15 +348,6 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
 
   const shareById = new Map(shares.map((s) => [s.id, s]));
 
-  const canReview = iAmClient && Boolean(partner.id) && Boolean(partner.slug);
-
-  async function openReview() {
-    if (!partner.id) return;
-    const { data } = await supabase.from("reviews").select("rating, body").eq("craftsman_id", partner.id).eq("client_id", me).maybeSingle();
-    setMyReview(data ?? null);
-    setReviewOpen(true);
-  }
-
   // Craftsman: an offer written from the chat arrives as a card the client can open and accept
   async function sendOffer(o: CreatedOffer) {
     const body = `Оферта: ${o.title}, ${o.total.toFixed(2).replace(".", ",")} €`;
@@ -369,19 +363,9 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
     toast.success("Офертата е изпратена в разговора.");
   }
 
-  // Craftsman: tell the client the work is done; the client gets a message with the review button
-  async function askReview() {
-    setAskingReview(true);
-    const { error } = await supabase.rpc("request_review_in_chat", { p_conversation: conversationId });
-    setAskingReview(false);
-    if (error) toast.error(error.message);
-    else toast.success("Клиентът получи съобщение с покана за отзив.");
-  }
-
   const partnerFirst = partner.name.split(" ")[0];
   // Page: the whole conversation is Card Surface and cards step back to paper. In the profile window it is the other way round.
   const card = embedded ? "bg-surface" : "bg-paper";
-  const partnerReplied = messages.some((m) => m.sender_id === partner.id);
   const today = todayISO();
   const byId = new Map(bookings.map((b) => [b.id, b]));
   const firstMessageFor = new Map<string, number>();
@@ -513,12 +497,16 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
                       <Star className="size-4" aria-hidden /> Работата е свършена
                     </p>
                     <p className="mt-0.5">{m.body}</p>
-                    {canReview ? (
-                      <button type="button" className="btn btn-primary mt-2 w-full" onClick={openReview}>
-                        Остави отзив
-                      </button>
+                    {iAmClient ? (
+                      published ? (
+                        <p className="mt-2 text-sm font-semibold text-ink-2">Отзивът е публикуван.</p>
+                      ) : (
+                        <button type="button" className="btn btn-primary mt-2 w-full" onClick={() => setReviewFormOpen(true)}>
+                          Остави отзив
+                        </button>
+                      )
                     ) : (
-                      <p className="mt-2 text-sm text-ink-3">{iAmClient ? "" : "Клиентът може да остави отзив от този разговор."}</p>
+                      <p className="mt-2 text-sm text-ink-3">Клиентът може да остави отзив от този разговор.</p>
                     )}
                   </div>
                 ) : m.meta?.share_request ? (
@@ -630,25 +618,19 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
             );
           })}
         </ol>
-        {canReview && partnerReplied && (
-          <div className="mx-auto mt-6 flex max-w-2xl items-center gap-3 rounded-[10px] border border-dashed border-line-strong p-3 text-sm">
-            <Star className="size-5 shrink-0" aria-hidden />
-            <p className="flex-1">Свърши ли работата? Отзивът ви помага на други клиенти.</p>
-            <button type="button" className="btn btn-outline btn-sm" onClick={openReview}>
-              Оцени
-            </button>
-          </div>
-        )}
-        {!iAmClient && craftsmanId === me && messages.length > 0 && (
-          <div className="mx-auto mt-6 flex max-w-2xl items-center gap-3 rounded-[10px] border border-dashed border-line-strong p-3 text-sm">
-            <Star className="size-5 shrink-0" aria-hidden />
-            <p className="flex-1">Свърши ли работата? Поискай отзив и клиентът ще го види в този разговор.</p>
-            <button type="button" className="btn btn-outline btn-sm" onClick={askReview} disabled={askingReview}>
-              Работата е свършена
-            </button>
-          </div>
-        )}
       </div>
+
+      <ReviewBox
+        box={reviewBox}
+        partnerFirst={partnerFirst}
+        craftsmanId={iAmClient ? partner.id : null}
+        slug={partner.slug}
+        myReview={myReview}
+        conversationId={conversationId}
+        formOpen={reviewFormOpen}
+        onFormOpenChange={setReviewFormOpen}
+        onPublished={() => setPublished(true)}
+      />
 
       {/* Composer */}
       {banned ? (
@@ -747,19 +729,6 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
             Enter изпраща, Shift+Enter за нов ред. Когато се разберете, натиснете {iAmClient ? "„Уговорка“" : "„Предложи“"}.
           </p>
         </form>
-      )}
-      {reviewOpen && canReview && partner.id && partner.slug && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-4" role="dialog" aria-modal="true" aria-label={`Отзив за ${partner.name}`} onClick={() => setReviewOpen(false)}>
-          <div className="max-h-full w-full max-w-md overflow-y-auto rounded-[12px] bg-paper p-4 sm:p-5" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <h2 className="display text-2xl">Отзив за {partner.name}</h2>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReviewOpen(false)} aria-label="Затвори">
-                ✕
-              </button>
-            </div>
-            <ReviewForm craftsmanId={partner.id} slug={partner.slug} existing={myReview} onDone={() => setReviewOpen(false)} />
-          </div>
-        </div>
       )}
       {!banned && canOffer && !iAmClient && craftsmanId === me && (
         <OfferSheet open={offerOpen} onClose={() => setOfferOpen(false)} craftsmanId={me} partnerName={partner.name} onCreated={sendOffer} />
