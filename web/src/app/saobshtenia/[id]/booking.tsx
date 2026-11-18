@@ -36,7 +36,7 @@ export function bookingWhen(b: Pick<Booking, "booking_date" | "end_date" | "star
 const isPast = (b: Booking, today: string) => b.status === "confirmed" && (b.end_date ?? b.booking_date) < today;
 
 function statusOf(b: Booking, today: string): { word: string; rivet: "filled" | "ring" | null } {
-  if (b.status === "confirmed") return { word: isPast(b, today) ? "Минал" : "Потвърдено", rivet: "filled" };
+  if (b.status === "confirmed") return { word: isPast(b, today) ? "Минал" : "Уговорено", rivet: "filled" };
   if (b.status === "proposed") return { word: "Чака отговор", rivet: "ring" };
   return { word: b.status === "declined" ? "Отказано" : "Отменено", rivet: null };
 }
