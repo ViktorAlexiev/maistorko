@@ -75,7 +75,7 @@ export function NotificationBell({ userId, initial, initialUnread }: { userId: s
     <div ref={root} className="relative">
       <button
         type="button"
-        className="btn btn-ghost btn-sm relative"
+        className="btn btn-ghost btn-sm relative min-h-11 min-w-11"
         aria-label={unread ? `Известия, ${unread} непрочетени` : "Известия"}
         aria-expanded={open}
         aria-haspopup="true"

@@ -77,10 +77,11 @@ export function ConversationSidebar({ userId, initial }: { userId: string; initi
       </div>
       <h1 className="display hidden px-4 pb-3 pt-4 text-4xl md:block">Съобщения</h1>
       {items.length ? (
-        <>
+        rows.length ? (
           <ConversationRows items={rows} activeId={activeId ?? null} lastId={activeId ? null : last} />
-          {rows.length === 0 && <p className="p-4 text-center text-ink-2">Няма разговор с това име.</p>}
-        </>
+        ) : (
+          <p className="p-4 text-center text-ink-2">Няма разговор с това име.</p>
+        )
       ) : (
         <div className="p-5 text-ink-2">
           <p className="font-bold text-ink">Още няма разговори.</p>
