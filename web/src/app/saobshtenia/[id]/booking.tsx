@@ -114,7 +114,7 @@ export function BookingCard({
             </button>
           </div>
         )}
-        {booking.status === "confirmed" && !isPast(booking, today) && (
+        {booking.status === "confirmed" && (
           <div className="mt-1 flex items-center justify-between gap-2 text-sm text-ink-2">
             <span>{iAmCraftsman ? "Часът е зает в календара ти." : "Часът е запазен в календара на майстора."}</span>
             <button
