@@ -5,6 +5,7 @@ import { Star } from "lucide-react";
 import { deleteReview, submitReview } from "@/app/actions/engage";
 import type { FormState } from "@/app/actions/auth";
 import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
+import { DeleteConfirm, useDeleteConfirm } from "@/components/review-delete-confirm";
 
 const LABELS = ["", "Лошо", "Слабо", "Добре", "Много добре", "Отлично"];
 
@@ -13,6 +14,7 @@ export function ReviewForm({
   slug,
   existing,
   deleteId,
+  canReviewAgain = true,
   onDone,
 }: {
   craftsmanId?: string;
@@ -20,6 +22,8 @@ export function ReviewForm({
   existing?: { rating: number; body: string } | null;
   /** the id of the viewer's review: only when set the form offers to delete it (the profile does) */
   deleteId?: string;
+  /** false when the viewer could not write a new review after deleting this one (the confirm text then says so) */
+  canReviewAgain?: boolean;
   /** called after the review was saved (e.g. to close a dialog) */
   onDone?: () => void;
 }) {
@@ -27,6 +31,7 @@ export function ReviewForm({
   const [rating, setRating] = useState(existing?.rating ?? 0);
   const [hover, setHover] = useState(0);
   const shown = hover || rating;
+  const { confirming, deleteRef, ask, cancel } = useDeleteConfirm();
   useEffect(() => {
     if (state.ok) onDone?.();
   }, [state.ok, onDone]);
@@ -80,17 +85,27 @@ export function ReviewForm({
         <FieldError id="r-body-err" message={state.errors?.body} />
       </div>
       <FormMessage state={state} />
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <SubmitButton pendingText="Записваме…">{existing ? "Обнови отзива" : "Публикувай отзив"}</SubmitButton>
-        {deleteId && (
-          <>
-            <input type="hidden" name="id" value={deleteId} />
-            <button type="submit" formAction={deleteReview} formNoValidate className="ml-auto text-sm font-semibold text-danger underline">
+      {deleteId && <input type="hidden" name="id" value={deleteId} />}
+      {confirming ? (
+        <DeleteConfirm
+          canWriteAgain={canReviewAgain}
+          onCancel={cancel}
+          confirm={(disabled) => (
+            <button type="submit" formAction={deleteReview} formNoValidate className="btn btn-danger" disabled={disabled}>
+              Да, изтрий
+            </button>
+          )}
+        />
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <SubmitButton pendingText="Записваме…">{existing ? "Обнови отзива" : "Публикувай отзив"}</SubmitButton>
+          {deleteId && (
+            <button ref={deleteRef} type="button" onClick={ask} className="ml-auto text-sm font-semibold text-danger underline">
               Изтрий моя отзив
             </button>
-          </>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </form>
   );
 }

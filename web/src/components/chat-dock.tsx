@@ -287,7 +287,7 @@ function DockThread({
         .eq("conversation_id", conversationId),
       supabase.from("craftsman_profiles").select("short_notice").eq("id", craftsman.id).maybeSingle(),
       supabase.rpc("review_box", { p_conversation: conversationId }),
-      supabase.from("reviews").select("rating, body").eq("client_id", me).eq("craftsman_id", craftsman.id).maybeSingle(),
+      supabase.from("reviews").select("id, rating, body").eq("client_id", me).eq("craftsman_id", craftsman.id).maybeSingle(),
     ]).then(([conv, msgs, bookings, phone, shares, profile, box, review]) => {
       if (stale) return;
       if (conv.error || msgs.error || !conv.data) return setFailed(true);

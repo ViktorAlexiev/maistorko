@@ -411,6 +411,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
                   slug={c.slug}
                   existing={myReview ? { rating: myReview.rating, body: myReview.body } : null}
                   deleteId={myReview?.id}
+                  canReviewAgain={Boolean(canReview)}
                 />
               </div>
             )}

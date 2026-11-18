@@ -116,12 +116,19 @@ export async function submitReview(_: FormState, formData: FormData): Promise<Fo
   return { ok: true, message: existing ? "Отзивът е обновен." : "Благодарим! Отзивът е публикуван." };
 }
 
+/** Deletes the viewer's own review (RLS keeps it to theirs); a delete that matched no row counts as failure. */
+export async function deleteMyReview(id: string, slug: string | null): Promise<{ ok: boolean }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("reviews").delete().eq("id", id).select("id");
+  if (error || !data || data.length === 0) return { ok: false };
+  if (slug) revalidatePath(`/maistori/${slug}`);
+  return { ok: true };
+}
+
 export async function deleteReview(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const slug = String(formData.get("slug") ?? "");
-  const supabase = await createClient();
-  await supabase.from("reviews").delete().eq("id", id);
-  revalidatePath(`/maistori/${slug}`);
+  await deleteMyReview(id, slug || null);
 }
 
 export async function toggleSaved(craftsmanId: string, save: boolean): Promise<{ ok: boolean; message?: string }> {

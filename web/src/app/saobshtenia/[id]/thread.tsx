@@ -103,7 +103,7 @@ const boxKeyOf = (n: number, bs: Booking[]) => `${n}|${bs.map((b) => `${b.id}:${
 
 const sofiaDay = (ts: string) => new Date(ts).toLocaleDateString("en-CA", { timeZone: "Europe/Sofia" });
 
-export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, craftsmanSameDay, org, banned, embedded, hidden = false, draft, purgedAt, canOffer, reviewBox: initialBox, myReview }: Props) {
+export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, craftsmanSameDay, org, banned, embedded, hidden = false, draft, purgedAt, canOffer, reviewBox: initialBox, myReview: initialMyReview }: Props) {
   const supabase = createClient();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   const [text, setText] = useState(draft ?? "");
@@ -123,6 +123,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
   const [published, setPublished] = useState(false);
   const [reviewBox, setReviewBox] = useState<ReviewBoxKind | null>(initialBox);
+  const [myReview, setMyReview] = useState<MyReview | null>(initialMyReview);
   const [offerOpen, setOfferOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [offers, setOffers] = useState<ChatOffer[]>([]);
@@ -671,6 +672,10 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
           refreshReviewBox();
         }}
         onAsked={refreshReviewBox}
+        onDeleted={() => {
+          setMyReview(null);
+          refreshReviewBox();
+        }}
       />
 
       {/* Composer */}

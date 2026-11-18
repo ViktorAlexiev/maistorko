@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState } from "react";
+import { useActionState, useEffect, useId, useState, useTransition } from "react";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
-import { submitReview } from "@/app/actions/engage";
+import { deleteMyReview, submitReview } from "@/app/actions/engage";
 import type { FormState } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/client";
 import { FieldError, SubmitButton } from "@/components/submit-button";
+import { DeleteConfirm, useDeleteConfirm } from "@/components/review-delete-confirm";
 import type { MyReview, ReviewBoxKind } from "./review-box-kind";
 
 const LABELS = ["", "Лошо", "Слабо", "Добре", "Много добре", "Отлично"];
@@ -23,6 +24,7 @@ export function ReviewBox({
   onFormOpenChange,
   onPublished,
   onAsked,
+  onDeleted,
 }: {
   box: ReviewBoxKind | null;
   partnerFirst: string;
@@ -35,11 +37,14 @@ export function ReviewBox({
   onPublished: () => void;
   /** called after the invite went out, so the caller can ask the database for the box again */
   onAsked?: () => void;
+  /** called after the viewer's review was deleted, so the caller can forget it and ask the database for the box again */
+  onDeleted?: () => void;
 }) {
   const [step, setStep] = useState<"idle" | "confirm">("idle");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [done, setDone] = useState(false);
+  const [deleted, setDeleted] = useState(false);
 
   // Craftsman: tell the client the work is done; the client gets a message with the review button
   async function askReview() {
@@ -67,22 +72,39 @@ export function ReviewBox({
           onFormOpenChange(false);
           onPublished();
         }}
+        onDeleted={() => {
+          setDeleted(true);
+          onFormOpenChange(false);
+          onDeleted?.();
+        }}
       />
     );
   }
 
-  if (box === "rate" || box === "update") {
-    const text = box === "rate" ? `Оцени ${partnerFirst}` : `Обнови отзива за ${partnerFirst}`;
-    return (
+  const prompt =
+    box === "rate" || box === "update" ? (
       <div className="mx-3 mb-2 flex items-center gap-3 rounded-[10px] bg-rule-soft py-1.5 pl-3 pr-1.5">
         <Star className="size-5 shrink-0" aria-hidden />
-        <p className="min-w-0 flex-1 font-semibold leading-tight">{text}</p>
+        <p className="min-w-0 flex-1 font-semibold leading-tight">
+          {box === "rate" ? `Оцени ${partnerFirst}` : `Обнови отзива за ${partnerFirst}`}
+        </p>
         <button type="button" className="btn btn-primary btn-sm min-h-11" onClick={() => onFormOpenChange(true)}>
           {box === "rate" ? "Оцени" : "Обнови"}
         </button>
       </div>
+    ) : null;
+
+  // After a delete: the status, with the „Оцени“ prompt under it when the rules allow a new review
+  if (deleted) {
+    return (
+      <>
+        <RateDeleted />
+        {prompt}
+      </>
     );
   }
+
+  if (prompt) return prompt;
 
   if (box !== "ask" || sent) return null;
 
@@ -123,6 +145,14 @@ function RateDone() {
   );
 }
 
+function RateDeleted() {
+  return (
+    <p role="status" className="mx-3 mb-2 rounded-[10px] bg-surface-2 px-3 py-2 text-sm font-semibold text-ink-2">
+      Отзивът е изтрит.
+    </p>
+  );
+}
+
 /** Five stars, a short text and „Публикувай“, saved through the same `submitReview` as the profile form. */
 function RateForm({
   heading,
@@ -131,6 +161,7 @@ function RateForm({
   myReview,
   onClose,
   onSaved,
+  onDeleted,
 }: {
   heading: string;
   craftsmanId: string;
@@ -138,13 +169,25 @@ function RateForm({
   myReview: MyReview | null;
   onClose: () => void;
   onSaved: () => void;
+  onDeleted: () => void;
 }) {
   const id = useId();
   const [state, action] = useActionState<FormState, FormData>(submitReview, {});
   const [rating, setRating] = useState(myReview?.rating ?? 0);
+  const { confirming, deleteRef, ask, cancel } = useDeleteConfirm();
+  const [deleting, startDelete] = useTransition();
   useEffect(() => {
     if (state.ok) onSaved();
   }, [state.ok, onSaved]);
+
+  function confirmDelete() {
+    if (!myReview) return;
+    startDelete(async () => {
+      const { ok } = await deleteMyReview(myReview.id, slug);
+      if (ok) onDeleted();
+      else toast.error("Отзивът не беше изтрит. Опитайте отново.");
+    });
+  }
 
   return (
     <form action={action} className="mx-3 mb-2 rounded-[10px] bg-rule-soft p-3">
@@ -191,12 +234,30 @@ function RateForm({
         />
         <FieldError id={`${id}-body-err`} message={state.errors?.body} />
         {state.message && !state.ok && <p className="error-text !mt-0">{state.message}</p>}
-        <div className="flex gap-2">
-          <SubmitButton pendingText="Записваме…">Публикувай</SubmitButton>
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Не сега
-          </button>
-        </div>
+        {confirming && myReview ? (
+          <DeleteConfirm
+            canWriteAgain
+            busy={deleting}
+            onCancel={cancel}
+            confirm={(disabled) => (
+              <button type="button" className="btn btn-danger" onClick={confirmDelete} disabled={disabled}>
+                Да, изтрий
+              </button>
+            )}
+          />
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <SubmitButton pendingText="Записваме…">Публикувай</SubmitButton>
+            <button type="button" className="btn btn-ghost" onClick={onClose}>
+              Не сега
+            </button>
+            {myReview && (
+              <button ref={deleteRef} type="button" className="ml-auto text-sm font-semibold text-danger underline" onClick={ask}>
+                Изтрий моя отзив
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </form>
   );

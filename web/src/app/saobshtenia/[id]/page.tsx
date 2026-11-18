@@ -42,7 +42,7 @@ export default async function ConversationPage({ params }: PageProps<"/saobshten
     supabase.rpc("review_box", { p_conversation: id }),
     // the client's own review, to fill the review form with
     conv.client_id === viewer.id && conv.craftsman_id
-      ? supabase.from("reviews").select("rating, body").eq("client_id", viewer.id).eq("craftsman_id", conv.craftsman_id).maybeSingle()
+      ? supabase.from("reviews").select("id, rating, body").eq("client_id", viewer.id).eq("craftsman_id", conv.craftsman_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   const summary = summaries?.find((s) => s.id === id);
