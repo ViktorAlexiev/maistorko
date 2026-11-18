@@ -67,8 +67,11 @@ export function ChatDock(props: Props) {
   const [started, setStarted] = useState<string | null>(null);
   // The id of the conversation the first message creates: photos are uploaded into its folder before it exists
   const [newId, setNewId] = useState<string | null>(null);
-  // The profile refresh can bring the new conversation before the form reports it: the form stays until it has
-  const showForm = started === null && (conversationId === null || conversationId === newId);
+  // Whether the form was on screen when the window opened (no conversation yet)
+  const [formOpened, setFormOpened] = useState(conversationId === null);
+  // The profile refresh can bring the new conversation before the form reports it: the form stays until it has.
+  // A window opened after that (the form was closed while sending) shows the conversation instead.
+  const showForm = started === null && (conversationId === null || (formOpened && conversationId === newId));
   const convId = started ?? (showForm ? null : conversationId);
   const root = useRef<HTMLDivElement>(null);
 
@@ -76,7 +79,10 @@ export function ChatDock(props: Props) {
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
-    if (open) setMinimized(false);
+    if (open) {
+      setMinimized(false);
+      setFormOpened(conversationId === null);
+    }
   }
 
   useEffect(() => {

@@ -82,6 +82,8 @@ export function FirstMessage({
   const urls = useRef<string[]>([]);
   const seq = useRef(0);
   const sent = useRef(false);
+  // Set from the moment the message goes out: closing the window then must not delete its photos
+  const submitting = useRef(false);
   const mounted = useRef(false);
 
   useEffect(() => {
@@ -92,11 +94,12 @@ export function FirstMessage({
       mounted.current = false;
       u.forEach((x) => URL.revokeObjectURL(x));
       // The window was closed (a collapse does not unmount): unsent photos go
-      if (!sent.current) removeFromStorage([...up]);
+      if (!sent.current && !submitting.current) removeFromStorage([...up]);
     };
   }, []);
 
   useEffect(() => {
+    if (state.errors || (state.message && !state.ok)) submitting.current = false;
     if (state.ok && state.id) {
       sent.current = true;
       onStarted(state.id);
@@ -204,7 +207,9 @@ export function FirstMessage({
           e.preventDefault();
           setError("Напишете съобщение.");
           field.current?.focus();
+          return;
         }
+        submitting.current = true;
       }}
     >
       <input type="hidden" name="craftsmanId" value={craftsman.id} />
