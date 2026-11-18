@@ -7,12 +7,7 @@ import { submitReview } from "@/app/actions/engage";
 import type { FormState } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/client";
 import { FieldError, SubmitButton } from "@/components/submit-button";
-
-export type ReviewBoxKind = "ask" | "rate" | "update";
-export type MyReview = { rating: number; body: string };
-
-/** `review_box` comes back from the database as a plain string; keep the three known values. */
-export const toReviewBox = (v: string | null | undefined): ReviewBoxKind | null => (v === "ask" || v === "rate" || v === "update" ? v : null);
+import type { MyReview, ReviewBoxKind } from "./review-box-kind";
 
 const LABELS = ["", "Лошо", "Слабо", "Добре", "Много добре", "Отлично"];
 

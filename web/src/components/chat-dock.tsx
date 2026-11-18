@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ExternalLink, X } from "lucide-react";
 import { Thread, type ChatMessage } from "@/app/saobshtenia/[id]/thread";
 import type { Booking } from "@/app/saobshtenia/[id]/booking";
-import { toReviewBox, type MyReview, type ReviewBoxKind } from "@/app/saobshtenia/[id]/review-box";
+import { toReviewBox, type MyReview, type ReviewBoxKind } from "@/app/saobshtenia/[id]/review-box-kind";
 import type { Share } from "@/app/saobshtenia/[id]/chat-photos";
 import { Avatar } from "@/components/avatar";
 import { FirstMessage } from "@/components/first-message";

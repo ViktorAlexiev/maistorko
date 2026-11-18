@@ -29,7 +29,7 @@ import { OrgChatButton } from "@/components/org-chat-button";
 import { SaveButton } from "@/components/save-button";
 import { Gallery } from "@/components/gallery";
 import { ReviewForm } from "@/components/review-form";
-import { BUSY_UNTIL_NOTE } from "@/components/busy-until";
+import { BUSY_UNTIL_NOTE } from "@/components/busy-until-note";
 import { deleteReview } from "@/app/actions/engage";
 import { hourEstimate, type BoxKind } from "@/lib/prices";
 import { ProfilePrices, type ProfileBox, type ProfileGroup } from "./profile-prices";
@@ -100,9 +100,13 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
     });
   }
 
-  const [{ data: days }, { data: reviews }, { data: canReview }, { data: saved }, { data: conv }, { data: contact }, { data: worksAt }, { data: busyRows }] = await Promise.all([
+  const [{ data: days }, { data: reviews }, { data: myReview }, { data: canReview }, { data: saved }, { data: conv }, { data: contact }, { data: worksAt }, { data: busyRows }] = await Promise.all([
     supabase.rpc("availability_days", { p_craftsman: c.id, p_from: todayISO(), p_days: 62 }),
     supabase.rpc("craftsman_reviews", { p_craftsman: c.id, p_limit: 30 }),
+    // the viewer's own review, read directly: it may be older than the 30 newest shown in the list
+    viewer
+      ? supabase.from("reviews").select("rating, body").eq("client_id", viewer.id).eq("craftsman_id", c.id).maybeSingle()
+      : Promise.resolve({ data: null }),
     viewer && !isSelf ? supabase.rpc("can_review", { p_craftsman: c.id }) : Promise.resolve({ data: false }),
     viewer
       ? supabase.from("saved_craftsmen").select("craftsman_id").eq("client_id", viewer.id).eq("craftsman_id", c.id).maybeSingle()
@@ -223,7 +227,6 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
       name: g.name,
       boxes: g.boxes.sort((a, b) => a.sort - b.sort || a.box.id - b.box.id).map((x) => x.box),
     }));
-  const myReview = reviews?.find((r) => r.is_mine);
   const dayInfo = (days ?? []).map((d) => ({ day: d.day, status: d.status, ranges: d.ranges })) as DayInfo[];
   const initialDate = typeof sp.data === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.data) ? sp.data : undefined;
   const price = headline(c);

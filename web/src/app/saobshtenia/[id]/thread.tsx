@@ -13,7 +13,8 @@ import { Menu } from "./menu";
 import { OfferCard, Rivet, type ChatOffer, type Line } from "./offer-card";
 import { ReportButton } from "@/components/report-button";
 import { QuickReplies } from "./quick-replies";
-import { ReviewBox, toReviewBox, type MyReview, type ReviewBoxKind } from "./review-box";
+import { ReviewBox } from "./review-box";
+import { toReviewBox, type MyReview, type ReviewBoxKind } from "./review-box-kind";
 import { OfferSheet, type CreatedOffer } from "./offer-sheet";
 import {
   AttachButton,

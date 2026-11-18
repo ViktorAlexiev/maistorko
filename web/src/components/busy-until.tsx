@@ -7,9 +7,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { addDaysISO, formatDate } from "@/lib/format";
 import { DateField } from "@/components/date-time-fields";
-
-/** Marker note: the calendar treats this as an ordinary busy period, the profile and dashboard recognise it by it. */
-export const BUSY_UNTIL_NOTE = "Заето до";
+import { BUSY_UNTIL_NOTE } from "@/components/busy-until-note";
 
 /**
  * "Заето до …" in one tap: vacation, sick leave, too much work. The days become busy in the calendar, so search,

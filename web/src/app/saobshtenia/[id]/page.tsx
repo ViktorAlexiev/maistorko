@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Thread, type ChatMessage } from "./thread";
-import { toReviewBox } from "./review-box";
+import { toReviewBox } from "./review-box-kind";
 import type { Booking } from "./booking";
 import type { Share } from "./chat-photos";
 import { getMyOrg, isManager } from "@/lib/org";

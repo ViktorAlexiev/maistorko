@@ -241,7 +241,7 @@ The yellow field with fields for "what", "city" and "Търси", and a 14-day r
 A sticky solid card-surface header (#fffdf8) with the rule-mark logo and ghost links: no bottom line, no translucency, no blur. Its dropdowns have no border, only the large shadow, and their rows are strips. On phones the menu is a bottom sheet. Dashboard navigation is the Index: a list in the condensed display face (1.7rem), other pages in Ink Tertiary and the current one on a yellow field with 4px corners, groups split by space only; unread messages are an ink tab with yellow numerals beside „Съобщения“. On phones it becomes a bottom bar of words (the current one on a yellow field), and „Още“ opens a bottom sheet with the rest.
 
 ### Chat
-Your own bubbles are ink with white text and a 4px tail corner. The other side's bubbles are card surface with a hairline. An attached date renders as a yellow chip inside the bubble. The composer bar sits in a card-surface footer.
+Your own bubbles are ink with white text and a 4px tail corner. On the „Съобщения“ page the conversation lies on Panel Surface (`bg-surface`) and the other side's bubbles and the cards are Paper (`bg-paper`); in the profile chat window the messages lie on Paper and the other side's bubbles and cards are Panel Surface; no hairline. An attached date renders as a yellow chip inside the bubble. The composer bar sits in a card-surface footer.
 
 ### Separation (no lines)
 **The No Hairline Rule.** Nothing on a page is divided by a line: no hairline between rows, no ink rule above a list or under a heading, no border around a box. Space, a strip or a field does that job. Fields, chips, buttons and the role cards of the sign-up form keep their strokes, because they are controls, not dividers.
