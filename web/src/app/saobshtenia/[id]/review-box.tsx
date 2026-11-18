@@ -27,6 +27,7 @@ export function ReviewBox({
   formOpen,
   onFormOpenChange,
   onPublished,
+  onAsked,
 }: {
   box: ReviewBoxKind | null;
   partnerFirst: string;
@@ -37,6 +38,8 @@ export function ReviewBox({
   formOpen: boolean;
   onFormOpenChange: (open: boolean) => void;
   onPublished: () => void;
+  /** called after the invite went out, so the caller can ask the database for the box again */
+  onAsked?: () => void;
 }) {
   const [step, setStep] = useState<"idle" | "confirm">("idle");
   const [sending, setSending] = useState(false);
@@ -50,6 +53,7 @@ export function ReviewBox({
     setSending(false);
     if (error) return void toast.error(error.message);
     setSent(true);
+    onAsked?.();
     toast.success("Клиентът получи съобщение с покана за отзив.");
   }
 

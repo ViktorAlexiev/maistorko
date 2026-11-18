@@ -13,7 +13,7 @@ import { Menu } from "./menu";
 import { OfferCard, Rivet, type ChatOffer, type Line } from "./offer-card";
 import { ReportButton } from "@/components/report-button";
 import { QuickReplies } from "./quick-replies";
-import { ReviewBox, type MyReview, type ReviewBoxKind } from "./review-box";
+import { ReviewBox, toReviewBox, type MyReview, type ReviewBoxKind } from "./review-box";
 import { OfferSheet, type CreatedOffer } from "./offer-sheet";
 import {
   AttachButton,
@@ -95,9 +95,12 @@ function upcomingWhen(b: Booking, today: string) {
   return `${relativeDay(b.booking_date, today)} · ${time}`;
 }
 
+/** what the review box depends on: how many messages there are and the state of each booking */
+const boxKeyOf = (n: number, bs: Booking[]) => `${n}|${bs.map((b) => `${b.id}:${b.status}`).join(",")}`;
+
 const sofiaDay = (ts: string) => new Date(ts).toLocaleDateString("en-CA", { timeZone: "Europe/Sofia" });
 
-export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, craftsmanSameDay, org, banned, embedded, draft, purgedAt, canOffer, reviewBox, myReview }: Props) {
+export function Thread({ conversationId, me, iAmClient, partner, requestedDate, categoryName, initial, initialBookings, initialShares = [], craftsmanId, craftsmanSameDay, org, banned, embedded, draft, purgedAt, canOffer, reviewBox: initialBox, myReview }: Props) {
   const supabase = createClient();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   const [text, setText] = useState(draft ?? "");
@@ -116,6 +119,7 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
   const [busyPath, setBusyPath] = useState<string | null>(null);
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
   const [published, setPublished] = useState(false);
+  const [reviewBox, setReviewBox] = useState<ReviewBoxKind | null>(initialBox);
   const [offerOpen, setOfferOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [offers, setOffers] = useState<ChatOffer[]>([]);
@@ -158,6 +162,21 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
       .eq("conversation_id", conversationId);
     if (data) setShares(data as Share[]);
   }, [supabase, conversationId]);
+
+  // The yellow box above the composer depends on the messages (an invite) and the bookings (an upcoming one): ask the database again when they change
+  const boxSeq = useRef(0);
+  const refreshReviewBox = useCallback(async () => {
+    const seq = ++boxSeq.current;
+    const { data } = await supabase.rpc("review_box", { p_conversation: conversationId });
+    if (seq === boxSeq.current) setReviewBox(toReviewBox(data));
+  }, [supabase, conversationId]);
+  const boxKey = useRef(boxKeyOf(initial.length, initialBookings));
+  useEffect(() => {
+    const key = boxKeyOf(messages.length, bookings);
+    if (key === boxKey.current) return;
+    boxKey.current = key;
+    refreshReviewBox();
+  }, [messages.length, bookings, refreshReviewBox]);
 
   // Photos live in a private bucket: ask for short-lived signed links for the ones on screen
   useEffect(() => {
@@ -500,11 +519,11 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
                     {iAmClient ? (
                       published ? (
                         <p className="mt-2 text-sm font-semibold text-ink-2">Отзивът е публикуван.</p>
-                      ) : (
+                      ) : craftsmanId && partner.slug ? (
                         <button type="button" className="btn btn-primary mt-2 w-full" onClick={() => setReviewFormOpen(true)}>
                           Остави отзив
                         </button>
-                      )
+                      ) : null
                     ) : (
                       <p className="mt-2 text-sm text-ink-3">Клиентът може да остави отзив от този разговор.</p>
                     )}
@@ -623,13 +642,17 @@ export function Thread({ conversationId, me, iAmClient, partner, requestedDate, 
       <ReviewBox
         box={reviewBox}
         partnerFirst={partnerFirst}
-        craftsmanId={iAmClient ? partner.id : null}
+        craftsmanId={iAmClient ? craftsmanId : null}
         slug={partner.slug}
         myReview={myReview}
         conversationId={conversationId}
         formOpen={reviewFormOpen}
         onFormOpenChange={setReviewFormOpen}
-        onPublished={() => setPublished(true)}
+        onPublished={() => {
+          setPublished(true);
+          refreshReviewBox();
+        }}
+        onAsked={refreshReviewBox}
       />
 
       {/* Composer */}
