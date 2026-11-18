@@ -110,15 +110,21 @@ export function ChatDock(props: Props) {
     };
   }, [open, onClose, convId]);
 
-  if (!open) return null;
+  // Once opened, the window stays mounted (hidden while closed) so the text and photos survive × and Esc
+  const [everOpened, setEverOpened] = useState(open);
+  if (open && !everOpened) setEverOpened(true);
+  if (!open && !everOpened) return null;
 
   return (
     <div
       ref={root}
+      hidden={!open}
       role="dialog"
       aria-modal="false"
       aria-label={`Чат с ${craftsman.name}`}
-      className={`dock-in fixed z-50 flex flex-col overflow-hidden bg-surface shadow-[var(--shadow-lg)] sm:bottom-0 sm:right-6 sm:w-[25rem] sm:rounded-t-[14px] ${
+      className={`dock-in fixed z-50 flex-col overflow-hidden bg-surface shadow-[var(--shadow-lg)] sm:bottom-0 sm:right-6 sm:w-[25rem] sm:rounded-t-[14px] ${
+        open ? "flex" : "hidden"
+      } ${
         minimized ? "max-sm:inset-x-0 max-sm:bottom-0" : "max-sm:inset-0 sm:h-[min(38rem,calc(100dvh-5rem))]"
       }`}
     >
@@ -160,7 +166,7 @@ export function ChatDock(props: Props) {
         </button>
       </header>
 
-      {/* hidden, not unmounted: what was typed and the photos picked survive a collapse */}
+      {/* hidden, not unmounted: what was typed and the photos picked survive a collapse and closing the window */}
       <div className={minimized ? "hidden" : "flex min-h-0 flex-1 flex-col"}>
         {isSelf ? (
           <p className="p-5 text-ink-2">
@@ -179,7 +185,7 @@ export function ChatDock(props: Props) {
             craftsman={craftsman}
             banned={props.banned}
             draft={convId === newId || convId === started || !props.ask ? "" : draftFor(props.ask.date, props.ask.slot)}
-            collapsed={minimized}
+            collapsed={minimized || !open}
           />
         ) : newId ? (
           <FirstMessage

@@ -130,6 +130,31 @@ async function main() {
     ok("рейтингът се преизчислява с тригер", Number(cp?.rating_avg) === 5 && cp?.rating_count === 1, cp);
     const { error: hide } = await alice.c.from("reviews").update({ is_hidden: true }).eq("client_id", alice.id);
     ok("авторът не може сам да скрие/модерира отзив", Boolean(hide));
+
+    // „редактиран“: оценката или текстът са променени след първото публикуване
+    const edAt = async () => (await admin.from("reviews").select("edited_at").eq("client_id", alice.id).eq("craftsman_id", craft.id).single()).data?.edited_at;
+    // a fresh review, written by the client with edited_at set by hand
+    await admin.from("reviews").delete().eq("client_id", alice.id).eq("craftsman_id", craft.id);
+    const forged = "2020-01-01T00:00:00Z";
+    const { error: insEd } = await alice.c.from("reviews").insert({ craftsman_id: craft.id, client_id: alice.id, rating: 5, body: "Тест", edited_at: forged });
+    ok("отзив: edited_at не може да се зададе при създаване", !insEd && (await edAt()) === null, insEd);
+    const { error: sameErr } = await alice.c.from("reviews").update({ rating: 5, body: "Тест" }).eq("client_id", alice.id);
+    ok("отзив: същата оценка и текст не го правят „редактиран“", !sameErr && (await edAt()) === null, sameErr);
+    const { error: setEd } = await alice.c.from("reviews").update({ edited_at: forged }).eq("client_id", alice.id);
+    ok("отзив: edited_at не може да се зададе направо при промяна", !setEd && (await edAt()) === null, setEd);
+    await admin.from("reviews").update({ is_hidden: true }).eq("client_id", alice.id).eq("craftsman_id", craft.id);
+    await admin.from("reviews").update({ is_hidden: false }).eq("client_id", alice.id).eq("craftsman_id", craft.id);
+    ok("отзив: скриване от администратор не го прави „редактиран“", (await edAt()) === null);
+    const { error: chErr } = await alice.c.from("reviews").update({ rating: 4 }).eq("client_id", alice.id);
+    const changedAt = await edAt();
+    ok("отзив: промяна на оценката го отбелязва като редактиран", !chErr && changedAt !== null && changedAt !== forged, chErr);
+    const { data: listed } = await anon.rpc("craftsman_reviews", { p_craftsman: craft.id, p_limit: 30 });
+    const row = (listed ?? []).find((r: { author: string; edited_at: string | null }) => r.edited_at !== null);
+    ok("craftsman_reviews връща edited_at за видим отзив", Boolean(row) && new Date(row!.edited_at as string).getTime() === new Date(changedAt as string).getTime(), listed);
+    // back to the original state for the tests below
+    await admin.from("reviews").delete().eq("client_id", alice.id).eq("craftsman_id", craft.id);
+    const { error: back } = await alice.c.from("reviews").insert({ craftsman_id: craft.id, client_id: alice.id, rating: 5, body: "Тест" });
+    ok("отзив: първоначалното състояние е върнато", !back, back);
   }
 
   console.log("\nМайстор");

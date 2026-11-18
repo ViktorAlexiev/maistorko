@@ -1809,6 +1809,7 @@ export type Database = {
           client_id: string
           craftsman_id: string
           created_at: string
+          edited_at: string | null
           id: string
           is_hidden: boolean
           rating: number
@@ -1820,6 +1821,7 @@ export type Database = {
           client_id: string
           craftsman_id: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           is_hidden?: boolean
           rating: number
@@ -1830,6 +1832,7 @@ export type Database = {
           client_id?: string
           craftsman_id?: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           is_hidden?: boolean
           rating?: number
@@ -2164,6 +2167,7 @@ export type Database = {
           author: string
           body: string
           created_at: string
+          edited_at: string | null
           id: string
           is_mine: boolean
           rating: number

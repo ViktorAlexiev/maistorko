@@ -188,7 +188,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
     supabase.from("saved_craftsmen").select("craftsman_id").eq("client_id", viewer.id),
     supabase
       .from("reviews")
-      .select("id, rating, body, created_at, craftsman:craftsman_profiles(display_name, slug)")
+      .select("id, rating, body, created_at, edited_at, craftsman:craftsman_profiles(display_name, slug)")
       .eq("client_id", viewer.id)
       .order("created_at", { ascending: false }),
   ]);
@@ -280,6 +280,11 @@ export default async function DashboardPage({ searchParams }: PageProps<"/tabla"
                     </Link>
                   )}
                   <span className="text-sm text-ink-3">{timeAgo(r.created_at)}</span>
+                  {r.edited_at && (
+                    <span className="text-sm text-ink-3" title={`редактиран ${timeAgo(r.edited_at)}`}>
+                      · редактиран
+                    </span>
+                  )}
                   {r.body && <p className="w-full text-ink-2">{r.body}</p>}
                 </li>
               );

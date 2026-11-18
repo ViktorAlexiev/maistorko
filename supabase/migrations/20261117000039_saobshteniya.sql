@@ -314,3 +314,52 @@ language sql stable security definer set search_path = '' as $$
 $$;
 revoke execute on function public.chat_offers(uuid) from public, anon;
 grant execute on function public.chat_offers(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 7. Редактиран отзив: оценката или текстът са променени след първото публикуване
+-- ---------------------------------------------------------------------------
+alter table public.reviews add column if not exists edited_at timestamptz;
+
+create or replace function public.set_review_edited_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if tg_op = 'INSERT' then
+    new.edited_at := null;
+  else
+    new.edited_at := case
+      when new.rating is distinct from old.rating or new.body is distinct from old.body then now()
+      else old.edited_at
+    end;
+  end if;
+  return new;
+end;
+$$;
+revoke execute on function public.set_review_edited_at() from public, anon, authenticated;
+drop trigger if exists reviews_edited_at on public.reviews;
+create trigger reviews_edited_at before insert or update on public.reviews
+  for each row execute function public.set_review_edited_at();
+
+drop function public.craftsman_reviews(uuid, int);
+create function public.craftsman_reviews(p_craftsman uuid, p_limit integer default 20)
+returns table(id uuid, rating smallint, body text, created_at timestamptz, author text, is_mine boolean, edited_at timestamptz)
+language sql
+stable security definer
+set search_path to ''
+as $function$
+  select r.id, r.rating, r.body, r.created_at,
+         coalesce(nullif(split_part(btrim(p.full_name), ' ', 1), ''), 'Клиент')
+           || case when split_part(btrim(p.full_name), ' ', 2) <> ''
+                   then ' ' || left(split_part(btrim(p.full_name), ' ', 2), 1) || '.' else '' end,
+         r.client_id = auth.uid(),
+         r.edited_at
+  from public.reviews r
+  join public.profiles p on p.id = r.client_id
+  where r.craftsman_id = p_craftsman and not r.is_hidden
+  order by r.created_at desc
+  limit least(greatest(p_limit, 1), 100)
+$function$;
+revoke execute on function public.craftsman_reviews(uuid, int) from public;
+grant execute on function public.craftsman_reviews(uuid, int) to anon, authenticated;

@@ -30,7 +30,6 @@ import { SaveButton } from "@/components/save-button";
 import { Gallery } from "@/components/gallery";
 import { ReviewForm } from "@/components/review-form";
 import { BUSY_UNTIL_NOTE } from "@/components/busy-until-note";
-import { deleteReview } from "@/app/actions/engage";
 import { hourEstimate, type BoxKind } from "@/lib/prices";
 import { ProfilePrices, type ProfileBox, type ProfileGroup } from "./profile-prices";
 
@@ -105,7 +104,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
     supabase.rpc("craftsman_reviews", { p_craftsman: c.id, p_limit: 30 }),
     // the viewer's own review, read directly: it may be older than the 30 newest shown in the list
     viewer
-      ? supabase.from("reviews").select("rating, body").eq("client_id", viewer.id).eq("craftsman_id", c.id).maybeSingle()
+      ? supabase.from("reviews").select("id, rating, body").eq("client_id", viewer.id).eq("craftsman_id", c.id).maybeSingle()
       : Promise.resolve({ data: null }),
     viewer && !isSelf ? supabase.rpc("can_review", { p_craftsman: c.id }) : Promise.resolve({ data: false }),
     viewer
@@ -406,7 +405,13 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
             </div>
             {(canReview || myReview) && (
               <div className="mt-5">
-                <ReviewForm craftsmanId={c.id} slug={c.slug} existing={myReview ? { rating: myReview.rating, body: myReview.body } : null} />
+                <ReviewForm
+                  key={myReview?.id ?? "new"}
+                  craftsmanId={c.id}
+                  slug={c.slug}
+                  existing={myReview ? { rating: myReview.rating, body: myReview.body } : null}
+                  deleteId={myReview?.id}
+                />
               </div>
             )}
             {reviews && reviews.length > 0 ? (
@@ -417,14 +422,10 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
                       <Stars value={r.rating} />
                       <span className="font-bold">{r.author}</span>
                       <span className="text-sm text-ink-3">{timeAgo(r.created_at)}</span>
-                      {r.is_mine && (
-                        <form action={deleteReview} className="ml-auto">
-                          <input type="hidden" name="id" value={r.id} />
-                          <input type="hidden" name="slug" value={c.slug} />
-                          <button type="submit" className="text-sm font-semibold text-danger underline">
-                            Изтрий моя отзив
-                          </button>
-                        </form>
+                      {r.edited_at && (
+                        <span className="text-sm text-ink-3" title={`редактиран ${timeAgo(r.edited_at)}`}>
+                          · редактиран
+                        </span>
                       )}
                     </div>
                     {r.body && <p className="mt-2 max-w-[68ch] text-ink-2">{r.body}</p>}

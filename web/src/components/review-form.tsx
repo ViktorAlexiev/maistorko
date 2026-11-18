@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { Star } from "lucide-react";
-import { submitReview } from "@/app/actions/engage";
+import { deleteReview, submitReview } from "@/app/actions/engage";
 import type { FormState } from "@/app/actions/auth";
 import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
 
@@ -12,11 +12,14 @@ export function ReviewForm({
   craftsmanId = "",
   slug,
   existing,
+  deleteId,
   onDone,
 }: {
   craftsmanId?: string;
   slug: string;
   existing?: { rating: number; body: string } | null;
+  /** the id of the viewer's review: only when set the form offers to delete it (the profile does) */
+  deleteId?: string;
   /** called after the review was saved (e.g. to close a dialog) */
   onDone?: () => void;
 }) {
@@ -77,8 +80,16 @@ export function ReviewForm({
         <FieldError id="r-body-err" message={state.errors?.body} />
       </div>
       <FormMessage state={state} />
-      <div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <SubmitButton pendingText="Записваме…">{existing ? "Обнови отзива" : "Публикувай отзив"}</SubmitButton>
+        {deleteId && (
+          <>
+            <input type="hidden" name="id" value={deleteId} />
+            <button type="submit" formAction={deleteReview} formNoValidate className="ml-auto text-sm font-semibold text-danger underline">
+              Изтрий моя отзив
+            </button>
+          </>
+        )}
       </div>
     </form>
   );

@@ -93,7 +93,7 @@ export function FirstMessage({
     return () => {
       mounted.current = false;
       u.forEach((x) => URL.revokeObjectURL(x));
-      // The window was closed (a collapse does not unmount): unsent photos go
+      // The page was left (closing or collapsing the window does not unmount it): unsent photos go
       if (!sent.current && !submitting.current) removeFromStorage([...up]);
     };
   }, []);
