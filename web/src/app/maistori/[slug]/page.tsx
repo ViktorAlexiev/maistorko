@@ -329,7 +329,7 @@ export default async function CraftsmanPage({ params, searchParams }: PageProps<
             </section>
           ) : null}
           <ProfileBooking
-            craftsman={{ id: c.id, name: c.display_name, firstName, avatar: c.avatar_url, slug: c.slug, categories: catList.map((x) => ({ slug: x.slug, name: x.name })) }}
+            craftsman={{ id: c.id, name: c.display_name, firstName, avatar: c.avatar_url, slug: c.slug, city: c.city?.name ?? null, categories: catList.map((x) => ({ slug: x.slug, name: x.name })) }}
             days={expired ? [] : dayInfo}
             stale={stale && !expired}
             confirmedLabel={confirmedDaysAgo < 1 ? "График, потвърден днес" : `График, потвърден ${timeAgo(c.last_confirmed_at)}`}

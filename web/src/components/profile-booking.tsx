@@ -21,7 +21,7 @@ export type DayInfo = { day: string; status: "free" | "partial" | "busy"; ranges
 const CODE: Record<DayInfo["status"], DayStatus> = { free: "F", partial: "P", busy: "B" };
 
 type Props = {
-  craftsman: { id: string; name: string; firstName: string; avatar: string | null; slug: string; categories?: { slug: string; name: string }[] };
+  craftsman: { id: string; name: string; firstName: string; avatar: string | null; slug: string; city?: string | null; categories?: { slug: string; name: string }[] };
   days: DayInfo[];
   stale: boolean;
   /** "График, потвърден преди 3 дни": how fresh the calendar is */
@@ -177,6 +177,7 @@ export function ProfileBooking({ craftsman, days, stale, confirmedLabel, workOpt
           setSelected(d);
           setSlot(null);
         }}
+        onSlot={setSlot}
         today={today}
         busyDay={sel?.status === "busy"}
         ask={ask}

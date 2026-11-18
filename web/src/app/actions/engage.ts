@@ -16,12 +16,25 @@ export async function startConversation(_: FormState, formData: FormData): Promi
   const category = /^c:\d+$/.test(work) ? Number(work.slice(2)) : undefined;
   const slot = String(formData.get("slot") ?? "");
   const inline = formData.get("inline") === "1";
+  // The browser picks the id of the new conversation so that photos can go into its folder before it exists
+  const id = String(formData.get("id") ?? "");
   const raw = { body: String(formData.get("body") ?? "") };
   const values = { body: raw.body, date, work };
 
   const parsed = messageSchema.safeParse(raw);
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { errors: { date: "Невалидна дата." }, values };
+  if (id && !/^[0-9a-f-]{36}$/.test(id)) return { message: "Невалидна снимка.", values };
+  let photos: string[] = [];
+  try {
+    const list: unknown = JSON.parse(String(formData.get("photos") || "[]"));
+    if (!Array.isArray(list) || list.length > 4 || !list.every((p) => typeof p === "string" && id !== "" && p.startsWith(`${id}/`))) {
+      return { message: "Невалидна снимка.", values };
+    }
+    photos = list;
+  } catch {
+    return { message: "Невалидна снимка.", values };
+  }
 
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
@@ -37,6 +50,8 @@ export async function startConversation(_: FormState, formData: FormData): Promi
     p_category: category,
     p_service: service,
     p_slot: date && ["morning", "afternoon", "evening"].includes(slot) ? slot : undefined,
+    p_id: id || undefined,
+    p_photos: photos.length ? photos : undefined,
   });
   if (error || !data) {
     return { message: error?.message ?? "Съобщението не беше изпратено. Опитайте отново.", values };

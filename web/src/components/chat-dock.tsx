@@ -1,21 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ExternalLink, X } from "lucide-react";
-import { startConversation } from "@/app/actions/engage";
-import type { FormState } from "@/app/actions/auth";
 import { Thread, type ChatMessage } from "@/app/saobshtenia/[id]/thread";
 import type { Booking } from "@/app/saobshtenia/[id]/booking";
 import { toReviewBox, type MyReview, type ReviewBoxKind } from "@/app/saobshtenia/[id]/review-box";
 import type { Share } from "@/app/saobshtenia/[id]/chat-photos";
 import { Avatar } from "@/components/avatar";
-import { FieldError, FormMessage, SubmitButton } from "@/components/submit-button";
+import { FirstMessage } from "@/components/first-message";
 import { createClient } from "@/lib/supabase/client";
 import { relativeDay } from "@/lib/format";
 import { slotLabel, type Slot } from "@/lib/slots";
-import { composeAnswers, questionsFor } from "@/lib/inquiry-questions";
-import { DateField } from "@/components/date-time-fields";
 
 export const OPEN_CHAT = "maistorko:open-chat";
 
@@ -30,12 +26,13 @@ export function OpenChatButton({ className, children }: { className?: string; ch
 
 export type WorkOption = { value: string; label: string; priced: boolean };
 
-type Craftsman = {
+export type Craftsman = {
   id: string;
   name: string;
   firstName: string;
   avatar: string | null;
   slug: string;
+  city?: string | null;
   /** the craftsman's main kinds of work: the first message offers questions for them */
   categories?: { slug: string; name: string }[];
 };
@@ -52,6 +49,7 @@ type Props = {
   date: string | null;
   slot: Slot | null;
   onDate: (d: string | null) => void;
+  onSlot: (s: Slot | null) => void;
   today: string;
   busyDay: boolean;
   /** Set when "Пиши за …" was pressed: prefill the reply in an existing conversation. */
@@ -64,10 +62,14 @@ type Props = {
  * with date and type of work; after that it is the live conversation itself.
  */
 export function ChatDock(props: Props) {
-  const { open, onClose, craftsman, me, isSelf, conversationId } = props;
+  const { open, onClose, onAskUsed, craftsman, me, isSelf, conversationId } = props;
   const [minimized, setMinimized] = useState(false);
   const [started, setStarted] = useState<string | null>(null);
-  const convId = started ?? conversationId;
+  // The id of the conversation the first message creates: photos are uploaded into its folder before it exists
+  const [newId, setNewId] = useState<string | null>(null);
+  // The profile refresh can bring the new conversation before the form reports it: the form stays until it has
+  const showForm = started === null && (conversationId === null || conversationId === newId);
+  const convId = started ?? (showForm ? null : conversationId);
   const root = useRef<HTMLDivElement>(null);
 
   // Reopening always shows the window expanded
@@ -76,6 +78,17 @@ export function ChatDock(props: Props) {
     setWasOpen(open);
     if (open) setMinimized(false);
   }
+
+  useEffect(() => {
+    if (!open || convId || newId) return;
+    // not during render: the component is rendered on the server too, where the id would differ
+    const t = setTimeout(() => setNewId(crypto.randomUUID()), 0);
+    return () => clearTimeout(t);
+  }, [open, convId, newId]);
+
+  useEffect(() => {
+    if (convId && convId === newId) onAskUsed();
+  }, [convId, newId, onAskUsed]);
 
   useEffect(() => {
     if (!open) return;
@@ -159,18 +172,26 @@ export function ChatDock(props: Props) {
             me={me}
             craftsman={craftsman}
             banned={props.banned}
-            draft={props.ask ? draftFor(props.ask.date, props.ask.slot) : ""}
+            draft={convId === newId || convId === started || !props.ask ? "" : draftFor(props.ask.date, props.ask.slot)}
             collapsed={minimized}
           />
-        ) : (
+        ) : newId ? (
           <FirstMessage
-            {...props}
+            craftsman={craftsman}
+            workOptions={props.workOptions}
+            date={props.date}
+            slot={props.slot}
+            onDate={props.onDate}
+            onSlot={props.onSlot}
+            today={props.today}
+            busyDay={props.busyDay}
+            newId={newId}
             onStarted={(id) => {
               setStarted(id);
-              props.onAskUsed();
+              onAskUsed();
             }}
           />
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -198,181 +219,6 @@ function SignInPrompt({ craftsman, date }: { craftsman: Craftsman; date: string 
         </Link>
       </div>
     </div>
-  );
-}
-
-function FirstMessage({
-  craftsman,
-  workOptions,
-  date,
-  slot,
-  onDate,
-  today,
-  busyDay,
-  onStarted,
-}: Props & { onStarted: (id: string) => void }) {
-  const [state, action] = useActionState<FormState, FormData>(startConversation, {});
-  const [body, setBody] = useState("");
-  const [prevState, setPrevState] = useState(state);
-  if (prevState !== state) {
-    setPrevState(state);
-    if (state.values?.body !== undefined) setBody(state.values.body);
-  }
-  useEffect(() => {
-    if (state.ok && state.id) onStarted(state.id);
-  }, [state, onStarted]);
-  const priced = workOptions.filter((o) => o.priced);
-  const other = workOptions.filter((o) => !o.priced);
-  const cats = craftsman.categories ?? [];
-  const [catSlug, setCatSlug] = useState(cats[0]?.slug ?? "");
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [askOpen, setAskOpen] = useState(false);
-  const questions = questionsFor(catSlug);
-  const composed = composeAnswers(questions, answers);
-
-  return (
-    <form
-      action={action}
-      className="grid flex-1 content-start gap-3 overflow-y-auto bg-ink p-4 text-white [&_.error-text]:text-[#ff9f94]"
-      noValidate
-    >
-      <input type="hidden" name="craftsmanId" value={craftsman.id} />
-      <input type="hidden" name="slug" value={craftsman.slug} />
-      <input type="hidden" name="inline" value="1" />
-      <input type="hidden" name="date" value={date ?? ""} />
-      <input type="hidden" name="slot" value={date && slot ? slot : ""} />
-      <div>
-        <label htmlFor="dock-date" className="label text-white">
-          Дата <span className="font-normal text-[#bdb8aa]">(по желание)</span>
-        </label>
-        <DateField id="dock-date" min={today} value={date ?? ""} onChange={(v) => onDate(v || null)} />
-        {date && (
-          <p className="hint text-[#bdb8aa]">
-            {slot ? `Предпочитано: ${slotLabel(slot)}. ` : ""}
-            {busyDay ? "Отбелязан като зает: питайте дали може. " : ""}
-            Майсторът потвърждава деня в чата.{" "}
-            <button type="button" className="underline" onClick={() => onDate(null)}>
-              Без конкретна дата
-            </button>
-          </p>
-        )}
-      </div>
-      <div>
-        <label htmlFor="dock-work" className="label text-white">
-          Каква работа
-        </label>
-        <select id="dock-work" name="work" className="field" defaultValue={state.values?.work ?? ""}>
-          <option value="">Не е задължително</option>
-          {priced.length > 0 && (
-            <optgroup label="От ценоразписа">
-              {priced.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {other.length > 0 && (
-            <optgroup label={priced.length ? "Други (цена в чата)" : "Услуги"}>
-              {other.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
-      </div>
-      <div className="rounded-[8px] border border-white/25">
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm font-bold"
-          onClick={() => setAskOpen((v) => !v)}
-          aria-expanded={askOpen}
-        >
-          <span>Помогнете на майстора да даде цена</span>
-          <span aria-hidden>{askOpen ? "−" : "+"}</span>
-        </button>
-        {askOpen && (
-          <div className="grid gap-3 border-t border-white/25 p-3">
-            {cats.length > 1 && (
-              <div>
-                <label htmlFor="dock-q-cat" className="label text-white">
-                  Вид работа
-                </label>
-                <select id="dock-q-cat" className="field" value={catSlug} onChange={(e) => { setCatSlug(e.target.value); setAnswers({}); }}>
-                  {cats.map((c) => (
-                    <option key={c.slug} value={c.slug}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {questions.map((q) => (
-              <div key={q.id}>
-                <label htmlFor={`dock-q-${q.id}`} className="label text-white">
-                  {q.label}
-                </label>
-                {q.options ? (
-                  <select id={`dock-q-${q.id}`} className="field" value={answers[q.id] ?? ""} onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}>
-                    <option value="">Не е задължително</option>
-                    {q.options.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input id={`dock-q-${q.id}`} className="field" maxLength={160} value={answers[q.id] ?? ""} placeholder={q.placeholder} onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))} />
-                )}
-              </div>
-            ))}
-            <button
-              type="button"
-              className="btn btn-rule btn-sm justify-self-start"
-              disabled={!composed}
-              onClick={() => {
-                setBody((b) => (b.trim() ? `${b.trim()}
-
-${composed}` : composed));
-                setAnswers({});
-                setAskOpen(false);
-              }}
-            >
-              Добави към съобщението
-            </button>
-            <p className="hint text-[#bdb8aa]">Снимки на проблема можете да изпратите в разговора веднага след първото съобщение.</p>
-          </div>
-        )}
-      </div>
-      <div>
-        <label htmlFor="dock-body" className="label text-white">
-          Съобщение
-        </label>
-        <textarea
-          id="dock-body"
-          name="body"
-          className="field"
-          rows={3}
-          maxLength={4000}
-          required
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder={`Здравейте! Трябва ми… Адресът е в … Удобно ли ви е${date ? ` ${relativeDay(date)}` : ""}?`}
-          aria-invalid={Boolean(state.errors?.body)}
-          aria-describedby={state.errors?.body ? "dock-body-err" : "dock-body-hint"}
-        />
-        <p id="dock-body-hint" className="hint text-[#bdb8aa]">
-          Телефонът ви остава скрит, освен ако не го напишете.
-        </p>
-        <FieldError id="dock-body-err" message={state.errors?.body} />
-      </div>
-      <FormMessage state={state.ok ? {} : state} />
-      <SubmitButton className="btn btn-rule w-full" pendingText="Изпращаме…">
-        Изпрати съобщение
-      </SubmitButton>
-    </form>
   );
 }
 
