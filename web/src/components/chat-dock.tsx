@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
-import { ExternalLink, Minus, X } from "lucide-react";
+import { ExternalLink, X } from "lucide-react";
 import { startConversation } from "@/app/actions/engage";
 import type { FormState } from "@/app/actions/auth";
 import { Thread, type ChatMessage } from "@/app/saobshtenia/[id]/thread";
@@ -99,87 +99,78 @@ export function ChatDock(props: Props) {
       role="dialog"
       aria-modal="false"
       aria-label={`Чат с ${craftsman.name}`}
-      className={`dock-in fixed z-50 flex flex-col overflow-hidden border-line-strong bg-paper shadow-[var(--shadow-lg)] sm:bottom-0 sm:right-6 sm:w-[25rem] sm:rounded-t-[12px] sm:border sm:border-b-0 ${
+      className={`dock-in fixed z-50 flex flex-col overflow-hidden bg-surface shadow-[var(--shadow-lg)] sm:bottom-0 sm:right-6 sm:w-[25rem] sm:rounded-t-[14px] ${
         minimized ? "max-sm:inset-x-0 max-sm:bottom-0" : "max-sm:inset-0 sm:h-[min(38rem,calc(100dvh-5rem))]"
       }`}
     >
-      <header className="flex shrink-0 items-center gap-2.5 bg-ink px-3 py-2 text-white">
+      <header className="flex shrink-0 items-center gap-2.5 bg-surface py-2 pl-3.5 pr-1.5">
         <button
           type="button"
           data-chrome
-          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-[6px] text-left"
           onClick={() => setMinimized((m) => !m)}
           aria-expanded={!minimized}
           aria-label={minimized ? "Разгъни чата" : "Свий чата"}
         >
-          <Avatar name={craftsman.name} url={craftsman.avatar} size={34} />
-          <span className="min-w-0">
-            <span className="block truncate font-extrabold">{craftsman.name}</span>
-            <span className="block truncate text-xs text-[#bdb8aa]">{convId ? "Разговор" : "Ново съобщение"}</span>
+          <Avatar name={craftsman.name} url={craftsman.avatar} size={40} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[1.125rem] font-extrabold leading-tight">{craftsman.name}</span>
+            <span className="block truncate text-sm leading-snug text-ink-2">{convId ? "Разговор" : "Ново съобщение"}</span>
           </span>
         </button>
         {convId && (
           <Link
             href={`/saobshtenia/${convId}`}
             data-chrome
-            className="grid size-9 place-items-center rounded-[8px] hover:bg-white/10"
+            className="btn btn-ghost size-11 shrink-0 p-0"
             aria-label="Отвори в „Съобщения“"
             title="Отвори в „Съобщения“"
           >
-            <ExternalLink className="size-4" aria-hidden />
+            <ExternalLink className="size-5" aria-hidden />
           </Link>
         )}
         <button
           type="button"
           data-chrome
-          className="hidden size-9 place-items-center rounded-[8px] hover:bg-white/10 sm:grid"
-          onClick={() => setMinimized((m) => !m)}
-          aria-label={minimized ? "Разгъни" : "Свий"}
-        >
-          <Minus className="size-4" aria-hidden />
-        </button>
-        <button
-          type="button"
-          data-chrome
-          className="grid size-9 place-items-center rounded-[8px] hover:bg-white/10"
+          className="btn btn-ghost size-11 shrink-0 p-0"
           onClick={onClose}
           aria-label="Затвори чата"
+          title="Затвори"
         >
           <X className="size-5" aria-hidden />
         </button>
       </header>
 
-      {!minimized && (
-        <div className="flex min-h-0 flex-1 flex-col">
-          {isSelf ? (
-            <p className="p-5 text-ink-2">
-              Това е вашият публичен профил. Клиентите ви пишат оттук.{" "}
-              <Link href="/tabla/profil" className="link font-bold">
-                Редактирай профила
-              </Link>
-            </p>
-          ) : !me ? (
-            <SignInPrompt craftsman={craftsman} date={props.date} />
-          ) : convId ? (
-            <DockThread
-              key={convId}
-              conversationId={convId}
-              me={me}
-              craftsman={craftsman}
-              banned={props.banned}
-              draft={props.ask ? draftFor(props.ask.date, props.ask.slot) : ""}
-            />
-          ) : (
-            <FirstMessage
-              {...props}
-              onStarted={(id) => {
-                setStarted(id);
-                props.onAskUsed();
-              }}
-            />
-          )}
-        </div>
-      )}
+      {/* hidden, not unmounted: what was typed and the photos picked survive a collapse */}
+      <div className={minimized ? "hidden" : "flex min-h-0 flex-1 flex-col"}>
+        {isSelf ? (
+          <p className="p-5 text-ink-2">
+            Това е вашият публичен профил. Клиентите ви пишат оттук.{" "}
+            <Link href="/tabla/profil" className="link font-bold">
+              Редактирай профила
+            </Link>
+          </p>
+        ) : !me ? (
+          <SignInPrompt craftsman={craftsman} date={props.date} />
+        ) : convId ? (
+          <DockThread
+            key={convId}
+            conversationId={convId}
+            me={me}
+            craftsman={craftsman}
+            banned={props.banned}
+            draft={props.ask ? draftFor(props.ask.date, props.ask.slot) : ""}
+          />
+        ) : (
+          <FirstMessage
+            {...props}
+            onStarted={(id) => {
+              setStarted(id);
+              props.onAskUsed();
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
