@@ -47,29 +47,37 @@ export function QuickReplies({ me, current, onPick }: { me: string; current: str
   }
 
   return (
-    <div className="mx-auto mb-2 flex max-w-2xl flex-wrap items-center gap-1.5" aria-label="Бързи отговори">
+    <div
+      aria-label="Бързи отговори"
+      className="mx-auto mb-2 flex max-w-2xl items-center gap-1.5 overflow-x-auto pr-8 [-ms-overflow-style:none] [mask-image:linear-gradient(to_right,#000_calc(100%-2rem),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       {DEFAULTS.map((t) => (
-        <button key={t} type="button" className="rounded-full border border-line-strong bg-surface px-3 py-1 text-sm font-semibold hover:bg-surface-2" onClick={() => onPick(t)}>
+        <button key={t} type="button" className="chip shrink-0 whitespace-nowrap" onClick={() => onPick(t)}>
           {t}
         </button>
       ))}
       {own.map((r) => (
-        <span key={r.id} className="inline-flex items-center rounded-full border border-line-strong bg-rule-soft text-sm font-semibold">
-          <button type="button" className="max-w-[16rem] truncate py-1 pl-3 pr-2" onClick={() => onPick(r.body)} title={r.body}>
+        <span key={r.id} className="inline-flex shrink-0 items-center">
+          <button type="button" className="chip whitespace-nowrap bg-rule-soft" onClick={() => onPick(r.body)} title={r.body}>
             {r.body}
           </button>
           {edit && (
-            <button type="button" className="py-1 pr-2 text-danger" onClick={() => remove(r.id)} aria-label={`Изтрий „${r.body}“`}>
-              <X className="size-3.5" aria-hidden />
+            <button type="button" className="grid size-10 place-items-center text-danger" onClick={() => remove(r.id)} aria-label={`Изтрий „${r.body}“`}>
+              <X className="size-4" aria-hidden />
             </button>
           )}
         </span>
       ))}
-      <button type="button" className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm font-bold text-ink-2 hover:bg-surface-2" onClick={saveCurrent} title="Запази написаното като бърз отговор">
+      <button
+        type="button"
+        className="inline-flex min-h-10 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-3 text-sm font-bold text-ink-2 hover:bg-paper"
+        onClick={saveCurrent}
+        title="Запази написаното като бърз отговор"
+      >
         <Plus className="size-3.5" aria-hidden /> Запази
       </button>
       {own.length > 0 && (
-        <button type="button" className="px-1 text-sm text-ink-3 underline" onClick={() => setEdit((v) => !v)}>
+        <button type="button" className="min-h-10 shrink-0 whitespace-nowrap px-2 text-sm text-ink-3 underline" onClick={() => setEdit((v) => !v)}>
           {edit ? "Готово" : "Промени"}
         </button>
       )}

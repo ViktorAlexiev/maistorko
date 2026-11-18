@@ -25,6 +25,8 @@ export function ReportButton({
   loginHref,
   label = "Докладвай",
   className = "btn btn-ghost btn-sm text-ink-2",
+  open: openProp,
+  onOpenChange,
 }: {
   type: "profile" | "conversation" | "review";
   targetId: string;
@@ -32,9 +34,17 @@ export function ReportButton({
   loginHref: string;
   label?: string;
   className?: string;
+  /** Lets a menu open the form from outside; without it the button opens the form itself. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = openProp ?? innerOpen;
+  const setOpen = (value: boolean) => {
+    if (openProp === undefined) setInnerOpen(value);
+    onOpenChange?.(value);
+  };
   const [reason, setReason] = useState<(typeof REASONS)[number][0]>("spam");
   const [details, setDetails] = useState("");
   const [pending, start] = useTransition();

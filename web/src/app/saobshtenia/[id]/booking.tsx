@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { CalendarCheck, CalendarClock, CalendarX, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useConfirm } from "@/components/confirm-dialog";
 import { DateField, TimeField } from "@/components/date-time-fields";
 import { addDaysISO, formatDate, relativeDay, todayISO } from "@/lib/format";
 import { SLOT_DEFS, type Range } from "@/lib/slots";
+import { Rivet } from "./offer-card";
 
 export type Booking = {
   id: string;
@@ -31,31 +32,37 @@ export function bookingWhen(b: Pick<Booking, "booking_date" | "end_date" | "star
   return `${formatDate(b.booking_date, true)}, ${t}`;
 }
 
-const STATUS = {
-  proposed: { label: "Чака потвърждение", cls: "bg-rule-soft text-ink" },
-  confirmed: { label: "Уговорено", cls: "bg-free text-white" },
-  declined: { label: "Отказано", cls: "bg-surface-2 text-ink-2" },
-  cancelled: { label: "Отменено", cls: "bg-surface-2 text-ink-2" },
-} as const;
+/** A confirmed visit whose last day has passed. */
+const isPast = (b: Booking, today: string) => b.status === "confirmed" && (b.end_date ?? b.booking_date) < today;
 
-/** Live card for one booking, shown where it was proposed in the chat. */
+function statusOf(b: Booking, today: string): { word: string; rivet: "filled" | "ring" | null } {
+  if (b.status === "confirmed") return { word: isPast(b, today) ? "Минал" : "Потвърдено", rivet: "filled" };
+  if (b.status === "proposed") return { word: "Чака отговор", rivet: "ring" };
+  return { word: b.status === "declined" ? "Отказано" : "Отменено", rivet: null };
+}
+
+/** Live card for one booking, shown where it was proposed in the chat. `bg` is the card tone that fits the ground it lies on. */
 export function BookingCard({
   booking,
   me,
   partnerName,
+  bg,
   onChanged,
 }: {
   booking: Booking;
   me: string;
   partnerName: string;
+  bg: string;
   onChanged: () => void;
 }) {
   const supabase = createClient();
   const [pending, start] = useTransition();
   const mineProposal = booking.proposed_by === me;
   const iAmCraftsman = booking.craftsman_id === me;
-  const st = STATUS[booking.status];
-  const Icon = booking.status === "confirmed" ? CalendarCheck : booking.status === "proposed" ? CalendarClock : CalendarX;
+  const today = todayISO();
+  const st = statusOf(booking, today);
+  // a card that is over, declined or cancelled steps back to Panel Surface
+  const quiet = booking.status === "declined" || booking.status === "cancelled" || isPast(booking, today);
 
   const { confirm, dialog } = useConfirm();
   const act = async (action: "confirm" | "decline" | "cancel", ask?: { title: string; message?: string }) => {
@@ -72,28 +79,26 @@ export function BookingCard({
   };
 
   return (
-    <div
-      className={`mx-auto my-2 w-full max-w-md overflow-hidden rounded-[10px] border-[1.5px] bg-surface ${
-        booking.status === "confirmed" ? "border-free" : booking.status === "proposed" ? "border-ink" : "border-line"
-      }`}
-    >
+    <div id={`booking-${booking.id}`} className={`mx-auto my-1.5 w-full max-w-md scroll-mt-3 overflow-hidden rounded-[10px] ${quiet ? "bg-surface-2 text-ink-2" : bg}`}>
       <div aria-hidden className="graduations graduations-top h-2 bg-rule" />
-      <div className="p-3.5">
+      <div className="p-3.5 pt-3">
         <div className="flex items-start gap-3">
-          <Icon className="mt-0.5 size-6 shrink-0" strokeWidth={1.75} aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-ink-2">{KIND_LABEL[booking.kind]}</p>
-            <p className={`text-lg font-extrabold first-letter:uppercase ${booking.status === "cancelled" || booking.status === "declined" ? "line-through decoration-2 opacity-60" : ""}`}>
+            <p className={`numerals text-[1.4rem] leading-tight first-letter:uppercase ${booking.status === "cancelled" || booking.status === "declined" ? "line-through decoration-2" : ""}`}>
               {bookingWhen(booking)}
             </p>
-            {booking.note && <p className="mt-1 text-sm text-ink-2">{booking.note}</p>}
+            {booking.note && <p className="mt-1 text-sm font-normal text-ink-2">{booking.note}</p>}
           </div>
-          <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${st.cls}`}>{st.label}</span>
+          <span className="flex shrink-0 items-center gap-1.5 pt-0.5 text-sm font-bold">
+            {st.rivet && <Rivet kind={st.rivet} />}
+            {st.word}
+          </span>
         </div>
 
         {booking.status === "proposed" && !mineProposal && (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" className="btn bg-free text-white hover:bg-free/90" disabled={pending} onClick={() => act("confirm")}>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button type="button" className="btn btn-primary" disabled={pending} onClick={() => act("confirm")}>
               Потвърди
             </button>
             <button type="button" className="btn btn-outline" disabled={pending} onClick={() => act("decline")}>
@@ -102,19 +107,19 @@ export function BookingCard({
           </div>
         )}
         {booking.status === "proposed" && mineProposal && (
-          <div className="mt-3 flex items-center justify-between gap-2 text-sm text-ink-2">
+          <div className="mt-1 flex items-center justify-between gap-2 text-sm text-ink-2">
             <span>Чакаме отговор от {partnerName.split(" ")[0]}.</span>
-            <button type="button" className="font-bold underline" disabled={pending} onClick={() => act("cancel")}>
+            <button type="button" className="min-h-11 px-2 font-bold underline" disabled={pending} onClick={() => act("cancel")}>
               Оттегли
             </button>
           </div>
         )}
-        {booking.status === "confirmed" && (
-          <div className="mt-3 flex items-center justify-between gap-2 text-sm text-ink-2">
+        {booking.status === "confirmed" && !isPast(booking, today) && (
+          <div className="mt-1 flex items-center justify-between gap-2 text-sm text-ink-2">
             <span>{iAmCraftsman ? "Часът е зает в календара ти." : "Часът е запазен в календара на майстора."}</span>
             <button
               type="button"
-              className="font-bold text-danger underline"
+              className="min-h-11 shrink-0 px-2 font-bold text-danger underline"
               disabled={pending}
               onClick={() => act("cancel", { title: "Да отменя ли уговорката?", message: "Другата страна ще види съобщение." })}
             >
